@@ -53,14 +53,6 @@ Cappa has a plugin system that allows you to add new features and connectors to 
 
 ## Options
 
-### -l, --log-level
-
-Set the log level.
-
-### -c, --clean
-
-Clean the output directory before running.
-
 | Option              | Description | Default  |
 |---------------------|-------------|----------|
 | -l, --log-level     | Log level   | 3 (info) |
