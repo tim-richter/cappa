@@ -1,0 +1,12 @@
+import type { PossiblePromise, UserConfig } from "./types";
+
+/**
+ * Type helper to make it easier to use vite.config.ts accepts a direct UserConfig object, or a function that returns it. The function receives a ConfigEnv object.
+ */
+export function defineConfig(
+  options:
+    | PossiblePromise<UserConfig | Array<UserConfig>>
+    | (() => PossiblePromise<UserConfig | Array<UserConfig>>),
+): typeof options {
+  return options;
+}

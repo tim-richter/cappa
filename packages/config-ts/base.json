@@ -1,0 +1,36 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "display": "Base",
+  "compilerOptions": {
+    /* Base Options: */
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "target": "ESNext",
+    "verbatimModuleSyntax": false,
+    "allowJs": true,
+    "resolveJsonModule": true,
+    "moduleDetection": "force",
+    /* Strictness */
+    "strict": true,
+    "noUncheckedIndexedAccess": true,
+    /* If transpiling with TypeScript: */
+    "moduleResolution": "NodeNext",
+    "module": "NodeNext",
+    "outDir": "dist",
+    "sourceMap": true,
+    "strictNullChecks": true,
+    "jsx": "react-jsx",
+    "declaration": true,
+    "declarationMap": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "experimentalDecorators": true,
+    "forceConsistentCasingInFileNames": true,
+    "noErrorTruncation": true,
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
+    "baseUrl": ".",
+    "types": []
+  },
+  "exclude": ["**/node_modules", "**/types/**"]
+}

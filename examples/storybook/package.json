@@ -1,0 +1,27 @@
+{
+  "name": "@cappa/example-storybook",
+  "version": "0.0.29",
+  "private": true,
+  "scripts": {
+    "screenshot": "cappa -l 5",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build",
+    "serve-storybook": "pnpx http-server -c-1 ./storybook-static"
+  },
+  "dependencies": {
+    "@cappa/cli": "workspace:*",
+    "@cappa/core": "workspace:*",
+    "@cappa/plugin-storybook": "workspace:*"
+  },
+  "devDependencies": {
+    "@storybook/addon-a11y": "^9.1.5",
+    "@storybook/addon-docs": "^9.1.5",
+    "@storybook/addon-vitest": "^9.1.5",
+    "@storybook/react-vite": "^9.1.5",
+    "@types/react": "^19.1.13",
+    "@types/react-dom": "^19.1.9",
+    "@vitest/browser": "^3.2.4",
+    "@vitest/coverage-v8": "^3.2.4",
+    "storybook": "^9.1.5"
+  }
+}

@@ -1,0 +1,35 @@
+import { isCappa } from "@cappa/plugin-storybook/browser";
+import type { Preview } from "@storybook/react-vite";
+
+if (isCappa()) {
+  console.log("Cappa is running");
+} else {
+  console.log("Cappa is not running");
+}
+
+const preview: Preview = {
+  parameters: {
+    controls: {
+      matchers: {
+        color: /(background|color)$/i,
+        date: /Date$/i,
+      },
+    },
+
+    backgrounds: {
+      options: {
+        light: { name: "Light", value: "#fff" },
+        dark: { name: "Dark", value: "#333" },
+      },
+    },
+
+    a11y: {
+      // 'todo' - show a11y violations in the test UI only
+      // 'error' - fail CI on a11y violations
+      // 'off' - skip a11y checks entirely
+      test: "todo",
+    },
+  },
+};
+
+export default preview;

@@ -1,0 +1,18 @@
+{
+  "name": "@cappa/config-ts",
+  "version": "0.0.1",
+  "license": "MIT",
+  "author": "Tim Richter",
+  "sideEffects": false,
+  "type": "module",
+  "types": "./reset.d.ts",
+  "private": true,
+  "files": [
+    "reset.d.ts",
+    "base.json",
+    "bundler.json"
+  ],
+  "devDependencies": {
+    "typescript": "catalog:"
+  }
+}

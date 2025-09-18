@@ -1,0 +1,14 @@
+{
+  "extends": "./packages/config-ts/bundler.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["node"]
+  },
+  "include": [
+    "./package.json",
+    "./tsdown.config.ts",
+    "./vitest.config.ts",
+    "./src/**/*"
+  ],
+  "exclude": ["node_modules", "dist", "tmp", "coverage", "**/__snapshots__/**"]
+}
