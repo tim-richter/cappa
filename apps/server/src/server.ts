@@ -1,18 +1,19 @@
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { resolveFromHere } from "./util";
-import { getAllScreenshots } from "./screenshots";
 import fs from "node:fs";
+
+type Screenshot = {
+  name: string;
+  url: string;
+  category: "new" | "deleted" | "changed" | "passed";
+}[]
 
 interface StartServerOptions {
   isProd?: boolean
   uiRoot?: string
   outputDir: string,
-  screenshotPaths: {
-    actual: string[],
-    expected: string[],
-    diff: string[]
-  }
+  screenshots: Screenshot[]
 }
 
 export async function createServer(opts: StartServerOptions) {
@@ -21,7 +22,7 @@ export async function createServer(opts: StartServerOptions) {
   app.get('/api/health', async () => ({ ok: true }))
 
   app.get('/api/screenshots', async (req, reply) => {
-    reply.send(opts.screenshotPaths)
+    reply.send(opts.screenshots)
   })
 
   if (fs.existsSync(opts.outputDir)) {

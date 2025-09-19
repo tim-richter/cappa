@@ -8,6 +8,7 @@ import { getCosmiConfig } from "./utils/getCosmiConfig";
 import { createServer } from "@cappa/server";
 import path from "node:path";
 import { glob } from "glob";
+import { sortScreenshots } from "./utils/sortScreenshots";
 
 const program = new Command();
 
@@ -89,14 +90,12 @@ program
 
   const [actualScreenshots, expectedScreenshots, diffScreenshots] = await Promise.all([actualScreenshotsPromise, expectedScreenshotsPromise, diffScreenshotsPromise]);
 
+  const sortedScreenshots = await sortScreenshots(actualScreenshots, expectedScreenshots, diffScreenshots, config.outputDir);
+
   const server = await createServer({ 
     isProd: true, 
     outputDir: path.resolve(config.outputDir),
-    screenshotPaths: {
-      actual: actualScreenshots,
-      expected: expectedScreenshots,
-      diff: diffScreenshots
-    }
+    screenshots: sortedScreenshots,
   });
 
   await server.listen({ port: 3000 });

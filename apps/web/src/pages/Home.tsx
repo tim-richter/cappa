@@ -1,14 +1,23 @@
 import { Grid } from "@/components/Grid";
+import type { ScreenshotPaths } from "@/types";
+import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 
 export const Home: FC = () => {
+  const { data, isPending, isError } = useQuery<ScreenshotPaths>({
+    queryKey: ["screenshots"],
+    queryFn: () => fetch("/api/screenshots").then((res) => res.json()),
+  });
+
+  if (isPending) {
+    return <div>Loading...</div>;
+  }
+
+  if (isError) {
+    return <div>Error fetching screenshots</div>;
+  }
+
   return (
-      <Grid screenshots={[{
-        id: "1",
-        name: "Screenshot 1",
-        url: "https://picsum.photos/200/300",
-        category: "changed",
-        timestamp: new Date(),
-      }]} selectedScreenshot={null} onScreenshotSelect={() => {}} />
+    <Grid screenshots={data.actual} selectedScreenshot={null} onScreenshotSelect={() => {}} />
   );
 };

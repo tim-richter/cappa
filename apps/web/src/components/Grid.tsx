@@ -4,15 +4,7 @@ import { cn } from "@ui/lib/utils"
 import { Button } from "@ui/components/button"
 import { Badge } from "@ui/components/badge"
 import { Clock, Download, Eye, MoreHorizontal } from "lucide-react"
-
-export interface Screenshot {
-  id: string
-  name: string
-  url: string
-  category: "changed" | "new" | "deleted" | "passed"
-  timestamp: Date
-  size?: string
-}
+import type { Screenshot } from "@/types"
 
 interface ScreenshotGridProps {
   screenshots: Screenshot[]
@@ -43,10 +35,10 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot,
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {screenshots.map((screenshot) => (
             <Card
-              key={screenshot.id}
+              key={screenshot.url}
               className={cn(
                 "p-0 group cursor-pointer transition-all duration-200 hover:shadow-lg",
-                selectedScreenshot?.id === screenshot.id && "ring-2 ring-primary",
+                selectedScreenshot?.url === screenshot.url && "ring-2 ring-primary",
               )}
               onClick={() => onScreenshotSelect(screenshot)}
             >
@@ -90,13 +82,6 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot,
                     <MoreHorizontal className="h-4 w-4" />
                   </Button>
                 </div>
-
-                <div className="flex items-center text-xs text-muted-foreground">
-                  <Clock className="h-3 w-3 mr-1" />
-                  {formatTimestamp(screenshot.timestamp)}
-                </div>
-
-                {screenshot.size && <div className="text-xs text-muted-foreground mt-1">{screenshot.size}</div>}
               </div>
             </Card>
           ))}
