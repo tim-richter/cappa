@@ -1,18 +1,18 @@
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
-import { router } from "./routes";
 import { Providers } from "./Providers";
+import { router } from "./routes";
 
 async function enableMocking() {
   if (import.meta.env.DEV !== true) {
-    return
+    return;
   }
- 
-  const { worker } = await import('./mocks/browser')
- 
+
+  const { worker } = await import("./mocks/browser");
+
   // `worker.start()` returns a Promise that resolves
   // once the Service Worker is up and ready to intercept requests.
-  return worker.start({ onUnhandledRequest: 'bypass' })
+  return worker.start({ onUnhandledRequest: "bypass" });
 }
 
 const root = document.getElementById("root");
@@ -22,7 +22,7 @@ if (root) {
     createRoot(root).render(
       <Providers>
         <RouterProvider router={router} />
-      </Providers>
+      </Providers>,
     );
   });
 } else {

@@ -1,14 +1,14 @@
-import { Button } from "@ui/components/button"
-import { Input } from "@ui/components/input"
-import { Filter, Grid3X3, List, Search } from "lucide-react"
-import type { FC } from "react"
-import { useLocation } from "react-router"
+import { Button } from "@ui/components/button";
+import { Input } from "@ui/components/input";
+import { Filter, Grid3X3, List, Search } from "lucide-react";
+import type { FC } from "react";
+import { useLocation } from "react-router";
 
-export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed"
+export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
 
 interface HeaderProps {
-  category: ScreenshotCategory
-  count: number
+  category: ScreenshotCategory;
+  count: number;
 }
 
 const categoryLabels = {
@@ -16,21 +16,24 @@ const categoryLabels = {
   new: "New Screenshots",
   deleted: "Deleted Screenshots",
   passed: "Passed Screenshots",
-}
+};
 
 export const Header: FC<HeaderProps> = () => {
-  const { pathname } = useLocation()
-  const category = pathname.split("/")[1] as ScreenshotCategory
-  const count = 10
+  const { pathname } = useLocation();
+  const category = pathname.split("/")[1] as ScreenshotCategory;
+  const count = 10;
 
   return (
     <div className="border-b border-border bg-card">
       <div className="p-6">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 className="text-2xl font-semibold text-card-foreground">{categoryLabels[category]}</h2>
+            <h2 className="text-2xl font-semibold text-card-foreground">
+              {categoryLabels[category]}
+            </h2>
             <p className="text-muted-foreground">
-              {count} {count === 1 ? "screenshot" : "screenshots"} in this category
+              {count} {count === 1 ? "screenshot" : "screenshots"} in this
+              category
             </p>
           </div>
 
@@ -59,5 +62,5 @@ export const Header: FC<HeaderProps> = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

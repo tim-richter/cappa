@@ -1,7 +1,7 @@
 export interface Screenshot {
-  name: string
-  url: string
-  category: "changed" | "new" | "deleted" | "passed"
+  name: string;
+  url: string;
+  category: "changed" | "new" | "deleted" | "passed";
 }
 
 export type ScreenshotPaths = {

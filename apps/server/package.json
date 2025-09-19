@@ -4,7 +4,8 @@
   "version": "0.0.0",
   "type": "module",
   "files": [
-    "dist", "public"
+    "dist",
+    "public"
   ],
   "main": "dist/server.js",
   "scripts": {

@@ -1,23 +1,25 @@
-import type { FC } from "react"
-import { Card } from "@ui/components/card"
-import { cn } from "@ui/lib/utils"
-import { Button } from "@ui/components/button"
-import { Badge } from "@ui/components/badge"
-import { Clock, Download, Eye, MoreHorizontal } from "lucide-react"
-import type { Screenshot } from "@/types"
+import { Badge } from "@ui/components/badge";
+import { Button } from "@ui/components/button";
+import { Card } from "@ui/components/card";
+import { cn } from "@ui/lib/utils";
+import { Clock, Download, Eye, MoreHorizontal } from "lucide-react";
+import type { FC } from "react";
+import type { Screenshot } from "@/types";
 
 interface ScreenshotGridProps {
-  screenshots: Screenshot[]
-  selectedScreenshot: Screenshot | null
-  onScreenshotSelect: (screenshot: Screenshot | null) => void
+  screenshots: Screenshot[];
+  selectedScreenshot: Screenshot | null;
+  onScreenshotSelect: (screenshot: Screenshot | null) => void;
 }
 
 const categoryColors = {
-  changed: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
+  changed:
+    "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
   new: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
   deleted: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
-  passed: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-}
+  passed:
+    "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
+};
 
 const formatTimestamp = (date: Date) => {
   return new Intl.DateTimeFormat("en-US", {
@@ -25,10 +27,14 @@ const formatTimestamp = (date: Date) => {
     day: "numeric",
     hour: "2-digit",
     minute: "2-digit",
-  }).format(date)
-}
+  }).format(date);
+};
 
-export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot, onScreenshotSelect }) => {
+export const Grid: FC<ScreenshotGridProps> = ({
+  screenshots,
+  selectedScreenshot,
+  onScreenshotSelect,
+}) => {
   return (
     <div className="flex-1 overflow-auto">
       <div className="p-6">
@@ -38,7 +44,8 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot,
               key={screenshot.url}
               className={cn(
                 "p-0 group cursor-pointer transition-all duration-200 hover:shadow-lg",
-                selectedScreenshot?.url === screenshot.url && "ring-2 ring-primary",
+                selectedScreenshot?.url === screenshot.url &&
+                  "ring-2 ring-primary",
               )}
               onClick={() => onScreenshotSelect(screenshot)}
             >
@@ -66,14 +73,21 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot,
                 </div>
 
                 {/* Category badge */}
-                <Badge className={cn("absolute top-2 right-2 text-xs", categoryColors[screenshot.category])}>
+                <Badge
+                  className={cn(
+                    "absolute top-2 right-2 text-xs",
+                    categoryColors[screenshot.category],
+                  )}
+                >
                   {screenshot.category}
                 </Badge>
               </div>
 
               <div className="p-4">
                 <div className="flex items-start justify-between mb-2">
-                  <h3 className="font-medium text-card-foreground truncate flex-1 mr-2">{screenshot.name}</h3>
+                  <h3 className="font-medium text-card-foreground truncate flex-1 mr-2">
+                    {screenshot.name}
+                  </h3>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -88,5 +102,5 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, selectedScreenshot,
         </div>
       </div>
     </div>
-  )
-}
+  );
+};

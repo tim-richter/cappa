@@ -1,7 +1,7 @@
-import { Grid } from "@/components/Grid";
-import type { ScreenshotPaths } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
+import { Grid } from "@/components/Grid";
+import type { ScreenshotPaths } from "@/types";
 
 export const Home: FC = () => {
   const { data, isPending, isError } = useQuery<ScreenshotPaths>({
@@ -18,6 +18,10 @@ export const Home: FC = () => {
   }
 
   return (
-    <Grid screenshots={data.actual} selectedScreenshot={null} onScreenshotSelect={() => {}} />
+    <Grid
+      screenshots={data.actual}
+      selectedScreenshot={null}
+      onScreenshotSelect={() => {}}
+    />
   );
 };
