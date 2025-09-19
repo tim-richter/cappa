@@ -173,25 +173,34 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
             let actualFilepath: string | undefined;
             if (expectedExists) {
-              const { screenshotPath, comparisonResult } = await screenshotTool.takeScreenshotWithComparison(
-                page,
-                filename,
-                screenshotTool.getExpectedImageBuffer(filename),
-                {
-                  fullPage: options.fullPage,
-                  mask: options.mask?.map((selector) => page.locator(selector)),
-                  omitBackground: options.omitBackground,
-                },
-              );
+              const { screenshotPath, comparisonResult } =
+                await screenshotTool.takeScreenshotWithComparison(
+                  page,
+                  filename,
+                  screenshotTool.getExpectedImageBuffer(filename),
+                  {
+                    fullPage: options.fullPage,
+                    mask: options.mask?.map((selector) =>
+                      page.locator(selector),
+                    ),
+                    omitBackground: options.omitBackground,
+                  },
+                );
 
               actualFilepath = screenshotPath;
               if (comparisonResult.passed) {
-                logger.log(`Story ${story.title} - ${story.name} passed visual comparison`);
+                logger.log(
+                  `Story ${story.title} - ${story.name} passed visual comparison`,
+                );
               } else {
-                logger.log(`Story ${story.title} - ${story.name} failed visual comparison`);
+                logger.log(
+                  `Story ${story.title} - ${story.name} failed visual comparison`,
+                );
               }
             } else {
-              logger.info(`Expected image not found for story ${story.title} - ${story.name}, taking screenshot`);
+              logger.info(
+                `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
+              );
               actualFilepath = await screenshotTool.takeScreenshot(
                 page,
                 filename,
