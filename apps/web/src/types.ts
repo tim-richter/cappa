@@ -10,3 +10,8 @@ export type ScreenshotPaths = {
   passed: Screenshot[];
   changed: Screenshot[];
 };
+
+export enum View {
+  Grid = "grid",
+  List = "list",
+}

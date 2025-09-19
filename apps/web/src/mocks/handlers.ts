@@ -8,6 +8,17 @@ export const handlers = [
   http.get("/api/screenshots", ({ request }) => {
     const url = new URL(request.url);
     const category = url.searchParams.get("category");
+    const search = url.searchParams.get("search");
+
+    if (search) {
+      return HttpResponse.json<Screenshot[]>([
+        {
+          name: "Screenshot 1",
+          url: "https://picsum.photos/200/300",
+          category: "new",
+        },
+      ]);
+    }
 
     if (category === "new") {
       return HttpResponse.json<Screenshot[]>([
