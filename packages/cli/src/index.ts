@@ -6,6 +6,8 @@ import { initLogger } from "./logger";
 import { getConfig } from "./utils/getConfig";
 import { getCosmiConfig } from "./utils/getCosmiConfig";
 import { createServer } from "@cappa/server";
+import path from "node:path";
+import { glob } from "glob";
 
 const program = new Command();
 
@@ -81,7 +83,21 @@ program
 
   logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
-  const server = await createServer({ isProd: true });
+  const actualScreenshotsPromise = glob(path.resolve(config.outputDir, "actual", "**/*.png"));
+  const expectedScreenshotsPromise = glob(path.resolve(config.outputDir, "expected", "**/*.png"));
+  const diffScreenshotsPromise = glob(path.resolve(config.outputDir, "diff", "**/*.png"));
+
+  const [actualScreenshots, expectedScreenshots, diffScreenshots] = await Promise.all([actualScreenshotsPromise, expectedScreenshotsPromise, diffScreenshotsPromise]);
+
+  const server = await createServer({ 
+    isProd: true, 
+    outputDir: path.resolve(config.outputDir),
+    screenshotPaths: {
+      actual: actualScreenshots,
+      expected: expectedScreenshots,
+      diff: diffScreenshots
+    }
+  });
 
   await server.listen({ port: 3000 });
 });

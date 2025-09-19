@@ -1,25 +1,38 @@
-import path from "node:path";
-import { fileURLToPath } from "node:url";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
-
-function hereDir(): string {
-	return path.dirname(fileURLToPath(import.meta.url))
-}
-
-function resolveFromHere(relative: string): string {
-	return path.resolve(hereDir(), relative)
-}
+import { resolveFromHere } from "./util";
+import { getAllScreenshots } from "./screenshots";
+import fs from "node:fs";
 
 interface StartServerOptions {
   isProd?: boolean
   uiRoot?: string
+  outputDir: string,
+  screenshotPaths: {
+    actual: string[],
+    expected: string[],
+    diff: string[]
+  }
 }
 
-export async function createServer(opts: StartServerOptions = {}) {
+export async function createServer(opts: StartServerOptions) {
   const app = Fastify({ logger: true });
 
   app.get('/api/health', async () => ({ ok: true }))
+
+  app.get('/api/screenshots', async (req, reply) => {
+    reply.send(opts.screenshotPaths)
+  })
+
+  if (fs.existsSync(opts.outputDir)) {
+    app.register(fastifyStatic, {
+      root: opts.outputDir,
+      prefix: '/shots',
+      // security: disable dotfiles and traversal
+      decorateReply: false,
+        serveDotFiles: false
+    })
+  }
 
   if (opts.isProd ?? process.env.NODE_ENV === "production") {
     // Prod: serve baked UI
