@@ -5,6 +5,7 @@ import { version } from "../package.json";
 import { initLogger } from "./logger";
 import { getConfig } from "./utils/getConfig";
 import { getCosmiConfig } from "./utils/getCosmiConfig";
+import { createServer } from "@cappa/server";
 
 const program = new Command();
 
@@ -16,10 +17,13 @@ program
     "-l, --log-level <level>",
     "set log level (0: fatal and error, 1: warn, 2: log, 3: info, 4: debug, 5: trace)",
     "3",
-  )
-  .option("-c, --clean", "clean output directory before running", false);
+  );
 
-program.action(async (options) => {
+program
+  .command("capture")
+  .description("Capture screenshots")
+  .option("-c, --clean", "clean output directory before running", false)
+  .action(async (options) => {
   // Initialize logger with the specified log level
   const logLevel = parseInt(options.logLevel, 10);
   const logger = initLogger(logLevel);
@@ -59,6 +63,27 @@ program.action(async (options) => {
     await screenshotTool.close();
     logger.info("Cappa CLI finished");
   }
+});
+
+program
+  .command("review")
+  .description("Review screenshots")
+  .action(async (options) => {
+    // Initialize logger with the specified log level
+  const logLevel = parseInt(options.logLevel, 10);
+  const logger = initLogger(logLevel);
+
+  logger.info("Cappa CLI starting...");
+  logger.debug(`Log level set to: ${logLevel}`);
+
+  const result = await getCosmiConfig("cappa");
+  const config = await getConfig(result);
+
+  logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
+
+  const server = await createServer({ isProd: true });
+
+  await server.listen({ port: 3000 });
 });
 
 export async function run(): Promise<void> {

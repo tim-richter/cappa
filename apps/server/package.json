@@ -1,13 +1,17 @@
 {
-  "name": "server",
+  "name": "@cappa/server",
   "private": true,
   "version": "0.0.0",
   "type": "module",
+  "files": [
+    "dist", "public"
+  ],
+  "main": "dist/server.js",
   "scripts": {
-    "dev": "NODE_ENV=development concurrently \"tsx watch server/server.ts\" \"vite\"",
-    "dev-client": "vite",
-    "build": "vite build --config vite.config.ts && tsup server/server.ts --format esm --target node20 --dts false --splitting false --minify",
-    "start": "NODE_ENV=production node dist/server/server.js",
+    "dev": "NODE_ENV=development tsx watch src/server.ts",
+    "build": "./bin/build.sh",
+    "build:ts": "tsup src/server.ts --format esm --target node20 --splitting false",
+    "start": "NODE_ENV=production node dist/server.js",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
