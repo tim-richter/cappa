@@ -12,7 +12,7 @@ export const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader className="border-b py-4">
-        <h1 className="text-2xl font-bold">Cappa</h1>
+        <Link to="/" className="text-2xl font-bold">Cappa</Link>
         <p className="text-sm text-muted-foreground">
           Visual regression report
         </p>
