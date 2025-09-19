@@ -1,4 +1,5 @@
 packages:
+  - apps/*
   - packages/*
   - packages/plugins/*
   - examples/*
@@ -14,4 +15,5 @@ catalog:
 
 onlyBuiltDependencies:
   - '@swc/core'
+  - '@tailwindcss/oxide'
   - esbuild
