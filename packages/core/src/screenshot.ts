@@ -138,8 +138,6 @@ class ScreenshotTool {
     filename: string,
     options: {
       fullPage?: boolean;
-      waitForSelector?: string;
-      waitForTimeout?: number;
       mask?: Locator[];
       omitBackground?: boolean;
     } = {},
@@ -149,20 +147,6 @@ class ScreenshotTool {
     }
 
     try {
-      // Wait for selector if specified
-      if (options.waitForSelector) {
-        console.log(`Waiting for selector: ${options.waitForSelector}`);
-        await page.waitForSelector(options.waitForSelector, { timeout: 10000 });
-      }
-
-      // Wait for custom timeout or default
-      const waitTime =
-        options.waitForTimeout !== undefined ? options.waitForTimeout : 0;
-      if (waitTime > 0) {
-        console.log(`Waiting for ${waitTime}ms for dynamic content`);
-        await page.waitForTimeout(waitTime);
-      }
-
       // Generate filename - save to actual directory
       const filepath = this.getActualFilePath(filename);
 
@@ -246,8 +230,6 @@ class ScreenshotTool {
     referenceImage: Buffer,
     options: {
       fullPage?: boolean;
-      waitForSelector?: string;
-      waitForTimeout?: number;
       mask?: Locator[];
       omitBackground?: boolean;
       // Comparison options
@@ -266,20 +248,6 @@ class ScreenshotTool {
     }
 
     try {
-      // Wait for selector if specified
-      if (options.waitForSelector) {
-        console.log(`Waiting for selector: ${options.waitForSelector}`);
-        await page.waitForSelector(options.waitForSelector, { timeout: 10000 });
-      }
-
-      // Wait for custom timeout or default
-      const waitTime =
-        options.waitForTimeout !== undefined ? options.waitForTimeout : 0;
-      if (waitTime > 0) {
-        console.log(`Waiting for ${waitTime}ms for dynamic content`);
-        await page.waitForTimeout(waitTime);
-      }
-
       // Generate filename and take screenshot - save to actual directory
       const filepath = this.getActualFilePath(filename);
 
