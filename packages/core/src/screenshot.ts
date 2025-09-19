@@ -10,6 +10,11 @@ import {
   type PageScreenshotOptions,
   webkit,
 } from "playwright-core";
+import {
+  compareImages,
+  type CompareOptions,
+  type CompareResult,
+} from "./compare";
 
 class ScreenshotTool {
   browserType: string;
@@ -195,6 +200,94 @@ class ScreenshotTool {
       throw error;
     } finally {
       await page.close();
+    }
+  }
+
+  async takeScreenshotWithComparison(
+    page: Page,
+    filename: string,
+    referenceImage: Buffer,
+    options: {
+      fullPage?: boolean;
+      mask?: Locator[];
+      omitBackground?: boolean;
+      // Comparison options
+      compareOptions?: CompareOptions;
+      maxDifferencePercent?: number;
+      saveDiffImage?: boolean;
+      diffImageFilename?: string;
+    } = {},
+  ): Promise<{
+    screenshotPath: string;
+    comparisonResult: CompareResult;
+    diffImagePath?: string;
+  }> {
+    if (!this.browser) {
+      throw new Error("Browser not initialized");
+    }
+
+    try {
+      // Generate filename and take screenshot
+      const filepath = this.getFilePath(filename);
+
+      // Take screenshot and get buffer
+      const screenshotOptions = {
+        fullPage:
+          (options.fullPage as boolean) !== undefined
+            ? options.fullPage
+            : this.fullPage,
+        type: "png" as const,
+        timeout: 60000,
+        mask: options.mask,
+        omitBackground: options.omitBackground,
+        scale: "css" as const,
+      } satisfies PageScreenshotOptions;
+
+      // Get screenshot as buffer for comparison
+      const screenshotBuffer = await page.screenshot(screenshotOptions);
+
+      // Save screenshot to file
+      fs.writeFileSync(filepath, screenshotBuffer);
+
+      console.log(`Screenshot saved: ${filepath}`);
+
+      // Perform comparison
+      const comparisonResult = await compareImages(
+        screenshotBuffer,
+        referenceImage,
+        options.compareOptions || {},
+        options.maxDifferencePercent || 0.1
+      );
+
+      console.log(
+        `Comparison result: ${comparisonResult.percentDifference.toFixed(2)}% difference (${
+          comparisonResult.passed ? "PASSED" : "FAILED"
+        })`
+      );
+
+      let diffImagePath: string | undefined;
+
+      // Save diff image if requested and there are differences
+      if (options.saveDiffImage && comparisonResult.diffBuffer) {
+        const diffFilename = options.diffImageFilename || 
+          filename.replace(/\.png$/, '-diff.png');
+        diffImagePath = this.getFilePath(diffFilename);
+        
+        fs.writeFileSync(diffImagePath, comparisonResult.diffBuffer);
+        console.log(`Diff image saved: ${diffImagePath}`);
+      }
+
+      return {
+        screenshotPath: filepath,
+        comparisonResult,
+        diffImagePath,
+      };
+    } catch (error) {
+      console.error(
+        `Error taking screenshot with comparison of ${page.url()}:`,
+        (error as Error).message,
+      );
+      throw error;
     }
   }
 
