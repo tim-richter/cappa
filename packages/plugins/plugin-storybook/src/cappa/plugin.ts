@@ -169,17 +169,39 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
             // Take screenshot with story-specific filename
             const filename = buildFilename(story);
+            const expectedExists = screenshotTool.hasExpectedImage(filename);
 
-            // Actually take the screenshot
-            const actualFilepath = await screenshotTool.takeScreenshot(
-              page,
-              filename,
-              {
-                fullPage: options.fullPage,
-                mask: options.mask?.map((selector) => page.locator(selector)),
-                omitBackground: options.omitBackground,
-              },
-            );
+            let actualFilepath: string | undefined;
+            if (expectedExists) {
+              const { screenshotPath, comparisonResult } = await screenshotTool.takeScreenshotWithComparison(
+                page,
+                filename,
+                screenshotTool.getExpectedImageBuffer(filename),
+                {
+                  fullPage: options.fullPage,
+                  mask: options.mask?.map((selector) => page.locator(selector)),
+                  omitBackground: options.omitBackground,
+                },
+              );
+
+              actualFilepath = screenshotPath;
+              if (comparisonResult.passed) {
+                logger.log(`Story ${story.title} - ${story.name} passed visual comparison`);
+              } else {
+                logger.log(`Story ${story.title} - ${story.name} failed visual comparison`);
+              }
+            } else {
+              logger.info(`Expected image not found for story ${story.title} - ${story.name}, taking screenshot`);
+              actualFilepath = await screenshotTool.takeScreenshot(
+                page,
+                filename,
+                {
+                  fullPage: options.fullPage,
+                  mask: options.mask?.map((selector) => page.locator(selector)),
+                  omitBackground: options.omitBackground,
+                },
+              );
+            }
 
             results.push({
               storyId: story.id,
