@@ -1,11 +1,12 @@
 export interface Screenshot {
   name: string;
   url: string;
-  category: "changed" | "new" | "deleted" | "passed";
+  category: "new" | "deleted" | "changed" | "passed";
 }
 
 export type ScreenshotPaths = {
-  actual: Screenshot[];
-  expected: Screenshot[];
-  diff: Screenshot[];
+  new: Screenshot[];
+  deleted: Screenshot[];
+  passed: Screenshot[];
+  changed: Screenshot[];
 };

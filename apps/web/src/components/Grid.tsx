@@ -2,7 +2,7 @@ import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import { Card } from "@ui/components/card";
 import { cn } from "@ui/lib/utils";
-import { Clock, Download, Eye, MoreHorizontal } from "lucide-react";
+import { Download, Eye, MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
 import type { Screenshot } from "@/types";
 
@@ -10,6 +10,7 @@ interface ScreenshotGridProps {
   screenshots: Screenshot[];
   selectedScreenshot: Screenshot | null;
   onScreenshotSelect: (screenshot: Screenshot | null) => void;
+  category: "changed" | "new" | "deleted" | "passed";
 }
 
 const categoryColors = {
@@ -21,19 +22,11 @@ const categoryColors = {
     "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
 };
 
-const formatTimestamp = (date: Date) => {
-  return new Intl.DateTimeFormat("en-US", {
-    month: "short",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  }).format(date);
-};
-
 export const Grid: FC<ScreenshotGridProps> = ({
   screenshots,
   selectedScreenshot,
   onScreenshotSelect,
+  category,
 }) => {
   return (
     <div className="flex-1 overflow-auto">
@@ -76,10 +69,10 @@ export const Grid: FC<ScreenshotGridProps> = ({
                 <Badge
                   className={cn(
                     "absolute top-2 right-2 text-xs",
-                    categoryColors[screenshot.category],
+                    categoryColors[category],
                   )}
                 >
-                  {screenshot.category}
+                  {category}
                 </Badge>
               </div>
 
