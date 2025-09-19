@@ -1,6 +1,6 @@
 import type { Plugin, ScreenshotOptions } from "@cappa/core";
-import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 import chalk from "chalk";
+import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 
 export interface StorybookStory {
   id: string;

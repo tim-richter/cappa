@@ -5,15 +5,15 @@ import {
   type BrowserContext,
   chromium,
   firefox,
-  Locator,
+  type Locator,
   type Page,
   type PageScreenshotOptions,
   webkit,
 } from "playwright-core";
 import {
-  compareImages,
   type CompareOptions,
   type CompareResult,
+  compareImages,
 } from "./compare";
 
 class ScreenshotTool {
@@ -21,10 +21,14 @@ class ScreenshotTool {
   headless: boolean;
   viewport: { width: number; height: number };
   outputDir: string;
+  actualDir: string;
+  diffDir: string;
+  expectedDir: string;
   fullPage: boolean;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
   page: Page | null = null;
+
   constructor(options: {
     browserType?: string;
     headless?: boolean;
@@ -37,13 +41,16 @@ class ScreenshotTool {
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
     this.fullPage = options.fullPage !== false; // Default to full page
+
+    // Set up subdirectories
+    this.actualDir = path.join(this.outputDir, "actual");
+    this.diffDir = path.join(this.outputDir, "diff");
+    this.expectedDir = path.join(this.outputDir, "expected");
   }
 
   async init() {
-    // Create output directory if it doesn't exist
-    if (!fs.existsSync(this.outputDir)) {
-      fs.mkdirSync(this.outputDir, { recursive: true });
-    }
+    // Create output directories if they don't exist
+    this.createDirectories();
 
     // Launch browser based on type
     const browserMap = {
@@ -92,9 +99,38 @@ class ScreenshotTool {
     await page.goto(url, { waitUntil: "domcontentloaded" });
   }
 
+  private createDirectories() {
+    // Create main output directory and subdirectories
+    const directories = [
+      this.outputDir,
+      this.actualDir,
+      this.diffDir,
+      this.expectedDir,
+    ];
+
+    for (const dir of directories) {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+        console.log(`Created directory: ${dir}`);
+      }
+    }
+  }
+
+  getActualFilePath(filename: string): string {
+    return path.join(this.actualDir, filename);
+  }
+
+  getDiffFilePath(filename: string): string {
+    return path.join(this.diffDir, filename);
+  }
+
+  getExpectedFilePath(filename: string): string {
+    return path.join(this.expectedDir, filename);
+  }
+
+  // Keep original method for backward compatibility
   getFilePath(filename: string) {
-    const filepath = path.join(this.outputDir, filename);
-    return filepath;
+    return this.getActualFilePath(filename);
   }
 
   async takeScreenshot(
@@ -127,8 +163,8 @@ class ScreenshotTool {
         await page.waitForTimeout(waitTime);
       }
 
-      // Generate filename
-      const filepath = this.getFilePath(filename);
+      // Generate filename - save to actual directory
+      const filepath = this.getActualFilePath(filename);
 
       // Take screenshot
       const screenshotOptions = {
@@ -181,7 +217,8 @@ class ScreenshotTool {
       const filename =
         (options.filename as string | undefined) ||
         `${selector.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-      const filepath = this.getFilePath(filename);
+      // Save to actual directory
+      const filepath = this.getActualFilePath(filename);
 
       const elementScreenshotOptions = {
         path: filepath,
@@ -209,6 +246,8 @@ class ScreenshotTool {
     referenceImage: Buffer,
     options: {
       fullPage?: boolean;
+      waitForSelector?: string;
+      waitForTimeout?: number;
       mask?: Locator[];
       omitBackground?: boolean;
       // Comparison options
@@ -227,8 +266,22 @@ class ScreenshotTool {
     }
 
     try {
-      // Generate filename and take screenshot
-      const filepath = this.getFilePath(filename);
+      // Wait for selector if specified
+      if (options.waitForSelector) {
+        console.log(`Waiting for selector: ${options.waitForSelector}`);
+        await page.waitForSelector(options.waitForSelector, { timeout: 10000 });
+      }
+
+      // Wait for custom timeout or default
+      const waitTime =
+        options.waitForTimeout !== undefined ? options.waitForTimeout : 0;
+      if (waitTime > 0) {
+        console.log(`Waiting for ${waitTime}ms for dynamic content`);
+        await page.waitForTimeout(waitTime);
+      }
+
+      // Generate filename and take screenshot - save to actual directory
+      const filepath = this.getActualFilePath(filename);
 
       // Take screenshot and get buffer
       const screenshotOptions = {
@@ -246,7 +299,7 @@ class ScreenshotTool {
       // Get screenshot as buffer for comparison
       const screenshotBuffer = await page.screenshot(screenshotOptions);
 
-      // Save screenshot to file
+      // Save screenshot to actual directory
       fs.writeFileSync(filepath, screenshotBuffer);
 
       console.log(`Screenshot saved: ${filepath}`);
@@ -256,23 +309,24 @@ class ScreenshotTool {
         screenshotBuffer,
         referenceImage,
         options.compareOptions || {},
-        options.maxDifferencePercent || 0.1
+        options.maxDifferencePercent || 0.1,
       );
 
       console.log(
         `Comparison result: ${comparisonResult.percentDifference.toFixed(2)}% difference (${
           comparisonResult.passed ? "PASSED" : "FAILED"
-        })`
+        })`,
       );
 
       let diffImagePath: string | undefined;
 
       // Save diff image if requested and there are differences
       if (options.saveDiffImage && comparisonResult.diffBuffer) {
-        const diffFilename = options.diffImageFilename || 
-          filename.replace(/\.png$/, '-diff.png');
-        diffImagePath = this.getFilePath(diffFilename);
-        
+        const diffFilename =
+          options.diffImageFilename || filename.replace(/\.png$/, "-diff.png");
+        // Save to diff directory
+        diffImagePath = this.getDiffFilePath(diffFilename);
+
         fs.writeFileSync(diffImagePath, comparisonResult.diffBuffer);
         console.log(`Diff image saved: ${diffImagePath}`);
       }
@@ -352,7 +406,8 @@ class ScreenshotTool {
         await page.waitForTimeout(2000);
 
         const filename = `${viewport.name}.png`;
-        const filepath = this.getFilePath(filename);
+        // Save to actual directory
+        const filepath = this.getActualFilePath(filename);
 
         const responsiveScreenshotOptions = {
           path: filepath,
@@ -384,6 +439,21 @@ class ScreenshotTool {
     }
 
     return results;
+  }
+
+  // Utility method to check if expected image exists
+  hasExpectedImage(filename: string): boolean {
+    const expectedPath = this.getExpectedFilePath(filename);
+    return fs.existsSync(expectedPath);
+  }
+
+  // Utility method to get expected image as buffer (for future approval process)
+  getExpectedImageBuffer(filename: string): Buffer {
+    const expectedPath = this.getExpectedFilePath(filename);
+    if (!fs.existsSync(expectedPath)) {
+      throw new Error(`Expected image not found: ${expectedPath}`);
+    }
+    return fs.readFileSync(expectedPath);
   }
 }
 

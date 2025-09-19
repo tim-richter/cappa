@@ -1,6 +1,6 @@
 import fs from "node:fs";
-import { PNG } from "pngjs";
 import pixelmatch from "pixelmatch";
+import { PNG } from "pngjs";
 
 export interface CompareOptions {
   threshold?: number; // Matching threshold, ranges from 0 to 1. Smaller is more sensitive. Default: 0.1
@@ -31,7 +31,7 @@ export async function compareImages(
   image1: string | Buffer,
   image2: string | Buffer,
   options: CompareOptions = {},
-  maxDifferencePercent: number = 0.1
+  maxDifferencePercent: number = 0.1,
 ): Promise<CompareResult> {
   const {
     threshold = 0.1,
@@ -49,7 +49,7 @@ export async function compareImages(
   // Check if images have the same dimensions
   if (png1.width !== png2.width || png1.height !== png2.height) {
     throw new Error(
-      `Images have different dimensions: ${png1.width}x${png1.height} vs ${png2.width}x${png2.height}`
+      `Images have different dimensions: ${png1.width}x${png1.height} vs ${png2.width}x${png2.height}`,
     );
   }
 
@@ -73,7 +73,7 @@ export async function compareImages(
       aaColor,
       diffColor,
       diffColorAlt,
-    }
+    },
   );
 
   const percentDifference = (numDiffPixels / totalPixels) * 100;
@@ -112,7 +112,7 @@ export function saveDiffImage(result: CompareResult, outputPath: string): void {
   if (!result.diffBuffer) {
     throw new Error("No diff buffer available in comparison result");
   }
-  
+
   fs.writeFileSync(outputPath, result.diffBuffer);
 }
 
@@ -128,8 +128,13 @@ export async function imagesMatch(
   image1: string | Buffer,
   image2: string | Buffer,
   maxDifferencePercent: number = 0.1,
-  options: CompareOptions = {}
+  options: CompareOptions = {},
 ): Promise<boolean> {
-  const result = await compareImages(image1, image2, options, maxDifferencePercent);
+  const result = await compareImages(
+    image1,
+    image2,
+    options,
+    maxDifferencePercent,
+  );
   return result.passed;
 }
