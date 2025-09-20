@@ -35,8 +35,6 @@ export const Home: FC = () => {
         <h3 className="text-2xl font-bold">Changed</h3>
         <ScreenshotComponent
           screenshots={data.filter((screenshot) => screenshot.category === "changed")}
-          selectedScreenshot={null}
-          onScreenshotSelect={() => {}}
           category="changed"
         />
       </div>
@@ -44,8 +42,6 @@ export const Home: FC = () => {
         <h3 className="text-2xl font-bold">New</h3>
       <ScreenshotComponent
         screenshots={data.filter((screenshot) => screenshot.category === "new")}
-        selectedScreenshot={null}
-        onScreenshotSelect={() => {}}
         category="new"
       />
       </div>
@@ -53,8 +49,6 @@ export const Home: FC = () => {
         <h3 className="text-2xl font-bold">Deleted</h3>
       <ScreenshotComponent
         screenshots={data.filter((screenshot) => screenshot.category === "deleted")}
-        selectedScreenshot={null}
-        onScreenshotSelect={() => {}}
         category="deleted"
       />
       </div>
@@ -62,8 +56,6 @@ export const Home: FC = () => {
         <h3 className="text-2xl font-bold">Passed</h3>
       <ScreenshotComponent
         screenshots={data.filter((screenshot) => screenshot.category === "passed")}
-        selectedScreenshot={null}
-        onScreenshotSelect={() => {}}
         category="passed"
       />
       </div>

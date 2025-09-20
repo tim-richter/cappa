@@ -11,10 +11,7 @@ export const Layout: FC = () => {
         <AppSidebar />
 
         <div className="flex-1 flex flex-col overflow-hidden">
-          <Header category="changed" count={10} />
-          <main className="flex-1 overflow-auto p-6">
-            <Outlet />
-          </main>
+          <Outlet />
         </div>
       </SidebarProvider>
     </div>

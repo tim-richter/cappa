@@ -14,8 +14,11 @@ export const handlers = [
       return HttpResponse.json<Screenshot[]>([
         {
           name: "Screenshot 1",
-          url: "https://picsum.photos/200/300",
+          id: "1",
           category: "new",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
         },
       ]);
     }
@@ -24,7 +27,10 @@ export const handlers = [
       return HttpResponse.json<Screenshot[]>([
           {
             name: "Screenshot 1",
-            url: "https://picsum.photos/200/300",
+            id: "1",
+            actualPath: "https://picsum.photos/200/300",
+            expectedPath: "https://picsum.photos/200/300",
+            diffPath: "https://picsum.photos/200/300",
             category: "new",
           },
         ],
@@ -35,7 +41,10 @@ export const handlers = [
       return HttpResponse.json<Screenshot[]>([
         {
           name: "Screenshot 2",
-          url: "https://picsum.photos/200/300",
+          id: "2",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "deleted",
         },
       ]);
@@ -45,7 +54,10 @@ export const handlers = [
       return HttpResponse.json<Screenshot[]>([
         {
           name: "Screenshot 3",
-          url: "https://picsum.photos/200/300",
+          id: "3",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "changed",
         },
       ]);
@@ -55,7 +67,10 @@ export const handlers = [
       return HttpResponse.json<Screenshot[]>([
         {
           name: "Screenshot 4",
-          url: "https://picsum.photos/200/300",
+          id: "4",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "passed",
         },
       ]);
@@ -64,27 +79,42 @@ export const handlers = [
     return HttpResponse.json<Screenshot[]>([
         {
           name: "Screenshot 1",
-          url: "https://picsum.photos/200/300",
+          id: "1",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "new",
         },
         {
           name: "Screenshot 2",
-          url: "https://picsum.photos/200/300",
+          id: "2",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "new",
         },
         {
           name: "Screenshot 3",
-          url: "https://picsum.photos/200/300",
+          id: "3",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "changed",
         },
         {
           name: "Screenshot 4",
-          url: "https://picsum.photos/200/300",
+          id: "4",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "deleted",
         },
         {
           name: "Screenshot 5",
-          url: "https://picsum.photos/200/300",
+          id: "5",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
           category: "passed",
         },
       ],
@@ -94,7 +124,10 @@ export const handlers = [
   http.get("/api/screenshots/:id", ({ params }) => {
     return HttpResponse.json<Screenshot>({
       name: params.id as string,
-      url: "https://picsum.photos/200/300",
+      id: params.id as string,
+      actualPath: "/images/4a.png",
+      expectedPath: "/images/4b.png",
+      diffPath: "/images/4diff.png",
       category: "new",
     });
   }),

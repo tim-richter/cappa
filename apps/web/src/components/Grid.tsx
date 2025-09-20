@@ -5,11 +5,11 @@ import { cn } from "@ui/lib/utils";
 import { Download, Eye, MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
 import type { Screenshot } from "@/types";
+import { Link } from "react-router";
+import { findPreviewScreenshot } from "@/util/screenshot";
 
 interface ScreenshotGridProps {
   screenshots: Screenshot[];
-  selectedScreenshot: Screenshot | null;
-  onScreenshotSelect: (screenshot: Screenshot | null) => void;
   category: "changed" | "new" | "deleted" | "passed";
 }
 
@@ -24,8 +24,6 @@ const categoryColors = {
 
 export const Grid: FC<ScreenshotGridProps> = ({
   screenshots,
-  selectedScreenshot,
-  onScreenshotSelect,
   category,
 }) => {
   return (
@@ -34,17 +32,15 @@ export const Grid: FC<ScreenshotGridProps> = ({
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {screenshots.map((screenshot) => (
             <Card
-              key={screenshot.url}
+              key={screenshot.id}
               className={cn(
-                "p-0 group cursor-pointer transition-all duration-200 hover:shadow-lg",
-                selectedScreenshot?.url === screenshot.url &&
-                  "ring-2 ring-primary",
+                "p-0 group cursor-pointer transition-all duration-200 hover:shadow-lg"
               )}
-              onClick={() => onScreenshotSelect(screenshot)}
             >
+              <Link to={`/screenshots/${screenshot.id}`}>
               <div className="relative aspect-[4/3] overflow-hidden rounded-t-lg">
                 <img
-                  src={screenshot.url || "/placeholder.svg"}
+                  src={findPreviewScreenshot(screenshot) || "/placeholder.svg"}
                   alt={screenshot.name}
                   className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                 />
@@ -90,6 +86,7 @@ export const Grid: FC<ScreenshotGridProps> = ({
                   </Button>
                 </div>
               </div>
+              </Link>
             </Card>
           ))}
         </div>

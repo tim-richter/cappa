@@ -1,7 +1,10 @@
 export interface Screenshot {
+  id: string;
   name: string;
-  url: string;
   category: "new" | "deleted" | "changed" | "passed";
+  actualPath?: string;
+  expectedPath?: string;
+  diffPath?: string;
 }
 
 export type ScreenshotPaths = {

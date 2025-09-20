@@ -42,13 +42,6 @@ export const Header: FC<HeaderProps> = () => {
               category
             </p>
           </div>
-
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm">
-              <Filter className="h-4 w-4 mr-2" />
-              Filter
-            </Button>
-          </div>
         </div>
 
         <div className="flex items-center gap-4">
@@ -74,7 +67,7 @@ export const Header: FC<HeaderProps> = () => {
 
           <div className="flex items-center justify-center gap-1 border border-border rounded-lg p-1">
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <Button aria-label="Grid view" variant="ghost" size="sm" className="h-7 w-7 p-0 flex items-center justify-center" onClick={() => setView(View.Grid)}>
                   <Grid3X3 size={16} />
                 </Button>
@@ -86,7 +79,7 @@ export const Header: FC<HeaderProps> = () => {
             </Tooltip>
 
             <Tooltip>
-              <TooltipTrigger>
+              <TooltipTrigger asChild>
                 <Button aria-label="List view" variant="ghost" size="sm" className="h-7 w-7 p-0 flex items-center justify-center" onClick={() => setView(View.List)}>
                   <List size={16} />
                 </Button>
