@@ -14,6 +14,7 @@ import {
 import type React from "react";
 import { useCallback, useRef, useState } from "react";
 import type { Screenshot } from "@/types";
+import { ImagePanZoom } from "./components/PanZoom";
 
 interface ScreenshotComparisonProps {
   screenshot: Screenshot;
@@ -159,28 +160,15 @@ export function ScreenshotComparison({
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 Before
               </h3>
+
               <div
-                className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
+                className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden"
               >
                 {screenshot.actualPath ? (
-                  <img
+                  <ImagePanZoom
                     src={screenshot.actualPath || "/placeholder.svg"}
                     alt="Before"
                     className="max-w-none rounded border border-border transition-transform"
-                    style={{
-                      transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-                      cursor:
-                        zoom > 1
-                          ? isDragging
-                            ? "grabbing"
-                            : "grab"
-                          : "default",
-                    }}
-                    draggable={false}
                   />
                 ) : (
                   <div className="text-muted-foreground">
@@ -189,32 +177,20 @@ export function ScreenshotComparison({
                 )}
               </div>
             </div>
+
             <div className="space-y-3">
               <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
                 After
               </h3>
+
               <div
-                className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing"
-                onMouseDown={handleMouseDown}
-                onMouseMove={handleMouseMove}
-                onMouseUp={handleMouseUp}
-                onMouseLeave={handleMouseUp}
+                className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center"
               >
                 {screenshot.expectedPath ? (
-                  <img
+                  <ImagePanZoom
                     src={screenshot.expectedPath || "/placeholder.svg"}
                     alt="After"
                     className="max-w-none rounded border border-border transition-transform"
-                    style={{
-                      transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
-                      cursor:
-                        zoom > 1
-                          ? isDragging
-                            ? "grabbing"
-                            : "grab"
-                          : "default",
-                    }}
-                    draggable={false}
                   />
                 ) : (
                   <div className="text-muted-foreground">
@@ -303,7 +279,7 @@ export function ScreenshotComparison({
                     <img
                       src={screenshot.actualPath || "/placeholder.svg"}
                       alt="Before"
-                      className="w-full h-full object-cover rounded-l border border-border transition-transform"
+                      className="w-full h-full object-cover rounded-l border border-border transition-transform select-none"
                       style={{
                         transform: `scale(${zoom}) translate(${pan.x / zoom}px, ${pan.y / zoom}px)`,
                         cursor:
