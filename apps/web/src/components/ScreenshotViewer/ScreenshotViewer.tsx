@@ -71,7 +71,7 @@ export function ScreenshotComparison({
               <Button
                 onClick={handleApprove}
                 size="icon"
-                className={`fixed bottom-4 right-4 z-50 rounded-full gap-2 transition-all size-16`}
+                className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
               >
                 <Check className="size-8" />
               </Button>
