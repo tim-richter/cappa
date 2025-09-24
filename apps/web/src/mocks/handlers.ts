@@ -25,16 +25,15 @@ export const handlers = [
 
     if (category === "new") {
       return HttpResponse.json<Screenshot[]>([
-          {
-            name: "Screenshot 1",
-            id: "1",
-            actualPath: "https://picsum.photos/200/300",
-            expectedPath: "https://picsum.photos/200/300",
-            diffPath: "https://picsum.photos/200/300",
-            category: "new",
-          },
-        ],
-      );
+        {
+          name: "Screenshot 1",
+          id: "1",
+          actualPath: "https://picsum.photos/200/300",
+          expectedPath: "https://picsum.photos/200/300",
+          diffPath: "https://picsum.photos/200/300",
+          category: "new",
+        },
+      ]);
     }
 
     if (category === "deleted") {
@@ -77,48 +76,47 @@ export const handlers = [
     }
 
     return HttpResponse.json<Screenshot[]>([
-        {
-          name: "Screenshot 1",
-          id: "1",
-          actualPath: "https://picsum.photos/200/300",
-          expectedPath: "https://picsum.photos/200/300",
-          diffPath: "https://picsum.photos/200/300",
-          category: "new",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          actualPath: "https://picsum.photos/200/300",
-          expectedPath: "https://picsum.photos/200/300",
-          diffPath: "https://picsum.photos/200/300",
-          category: "new",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          actualPath: "https://picsum.photos/200/300",
-          expectedPath: "https://picsum.photos/200/300",
-          diffPath: "https://picsum.photos/200/300",
-          category: "changed",
-        },
-        {
-          name: "Screenshot 4",
-          id: "4",
-          actualPath: "https://picsum.photos/200/300",
-          expectedPath: "https://picsum.photos/200/300",
-          diffPath: "https://picsum.photos/200/300",
-          category: "deleted",
-        },
-        {
-          name: "Screenshot 5",
-          id: "5",
-          actualPath: "https://picsum.photos/200/300",
-          expectedPath: "https://picsum.photos/200/300",
-          diffPath: "https://picsum.photos/200/300",
-          category: "passed",
-        },
-      ],
-    );
+      {
+        name: "Screenshot 1",
+        id: "1",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "new",
+      },
+      {
+        name: "Screenshot 2",
+        id: "2",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "new",
+      },
+      {
+        name: "Screenshot 3",
+        id: "3",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "changed",
+      },
+      {
+        name: "Screenshot 4",
+        id: "4",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "deleted",
+      },
+      {
+        name: "Screenshot 5",
+        id: "5",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "passed",
+      },
+    ]);
   }),
 
   http.get("/api/screenshots/:id", ({ params }) => {

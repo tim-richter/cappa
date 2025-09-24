@@ -1,12 +1,15 @@
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
-import { Filter, Grid3X3, List, Search } from "lucide-react";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@ui/components/tooltip";
+import { Grid3X3, List, Search } from "lucide-react";
+import { debounce, parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useLocation } from "react-router";
-import { debounce, parseAsStringEnum, useQueryState } from 'nuqs'
-import { Tooltip, TooltipContent, TooltipTrigger } from "@ui/components/tooltip";
 import { View } from "@/types";
-
 
 export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
 
@@ -27,7 +30,10 @@ export const Header: FC<HeaderProps> = () => {
   const category = pathname.split("/")[1] as ScreenshotCategory;
   const count = 10;
   const [search, setSearch] = useQueryState("search");
-  const [_, setView] = useQueryState("view", parseAsStringEnum<View>(Object.values(View)));
+  const [_, setView] = useQueryState(
+    "view",
+    parseAsStringEnum<View>(Object.values(View)),
+  );
 
   return (
     <div className="border-b border-border bg-card">
@@ -38,8 +44,7 @@ export const Header: FC<HeaderProps> = () => {
               {categoryLabels[category]}
             </h2>
             <p className="text-muted-foreground">
-              {count} screenshot(s) in this
-              category
+              {count} screenshot(s) in this category
             </p>
           </div>
         </div>
@@ -47,14 +52,15 @@ export const Header: FC<HeaderProps> = () => {
         <div className="flex items-center gap-4">
           <div className="relative flex-1 max-w-md">
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              value={search || ""} 
-              placeholder="Search screenshots..." 
-              className="pl-10" 
+            <Input
+              value={search || ""}
+              placeholder="Search screenshots..."
+              className="pl-10"
               onChange={(e) => {
                 setSearch(e.target.value || null, {
                   // Send immediate update if resetting, otherwise debounce at 500ms
-                  limitUrlUpdates: e.target.value === '' ? undefined : debounce(500)
+                  limitUrlUpdates:
+                    e.target.value === "" ? undefined : debounce(500),
                 });
               }}
               onKeyDown={(e) => {
@@ -68,26 +74,34 @@ export const Header: FC<HeaderProps> = () => {
           <div className="flex items-center justify-center gap-1 border border-border rounded-lg p-1">
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button aria-label="Grid view" variant="ghost" size="sm" className="h-7 w-7 p-0 flex items-center justify-center" onClick={() => setView(View.Grid)}>
+                <Button
+                  aria-label="Grid view"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 flex items-center justify-center"
+                  onClick={() => setView(View.Grid)}
+                >
                   <Grid3X3 size={16} />
                 </Button>
               </TooltipTrigger>
 
-              <TooltipContent>
-                Grid view
-              </TooltipContent>
+              <TooltipContent>Grid view</TooltipContent>
             </Tooltip>
 
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button aria-label="List view" variant="ghost" size="sm" className="h-7 w-7 p-0 flex items-center justify-center" onClick={() => setView(View.List)}>
+                <Button
+                  aria-label="List view"
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 w-7 p-0 flex items-center justify-center"
+                  onClick={() => setView(View.List)}
+                >
                   <List size={16} />
                 </Button>
               </TooltipTrigger>
 
-              <TooltipContent>
-                List view
-              </TooltipContent>
+              <TooltipContent>List view</TooltipContent>
             </Tooltip>
           </div>
         </div>

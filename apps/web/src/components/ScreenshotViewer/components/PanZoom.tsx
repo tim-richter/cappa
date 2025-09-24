@@ -15,13 +15,7 @@ export type PanZoomProps = {
 };
 
 export function PanZoom(props: PanZoomProps) {
-  const {
-    children,
-    contentSize,
-    className,
-    limits,
-    initialScale = 1,
-  } = props;
+  const { children, contentSize, className, limits, initialScale = 1 } = props;
   const containerRef = useRef<HTMLDivElement>(null);
   const [, api] = usePanZoom(containerRef, contentSize, limits, initialScale);
   const style = api.getTransformStyle();
@@ -30,7 +24,7 @@ export function PanZoom(props: PanZoomProps) {
     <div
       className={`relative overflow-hidden w-full h-full ${className ? className : ""}`}
       ref={containerRef}
-      style={{ touchAction: 'none' }}
+      style={{ touchAction: "none" }}
     >
       <div className="absolute inset-0 select-none">
         <div className="will-change-transform" style={style}>

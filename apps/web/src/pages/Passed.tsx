@@ -1,12 +1,13 @@
-import { Grid } from "@/components/Grid";
-import type { Screenshot } from "@/types";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
+import { Grid } from "@/components/Grid";
+import type { Screenshot } from "@/types";
 
 export const Passed: FC = () => {
   const { data, isPending, isError } = useQuery<Screenshot[]>({
     queryKey: ["screenshots", "passed"],
-    queryFn: () => fetch("/api/screenshots?category=passed").then((res) => res.json()),
+    queryFn: () =>
+      fetch("/api/screenshots?category=passed").then((res) => res.json()),
   });
 
   if (isPending) {
@@ -17,14 +18,5 @@ export const Passed: FC = () => {
     return <div>Error fetching screenshots</div>;
   }
 
-  return (
-    <>
-      <Grid
-        screenshots={data}
-        selectedScreenshot={null}
-        onScreenshotSelect={() => {}}
-        category="passed"
-      />
-    </>
-  );
+  return <Grid screenshots={data} category="passed" />;
 };
