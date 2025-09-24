@@ -1,10 +1,7 @@
-import { delay, HttpResponse, http } from "msw";
+import { HttpResponse, http } from "msw";
 import type { Screenshot } from "@/types";
 
 export const handlers = [
-  http.all("*", async () => {
-    await delay(250);
-  }),
   http.get("/api/screenshots", ({ request }) => {
     const url = new URL(request.url);
     const category = url.searchParams.get("category");
@@ -127,6 +124,18 @@ export const handlers = [
       expectedPath: "/images/4b.png",
       diffPath: "/images/4diff.png",
       category: "new",
+    });
+  }),
+
+  http.post("/api/screenshots/:id", ({ params }) => {
+    return HttpResponse.json<Screenshot>({
+      name: params.id as string,
+      id: params.id as string,
+      category: "new",
+      actualPath: "/images/4a.png",
+      expectedPath: "/images/4b.png",
+      diffPath: "/images/4diff.png",
+      approved: true,
     });
   }),
 ];

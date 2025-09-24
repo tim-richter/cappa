@@ -1,3 +1,5 @@
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import {
   Tooltip,
@@ -6,6 +8,7 @@ import {
 } from "@ui/components/tooltip";
 import {
   ArrowLeft,
+  BadgeCheckIcon,
   Check,
   Eye,
   GitCompare,
@@ -32,7 +35,21 @@ export function ScreenshotComparison({
 }: ScreenshotComparisonProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
   const [overlayOpacity, setOverlayOpacity] = useState(50);
-  const [isApproved, setIsApproved] = useState(false);
+  const queryClient = useQueryClient();
+
+  const { mutate: approveScreenshot } = useMutation({
+    mutationFn: (approved: boolean) => {
+      return fetch(`/api/screenshots/${screenshot.id}`, {
+        method: "POST",
+        body: JSON.stringify({ approved }),
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ["screenshot", screenshot.id],
+      });
+    },
+  });
 
   const viewModes = [
     { id: "side-by-side", label: "Side by Side", icon: SplitSquareHorizontal },
@@ -42,7 +59,7 @@ export function ScreenshotComparison({
   ] as const;
 
   const handleApprove = () => {
-    setIsApproved(!isApproved);
+    approveScreenshot(true);
   };
 
   return (
@@ -63,6 +80,15 @@ export function ScreenshotComparison({
               {screenshot.name}
             </h1>
           </div>
+
+          {screenshot.approved && (
+            <Badge
+              variant="default"
+              className="text-green-100 bg-green-800 cursor-default"
+            >
+              <BadgeCheckIcon /> Approved
+            </Badge>
+          )}
         </div>
 
         <div className="flex items-center gap-4">

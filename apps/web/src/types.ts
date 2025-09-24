@@ -5,6 +5,7 @@ export interface Screenshot {
   actualPath?: string;
   expectedPath?: string;
   diffPath?: string;
+  approved?: boolean;
 }
 
 export type ScreenshotPaths = {
