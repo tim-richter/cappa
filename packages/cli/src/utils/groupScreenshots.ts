@@ -11,17 +11,24 @@ export const groupScreenshots = (
   const screenshotRepresentations: Screenshot[] = [];
 
   actualScreenshots.forEach((screenshot) => {
-    const relativePath = path.relative(outputDir + '/actual', screenshot);
-    const name = path.relative(outputDir + '/actual', screenshot).replace('.png', '');
+    const relativePath = path.relative(outputDir + "/actual", screenshot);
+    const name = path
+      .relative(outputDir + "/actual", screenshot)
+      .replace(".png", "");
     const id = createHash("sha256").update(relativePath).digest("hex");
 
-    const expectedScreenshot = expectedScreenshots.find((expectedScreenshot) => {
-      const expectedName = path.relative(outputDir + '/expected', expectedScreenshot);
-      return expectedName === relativePath;
-    });
+    const expectedScreenshot = expectedScreenshots.find(
+      (expectedScreenshot) => {
+        const expectedName = path.relative(
+          outputDir + "/expected",
+          expectedScreenshot,
+        );
+        return expectedName === relativePath;
+      },
+    );
 
     const diffScreenshot = diffScreenshots.find((diffScreenshot) => {
-      const diffName = path.relative(outputDir + '/diff', diffScreenshot);
+      const diffName = path.relative(outputDir + "/diff", diffScreenshot);
       return diffName === relativePath;
     });
 
@@ -37,12 +44,17 @@ export const groupScreenshots = (
   });
 
   expectedScreenshots.forEach((expectedScreenshot) => {
-    const relativePath = path.relative(outputDir + '/expected', expectedScreenshot);
-    const name = path.relative(outputDir + '/expected', expectedScreenshot).replace('.png', '');
+    const relativePath = path.relative(
+      outputDir + "/expected",
+      expectedScreenshot,
+    );
+    const name = path
+      .relative(outputDir + "/expected", expectedScreenshot)
+      .replace(".png", "");
     const id = createHash("sha256").update(relativePath).digest("hex");
 
     const actualScreenshot = actualScreenshots.find((actualScreenshot) => {
-      const actualName = path.relative(outputDir + '/actual', actualScreenshot);
+      const actualName = path.relative(outputDir + "/actual", actualScreenshot);
       return actualName === relativePath;
     });
 
@@ -50,7 +62,7 @@ export const groupScreenshots = (
     if (actualScreenshot) {
       return;
     }
-    
+
     screenshotRepresentations.push({
       id: id,
       name: name,
@@ -60,12 +72,15 @@ export const groupScreenshots = (
       diffPath: undefined,
       approved: false,
     });
-  })
+  });
 
   return screenshotRepresentations;
 };
 
-const buildCategory = (expectedScreenshot: string | undefined, diffScreenshot: string | undefined) => {
+const buildCategory = (
+  expectedScreenshot: string | undefined,
+  diffScreenshot: string | undefined,
+) => {
   if (expectedScreenshot && diffScreenshot) {
     return "changed";
   }
