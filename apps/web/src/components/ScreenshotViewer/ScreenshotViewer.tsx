@@ -134,7 +134,13 @@ export function ScreenshotComparison({
       {/* Comparison Content */}
       <div className="flex-1 overflow-hidden p-6">
         {screenshot.category === "new" && (
-          <Single screenshotPath={screenshot.actualPath} />
+          <Single screenshotPath={screenshot.actualPath} title="New" />
+        )}
+        {screenshot.category === "deleted" && (
+          <Single screenshotPath={screenshot.expectedPath} title="Deleted" />
+        )}
+        {screenshot.category === "passed" && (
+          <Single screenshotPath={screenshot.actualPath} title="Passed" />
         )}
         {screenshot.category === "changed" && (
           <>
