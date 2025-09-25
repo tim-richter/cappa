@@ -3,6 +3,7 @@ import { Input } from "@ui/components/input";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@ui/components/tooltip";
 import { Grid3X3, List, Search } from "lucide-react";
@@ -30,7 +31,7 @@ export const Header: FC<HeaderProps> = () => {
   const category = pathname.split("/")[1] as ScreenshotCategory;
   const count = 10;
   const [search, setSearch] = useQueryState("search");
-  const [_, setView] = useQueryState(
+  const [view, setView] = useQueryState(
     "view",
     parseAsStringEnum<View>(Object.values(View)),
   );
@@ -76,7 +77,7 @@ export const Header: FC<HeaderProps> = () => {
               <TooltipTrigger asChild>
                 <Button
                   aria-label="Grid view"
-                  variant="ghost"
+                  variant={view === View.Grid ? "primary" : "ghost"}
                   size="sm"
                   className="h-7 w-7 p-0 flex items-center justify-center"
                   onClick={() => setView(View.Grid)}
@@ -92,7 +93,7 @@ export const Header: FC<HeaderProps> = () => {
               <TooltipTrigger asChild>
                 <Button
                   aria-label="List view"
-                  variant="ghost"
+                  variant={view === View.List ? "primary" : "ghost"}
                   size="sm"
                   className="h-7 w-7 p-0 flex items-center justify-center"
                   onClick={() => setView(View.List)}
