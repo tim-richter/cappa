@@ -8,7 +8,7 @@ import { version } from "../package.json";
 import { initLogger } from "./logger";
 import { getConfig } from "./utils/getConfig";
 import { getCosmiConfig } from "./utils/getCosmiConfig";
-import { sortScreenshots } from "./utils/sortScreenshots";
+import { groupScreenshots } from "./utils/groupScreenshots";
 
 const program = new Command();
 
@@ -101,7 +101,7 @@ program
         diffScreenshotsPromise,
       ]);
 
-    const sortedScreenshots = await sortScreenshots(
+    const groupedScreenshots = await groupScreenshots(
       actualScreenshots,
       expectedScreenshots,
       diffScreenshots,
@@ -111,7 +111,7 @@ program
     const server = await createServer({
       isProd: true,
       outputDir: path.resolve(config.outputDir),
-      screenshots: sortedScreenshots,
+      screenshots: groupedScreenshots,
     });
 
     await server.listen({ port: 3000 });

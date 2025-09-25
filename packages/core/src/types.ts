@@ -39,3 +39,13 @@ export interface Exposed {
   getBaseScreenshotOptions(): ScreenshotOptions;
   waitBrowserMetricsStable(): Promise<void>;
 }
+
+export interface Screenshot {
+  id: string;
+  name: string;
+  category: "new" | "deleted" | "changed" | "passed";
+  actualPath?: string;
+  expectedPath?: string;
+  diffPath?: string;
+  approved?: boolean;
+}

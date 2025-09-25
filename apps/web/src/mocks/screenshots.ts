@@ -1,5 +1,5 @@
+import type { Screenshot } from "@cappa/core";
 import { HttpResponse, http } from "msw";
-import type { Screenshot } from "@/types";
 
 export const handlers = [
   http.get("/api/screenshots", ({ request }) => {
