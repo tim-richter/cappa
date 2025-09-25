@@ -1,7 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
 import type { Screenshot } from "@cappa/core";
-import { a } from "vitest/dist/chunks/suite.d.FvehnV49.js";
 
 export const groupScreenshots = (
   actualScreenshots: string[],
