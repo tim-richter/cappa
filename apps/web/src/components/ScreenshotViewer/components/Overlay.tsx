@@ -1,5 +1,5 @@
+import type { Screenshot } from "@cappa/core";
 import { useState } from "react";
-import type { Screenshot } from "@/types";
 import { PanZoom } from "./PanZoom";
 
 interface OverlayProps {

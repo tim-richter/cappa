@@ -1,5 +1,5 @@
+import type { Screenshot } from "@cappa/core";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Screenshot } from "@/types";
 
 interface SplitProps {
   screenshot: Screenshot;

@@ -1,7 +1,7 @@
+import type { Screenshot } from "@cappa/core";
 import { useQuery } from "@tanstack/react-query";
 import type { FC } from "react";
 import { Grid } from "@/components/Grid";
-import type { Screenshot } from "@/types";
 
 export const Changed: FC = () => {
   const { data, isPending, isError } = useQuery<Screenshot[]>({

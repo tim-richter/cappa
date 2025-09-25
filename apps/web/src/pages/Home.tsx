@@ -1,9 +1,10 @@
+import type { Screenshot } from "@cappa/core";
 import { useQuery } from "@tanstack/react-query";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { Grid } from "@/components/Grid";
 import { List } from "@/components/List";
-import { type Screenshot, View } from "@/types";
+import { View } from "@/types";
 
 export const Home: FC = () => {
   const [search] = useQueryState("search");

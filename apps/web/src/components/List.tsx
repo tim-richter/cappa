@@ -1,6 +1,6 @@
+import type { Screenshot } from "@cappa/core";
 import type { ColumnDef } from "@tanstack/react-table";
 import { Link } from "react-router";
-import type { Screenshot } from "@/types";
 import { DataTable } from "./DataTable";
 
 const columns: ColumnDef<Screenshot>[] = [

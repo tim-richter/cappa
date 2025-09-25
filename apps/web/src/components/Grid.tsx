@@ -1,3 +1,4 @@
+import type { Screenshot } from "@cappa/core";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import { Card } from "@ui/components/card";
@@ -5,7 +6,6 @@ import { cn } from "@ui/lib/utils";
 import { Download, Eye, MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
 import { Link } from "react-router";
-import type { Screenshot } from "@/types";
 import { findPreviewScreenshot } from "@/util/screenshot";
 
 interface ScreenshotGridProps {

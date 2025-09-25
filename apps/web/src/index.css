@@ -1,4 +1,5 @@
 @import "tailwindcss";
 @import "../../../packages/ui/src/styles/globals.css";
 
+/* biome-ignore lint/suspicious/noUnknownAtRules: tailwind */
 @source "../../../packages/ui/src";

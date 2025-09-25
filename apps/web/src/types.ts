@@ -1,12 +1,4 @@
-export interface Screenshot {
-  id: string;
-  name: string;
-  category: "new" | "deleted" | "changed" | "passed";
-  actualPath?: string;
-  expectedPath?: string;
-  diffPath?: string;
-  approved?: boolean;
-}
+import type { Screenshot } from "@cappa/core";
 
 export type ScreenshotPaths = {
   new: Screenshot[];

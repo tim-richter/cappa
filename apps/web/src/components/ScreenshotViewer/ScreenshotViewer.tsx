@@ -1,3 +1,4 @@
+import type { Screenshot } from "@cappa/core";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
@@ -16,7 +17,6 @@ import {
   SplitSquareHorizontal,
 } from "lucide-react";
 import { useState } from "react";
-import type { Screenshot } from "@/types";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";

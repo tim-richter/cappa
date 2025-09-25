@@ -1,4 +1,4 @@
-import type { Screenshot } from "@/types";
+import type { Screenshot } from "@cappa/core";
 
 export const findPreviewScreenshot = (screenshot: Screenshot) => {
   if (screenshot.category === "new") {
