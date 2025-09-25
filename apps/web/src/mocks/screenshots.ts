@@ -74,23 +74,23 @@ export const handlers = [
 
     return HttpResponse.json<Screenshot[]>([
       {
-        name: "Screenshot 1",
+        name: "New Screenshot",
         id: "1",
         actualPath: "https://picsum.photos/200/300",
-        expectedPath: "https://picsum.photos/200/300",
-        diffPath: "https://picsum.photos/200/300",
+        expectedPath: undefined,
+        diffPath: undefined,
         category: "new",
       },
       {
-        name: "Screenshot 2",
+        name: "Deleted Screenshot",
         id: "2",
-        actualPath: "https://picsum.photos/200/300",
+        actualPath: undefined,
         expectedPath: "https://picsum.photos/200/300",
-        diffPath: "https://picsum.photos/200/300",
-        category: "new",
+        diffPath: undefined,
+        category: "deleted",
       },
       {
-        name: "Screenshot 3",
+        name: "Changed Screenshot",
         id: "3",
         actualPath: "https://picsum.photos/200/300",
         expectedPath: "https://picsum.photos/200/300",
@@ -98,12 +98,12 @@ export const handlers = [
         category: "changed",
       },
       {
-        name: "Screenshot 4",
+        name: "Passed Screenshot",
         id: "4",
         actualPath: "https://picsum.photos/200/300",
         expectedPath: "https://picsum.photos/200/300",
-        diffPath: "https://picsum.photos/200/300",
-        category: "deleted",
+        diffPath: undefined,
+        category: "passed",
       },
       {
         name: "Screenshot 5",
@@ -117,12 +117,53 @@ export const handlers = [
   }),
 
   http.get("/api/screenshots/:id", ({ params }) => {
+    if (params.id === "1") {
+      return HttpResponse.json<Screenshot>({
+        name: params.id as string,
+        id: params.id as string,
+        actualPath: "/images/4a.png",
+        expectedPath: undefined,
+        diffPath: undefined,
+        category: "new",
+      });
+    }
+
+    if (params.id === "2") {
+      return HttpResponse.json<Screenshot>({
+        name: params.id as string,
+        id: params.id as string,
+        actualPath: undefined,
+        expectedPath: "/images/4b.png",
+        diffPath: undefined,
+        category: "deleted",
+      });
+    }
+
+    if (params.id === "3") {
+      return HttpResponse.json<Screenshot>({
+        name: params.id as string,
+        id: params.id as string,
+        actualPath: "/images/4a.png",
+        expectedPath: "/images/4b.png",
+        diffPath: "/images/4diff.png",
+        category: "changed",
+      });
+    }
+
+    if (params.id === "4") {
+      return HttpResponse.json<Screenshot>({
+        name: params.id as string,
+        id: params.id as string,
+        actualPath: "/images/4a.png",
+        expectedPath: "/images/4b.png",
+        diffPath: undefined,
+        category: "passed",
+      });
+    }
+
     return HttpResponse.json<Screenshot>({
       name: params.id as string,
       id: params.id as string,
-      actualPath: "/images/4a.png",
-      expectedPath: "/images/4b.png",
-      diffPath: "/images/4diff.png",
       category: "new",
     });
   }),
