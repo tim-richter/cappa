@@ -1,14 +1,9 @@
 import fs from "node:fs";
+import type { Screenshot } from "@cappa/core";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { screenshotsPlugin } from "./screenshots";
-import { resolveFromHere } from "./util";
-
-type Screenshot = {
-  name: string;
-  url: string;
-  category: "new" | "deleted" | "changed" | "passed";
-};
+import { resolveFromHere, transformScreenshotPaths } from "./util";
 
 // Extend FastifyInstance to include our decorated properties
 declare module "fastify" {
@@ -28,7 +23,7 @@ export async function createServer(opts: StartServerOptions) {
   const app = Fastify({ logger: true });
 
   // Add screenshots data to the app instance for use in plugins
-  app.decorate("screenshots", opts.screenshots);
+  app.decorate("screenshots", transformScreenshotPaths(opts.screenshots));
 
   app.get("/api/health", async () => ({ ok: true }));
 

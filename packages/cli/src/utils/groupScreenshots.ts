@@ -36,9 +36,9 @@ export const groupScreenshots = (
       id: id,
       name: name,
       category: buildCategory(expectedScreenshot, diffScreenshot),
-      expectedPath: expectedScreenshot ? expectedScreenshot : undefined,
-      diffPath: diffScreenshot ? diffScreenshot : undefined,
-      actualPath: screenshot,
+      expectedPath: expectedScreenshot ? path.relative(outputDir, expectedScreenshot) : undefined,
+      diffPath: diffScreenshot ? path.relative(outputDir, diffScreenshot) : undefined,
+      actualPath: path.relative(outputDir, screenshot),
       approved: false,
     });
   });
@@ -67,8 +67,8 @@ export const groupScreenshots = (
       id: id,
       name: name,
       category: "deleted",
-      actualPath: actualScreenshot ? actualScreenshot : undefined,
-      expectedPath: expectedScreenshot,
+      actualPath: undefined,
+      expectedPath: path.relative(outputDir, expectedScreenshot),
       diffPath: undefined,
       approved: false,
     });

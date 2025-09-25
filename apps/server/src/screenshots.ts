@@ -1,3 +1,4 @@
+import type { Screenshot } from "@cappa/core";
 import type { FastifyPluginAsync } from "fastify";
 
 /**
@@ -42,7 +43,7 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
     const { id } = request.params as { id: string };
     const screenshots = fastify.screenshots || [];
     const screenshot = screenshots.find(
-      (s: any) => s.name === decodeURIComponent(id),
+      (s) => s.id === decodeURIComponent(id),
     );
 
     if (!screenshot) {

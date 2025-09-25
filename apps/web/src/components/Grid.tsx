@@ -44,22 +44,6 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, category }) => {
                     className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                   />
 
-                  {/* Overlay with actions */}
-                  <div
-                    className={cn(
-                      "absolute inset-0 bg-black/60 flex items-center justify-center gap-2 transition-opacity duration-200",
-                    )}
-                  >
-                    <Button size="sm" variant="secondary">
-                      <Eye className="h-4 w-4 mr-1" />
-                      View
-                    </Button>
-                    <Button size="sm" variant="secondary">
-                      <Download className="h-4 w-4 mr-1" />
-                      Download
-                    </Button>
-                  </div>
-
                   {/* Category badge */}
                   <Badge
                     className={cn(
@@ -76,13 +60,6 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, category }) => {
                     <h3 className="font-medium text-card-foreground truncate flex-1 mr-2">
                       {screenshot.name}
                     </h3>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </Button>
                   </div>
                 </div>
               </Link>

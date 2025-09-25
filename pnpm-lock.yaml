@@ -50,6 +50,9 @@ importers:
 
   apps/server:
     dependencies:
+      '@cappa/core':
+        specifier: workspace:*
+        version: link:../../packages/core
       '@fastify/middie':
         specifier: 9.0.3
         version: 9.0.3
