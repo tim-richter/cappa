@@ -20,6 +20,7 @@ import { useState } from "react";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";
+import { Single } from "./components/Single";
 import { Split } from "./components/Split";
 
 interface ScreenshotComparisonProps {
@@ -28,6 +29,13 @@ interface ScreenshotComparisonProps {
 }
 
 type ViewMode = "side-by-side" | "overlay" | "split" | "diff-only";
+
+const viewModes = [
+  { id: "side-by-side", label: "Side by Side", icon: SplitSquareHorizontal },
+  { id: "overlay", label: "Overlay", icon: Layers },
+  { id: "split", label: "Split View", icon: GitCompare },
+  { id: "diff-only", label: "Diff Only", icon: Eye },
+] as const;
 
 export function ScreenshotComparison({
   screenshot,
@@ -50,13 +58,6 @@ export function ScreenshotComparison({
       });
     },
   });
-
-  const viewModes = [
-    { id: "side-by-side", label: "Side by Side", icon: SplitSquareHorizontal },
-    { id: "overlay", label: "Overlay", icon: Layers },
-    { id: "split", label: "Split View", icon: GitCompare },
-    { id: "diff-only", label: "Diff Only", icon: Eye },
-  ] as const;
 
   const handleApprove = () => {
     approveScreenshot(true);
@@ -92,55 +93,68 @@ export function ScreenshotComparison({
         </div>
 
         <div className="flex items-center gap-4">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                onClick={handleApprove}
-                size="icon"
-                className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
-              >
-                <Check className="size-8" />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Approve</TooltipContent>
-          </Tooltip>
+          {!screenshot.approved && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleApprove}
+                  size="icon"
+                  className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
+                >
+                  <Check className="size-8" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Approve</TooltipContent>
+            </Tooltip>
+          )}
 
           {/* View Mode Controls */}
-          <div className="flex items-center gap-2">
-            {viewModes.map((mode) => {
-              const Icon = mode.icon;
-              return (
-                <Button
-                  key={mode.id}
-                  variant={viewMode === mode.id ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setViewMode(mode.id as ViewMode)}
-                  className="gap-2"
-                >
-                  <Icon className="h-4 w-4" />
-                  {mode.label}
-                </Button>
-              );
-            })}
-          </div>
+          {screenshot.category === "changed" && (
+            <div className="flex items-center gap-2">
+              {viewModes.map((mode) => {
+                const Icon = mode.icon;
+                return (
+                  <Button
+                    key={mode.id}
+                    variant={viewMode === mode.id ? "default" : "ghost"}
+                    size="sm"
+                    onClick={() => setViewMode(mode.id as ViewMode)}
+                    className="gap-2"
+                  >
+                    <Icon className="h-4 w-4" />
+                    {mode.label}
+                  </Button>
+                );
+              })}
+            </div>
+          )}
         </div>
       </div>
 
       {/* Comparison Content */}
       <div className="flex-1 overflow-hidden p-6">
-        {viewMode === "side-by-side" && <SideBySide screenshot={screenshot} />}
-
-        {viewMode === "overlay" && (
-          <Overlay
-            screenshot={screenshot}
-            overlayOpacity={overlayOpacity}
-            setOverlayOpacity={setOverlayOpacity}
-          />
+        {screenshot.category === "new" && (
+          <Single screenshotPath={screenshot.actualPath} />
         )}
+        {screenshot.category === "changed" && (
+          <>
+            {viewMode === "side-by-side" && (
+              <SideBySide screenshot={screenshot} />
+            )}
 
-        {viewMode === "split" && <Split screenshot={screenshot} />}
+            {viewMode === "overlay" && (
+              <Overlay
+                screenshot={screenshot}
+                overlayOpacity={overlayOpacity}
+                setOverlayOpacity={setOverlayOpacity}
+              />
+            )}
 
-        {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
+            {viewMode === "split" && <Split screenshot={screenshot} />}
+
+            {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
+          </>
+        )}
       </div>
     </div>
   );

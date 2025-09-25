@@ -158,6 +158,7 @@ export const handlers = [
         expectedPath: "/images/4b.png",
         diffPath: undefined,
         category: "passed",
+        approved: true,
       });
     }
 
