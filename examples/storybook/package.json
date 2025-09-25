@@ -5,6 +5,8 @@
   "scripts": {
     "screenshot": "cappa capture -l 5",
     "screenshot:review": "cappa review -l 5",
+    "screenshot:approve": "cappa approve -l 5",
+    "screenshot:status": "cappa status",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "serve-storybook": "pnpx http-server -c-1 ./storybook-static"

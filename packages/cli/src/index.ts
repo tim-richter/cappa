@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { ScreenshotTool } from "@cappa/core";
 import { createServer } from "@cappa/server";
+import chalk from "chalk";
 import { Command } from "commander";
 import { glob } from "glob";
 import { version } from "../package.json";
@@ -28,7 +29,7 @@ program
   .option("-c, --clean", "clean output directory before running", false)
   .action(async (options) => {
     // Initialize logger with the specified log level
-    const logLevel = parseInt(options.logLevel, 10);
+    const logLevel = parseInt(program.opts().logLevel, 10);
     const logger = initLogger(logLevel);
 
     logger.info("Cappa CLI starting...");
@@ -71,9 +72,9 @@ program
 program
   .command("review")
   .description("Review screenshots")
-  .action(async (options) => {
+  .action(async () => {
     // Initialize logger with the specified log level
-    const logLevel = parseInt(options.logLevel, 10);
+    const logLevel = parseInt(program.opts().logLevel, 10);
     const logger = initLogger(logLevel);
 
     logger.info("Cappa CLI starting...");
@@ -115,6 +116,96 @@ program
     });
 
     await server.listen({ port: 3000 });
+  });
+
+program
+  .command("approve")
+  .description("Approve screenshots")
+  .action(async () => {
+    // Initialize logger with the specified log level
+    const logLevel = parseInt(program.opts().logLevel, 10);
+    const logger = initLogger(logLevel);
+
+    logger.info("Cappa CLI starting...");
+    logger.debug(`Log level set to: ${logLevel}`);
+
+    const result = await getCosmiConfig("cappa");
+    const config = await getConfig(result);
+
+    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
+
+    const actualScreenshotsPromise = glob(
+      path.resolve(config.outputDir, "actual", "**/*.png"),
+    );
+
+    const [actualScreenshots] = await Promise.all([actualScreenshotsPromise]);
+
+    // copy actual screenshots to expected directory
+    for (const screenshot of actualScreenshots) {
+      const destPath = path.resolve(
+        config.outputDir,
+        "expected",
+        path.relative(config.outputDir + "/actual", screenshot),
+      );
+      const destDir = path.dirname(destPath);
+
+      // Create destination directory if it doesn't exist
+      fs.mkdirSync(destDir, { recursive: true });
+
+      fs.copyFileSync(screenshot, destPath);
+    }
+
+    logger.success("All screenshots approved");
+  });
+
+program
+  .command("status")
+  .description("Get status of screenshots")
+  .action(async () => {
+    // Initialize logger with the specified log level
+    const logLevel = parseInt(program.opts().logLevel, 10);
+    const logger = initLogger(logLevel);
+
+    logger.debug(`Log level set to: ${logLevel}`);
+
+    const result = await getCosmiConfig("cappa");
+    const config = await getConfig(result);
+
+    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
+
+    const actualScreenshotsPromise = glob(
+      path.resolve(config.outputDir, "actual", "**/*.png"),
+    );
+    const expectedScreenshotsPromise = glob(
+      path.resolve(config.outputDir, "expected", "**/*.png"),
+    );
+    const diffScreenshotsPromise = glob(
+      path.resolve(config.outputDir, "diff", "**/*.png"),
+    );
+
+    const [actualScreenshots, expectedScreenshots, diffScreenshots] =
+      await Promise.all([
+        actualScreenshotsPromise,
+        expectedScreenshotsPromise,
+        diffScreenshotsPromise,
+      ]);
+
+    const groupedScreenshots = await groupScreenshots(
+      actualScreenshots,
+      expectedScreenshots,
+      diffScreenshots,
+      config.outputDir,
+    );
+
+    logger.debug(
+      "All screenshot information:",
+      JSON.stringify(groupedScreenshots, null, 2),
+    );
+
+    logger.box({
+      title: "Screenshot Status",
+      message: `${chalk.yellow("New screenshots:")} ${groupedScreenshots.filter((r) => r.category === "new").length}\n${chalk.red("Deleted screenshots:")} ${groupedScreenshots.filter((r) => r.category === "deleted").length}\n${chalk.green("Changed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "changed").length}\n${chalk.blue("Passed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "passed").length}`,
+    });
   });
 
 export async function run(): Promise<void> {
