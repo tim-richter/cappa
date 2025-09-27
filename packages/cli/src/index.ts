@@ -148,7 +148,7 @@ program
 
     if (options.filter?.length) {
       const filters = options.filter.map((filter: string) =>
-        filter.toLowerCase()
+        filter.toLowerCase(),
       );
       logger.debug(
         `Filtering actual screenshots by filter: ${filters.join(", ")}`,
@@ -184,7 +184,11 @@ program
 
       fs.copyFileSync(screenshot, destPath);
 
-      const diffPath = path.resolve(config.outputDir, "diff", path.relative(config.outputDir + "/actual", screenshot));
+      const diffPath = path.resolve(
+        config.outputDir,
+        "diff",
+        path.relative(config.outputDir + "/actual", screenshot),
+      );
 
       if (fs.existsSync(diffPath)) {
         fs.unlinkSync(diffPath);
@@ -248,6 +252,68 @@ program
       title: "Screenshot Status",
       message: `${chalk.yellow("New screenshots:")} ${groupedScreenshots.filter((r) => r.category === "new").length}\n${chalk.red("Deleted screenshots:")} ${groupedScreenshots.filter((r) => r.category === "deleted").length}\n${chalk.green("Changed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "changed").length}\n${chalk.blue("Passed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "passed").length}`,
     });
+  });
+
+program
+  .command("init")
+  .description("Initialize Cappa in the current directory")
+  .action(async () => {
+    const logLevel = parseInt(program.opts().logLevel, 10);
+    const logger = initLogger(logLevel);
+
+    logger.info("Initializing Cappa...");
+
+    const configPath = path.resolve(process.cwd(), "cappa.config.ts");
+    const packageJsonPath = path.resolve(process.cwd(), "package.json");
+
+    // Create cappa.config.ts
+    if (fs.existsSync(configPath)) {
+      logger.warn("cappa.config.ts already exists, skipping...");
+    } else {
+      const configContent = `import { defineConfig } from "@cappa/core";
+
+export default defineConfig({
+  outputDir: "./screenshots",
+  plugins: [],
+});
+`;
+
+      fs.writeFileSync(configPath, configContent);
+      logger.success("Created cappa.config.ts");
+    }
+
+    // Add script to package.json
+    if (fs.existsSync(packageJsonPath)) {
+      try {
+        const packageJson = JSON.parse(
+          fs.readFileSync(packageJsonPath, "utf-8"),
+        );
+
+        if (!packageJson.scripts) {
+          packageJson.scripts = {};
+        }
+
+        if (packageJson.scripts.cappa) {
+          logger.warn(
+            "'cappa' script already exists in package.json, skipping...",
+          );
+        } else {
+          packageJson.scripts.cappa = "cappa capture";
+          fs.writeFileSync(
+            packageJsonPath,
+            JSON.stringify(packageJson, null, 2) + "\n",
+          );
+          logger.success("Added 'cappa' script to package.json");
+        }
+      } catch (error) {
+        logger.error("Failed to update package.json:", error);
+      }
+    } else {
+      logger.warn("package.json not found, skipping script addition");
+    }
+
+    logger.success("Cappa initialization complete!");
+    logger.info("Run 'npm run cappa' or 'pnpm cappa' to capture screenshots");
   });
 
 export async function run(): Promise<void> {
