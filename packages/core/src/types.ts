@@ -67,6 +67,10 @@ export type UserConfig = {
    */
   diff?: DiffConfig;
   /**
+   * The number of times to retry a screenshot if it fails
+   */
+  retries?: number;
+  /**
    * An array of Cappa plugins used for generation.
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */

@@ -50,6 +50,7 @@ program
     const screenshotTool = new ScreenshotTool({
       outputDir: config.outputDir,
       diff: config.diff,
+      retries: config.retries,
     });
 
     try {
@@ -257,6 +258,7 @@ program
 
 export default defineConfig({
   outputDir: "./screenshots",
+  retries: 3,
   diff: {
     threshold: 0.1,
     includeAA: false,
