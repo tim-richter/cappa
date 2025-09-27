@@ -42,7 +42,17 @@ export default defineConfig({
 Run the cli:
 
 ```bash
-cappa
+# capture screenshots with playwright
+cappa capture
+
+# review screenshots
+cappa review
+
+# approve screenshots
+cappa approve
+
+# get status of screenshots (folder)
+cappa status
 ```
 
 ## Plugins
@@ -56,4 +66,3 @@ Cappa has a plugin system that allows you to add new features and connectors to 
 | Option              | Description | Default  |
 |---------------------|-------------|----------|
 | -l, --log-level     | Log level   | 3 (info) |
-| -c, --clean         | Cleans the output directory before running.       | false    |
