@@ -22,13 +22,13 @@ const transformScreenshotPaths = (screenshots: Screenshot[]) => {
     return {
       ...screenshot,
       actualPath: screenshot.actualPath
-        ? "/assets/screenshots/" + screenshot.actualPath
+        ? `/assets/screenshots/${screenshot.actualPath}`
         : undefined,
       expectedPath: screenshot.expectedPath
-        ? "/assets/screenshots/" + screenshot.expectedPath
+        ? `/assets/screenshots/${screenshot.expectedPath}`
         : undefined,
       diffPath: screenshot.diffPath
-        ? "/assets/screenshots/" + screenshot.diffPath
+        ? `/assets/screenshots/${screenshot.diffPath}`
         : undefined,
     };
   });

@@ -11,16 +11,16 @@ export const groupScreenshots = (
   const screenshotRepresentations: Screenshot[] = [];
 
   actualScreenshots.forEach((screenshot) => {
-    const relativePath = path.relative(outputDir + "/actual", screenshot);
+    const relativePath = path.relative(`${outputDir}/actual`, screenshot);
     const name = path
-      .relative(outputDir + "/actual", screenshot)
+      .relative(`${outputDir}/actual`, screenshot)
       .replace(".png", "");
     const id = createHash("sha256").update(relativePath).digest("hex");
 
     const expectedScreenshot = expectedScreenshots.find(
       (expectedScreenshot) => {
         const expectedName = path.relative(
-          outputDir + "/expected",
+          `${outputDir}/expected`,
           expectedScreenshot,
         );
         return expectedName === relativePath;
@@ -28,7 +28,7 @@ export const groupScreenshots = (
     );
 
     const diffScreenshot = diffScreenshots.find((diffScreenshot) => {
-      const diffName = path.relative(outputDir + "/diff", diffScreenshot);
+      const diffName = path.relative(`${outputDir}/diff`, diffScreenshot);
       return diffName === relativePath;
     });
 
@@ -36,8 +36,12 @@ export const groupScreenshots = (
       id: id,
       name: name,
       category: buildCategory(expectedScreenshot, diffScreenshot),
-      expectedPath: expectedScreenshot ? path.relative(outputDir, expectedScreenshot) : undefined,
-      diffPath: diffScreenshot ? path.relative(outputDir, diffScreenshot) : undefined,
+      expectedPath: expectedScreenshot
+        ? path.relative(outputDir, expectedScreenshot)
+        : undefined,
+      diffPath: diffScreenshot
+        ? path.relative(outputDir, diffScreenshot)
+        : undefined,
       actualPath: path.relative(outputDir, screenshot),
       approved: false,
     });
@@ -45,16 +49,16 @@ export const groupScreenshots = (
 
   expectedScreenshots.forEach((expectedScreenshot) => {
     const relativePath = path.relative(
-      outputDir + "/expected",
+      `${outputDir}/expected`,
       expectedScreenshot,
     );
     const name = path
-      .relative(outputDir + "/expected", expectedScreenshot)
+      .relative(`${outputDir}/expected`, expectedScreenshot)
       .replace(".png", "");
     const id = createHash("sha256").update(relativePath).digest("hex");
 
     const actualScreenshot = actualScreenshots.find((actualScreenshot) => {
-      const actualName = path.relative(outputDir + "/actual", actualScreenshot);
+      const actualName = path.relative(`${outputDir}/actual`, actualScreenshot);
       return actualName === relativePath;
     });
 

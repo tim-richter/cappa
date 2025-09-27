@@ -95,7 +95,9 @@ export function usePanZoom(
     translateY: 0,
   });
 
-  const [containerSize, setContainerSize] = useState<ContainerSize | null>(null);
+  const [containerSize, setContainerSize] = useState<ContainerSize | null>(
+    null,
+  );
   const containerSizeRef = useRef<ContainerSize | null>(null);
   const pointersRef = useRef<ActivePointers>(new Map());
   const lastPinchDistRef = useRef<number | null>(null);

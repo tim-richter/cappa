@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/core";
-import { Badge } from "@ui/components/badge";
 import { Card } from "@ui/components/card";
 import { cn } from "@ui/lib/utils";
 import type { FC } from "react";

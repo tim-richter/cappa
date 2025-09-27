@@ -3,7 +3,6 @@ import { Input } from "@ui/components/input";
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from "@ui/components/tooltip";
 import { Grid3X3, List, Search } from "lucide-react";

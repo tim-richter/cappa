@@ -175,7 +175,7 @@ program
       const destPath = path.resolve(
         config.outputDir,
         "expected",
-        path.relative(config.outputDir + "/actual", screenshot),
+        path.relative(`${config.outputDir}/actual`, screenshot),
       );
       const destDir = path.dirname(destPath);
 
@@ -187,7 +187,7 @@ program
       const diffPath = path.resolve(
         config.outputDir,
         "diff",
-        path.relative(config.outputDir + "/actual", screenshot),
+        path.relative(`${config.outputDir}/actual`, screenshot),
       );
 
       if (fs.existsSync(diffPath)) {
@@ -319,7 +319,7 @@ export default defineConfig({
 
         fs.writeFileSync(
           packageJsonPath,
-          JSON.stringify(packageJson, null, 2) + "\n",
+          `${JSON.stringify(packageJson, null, 2)}\n`,
         );
         logger.success("Added 'cappa' scripts to package.json");
       } catch (error) {
