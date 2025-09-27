@@ -9,7 +9,10 @@
     "screenshot:status": "cappa status",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "serve-storybook": "pnpx http-server -c-1 ./storybook-static"
+    "serve-storybook": "pnpx http-server -c-1 ./storybook-static",
+    "cappa": "cappa capture",
+    "cappa:review": "cappa review",
+    "cappa:approve": "cappa approve"
   },
   "dependencies": {
     "@cappa/cli": "workspace:*",

@@ -299,12 +299,29 @@ export default defineConfig({
           );
         } else {
           packageJson.scripts.cappa = "cappa capture";
-          fs.writeFileSync(
-            packageJsonPath,
-            JSON.stringify(packageJson, null, 2) + "\n",
-          );
-          logger.success("Added 'cappa' script to package.json");
         }
+
+        if (packageJson.scripts["cappa:review"]) {
+          logger.warn(
+            "'cappa:review' script already exists in package.json, skipping...",
+          );
+        } else {
+          packageJson.scripts["cappa:review"] = "cappa review";
+        }
+
+        if (packageJson.scripts["cappa:approve"]) {
+          logger.warn(
+            "'cappa:approve' script already exists in package.json, skipping...",
+          );
+        } else {
+          packageJson.scripts["cappa:approve"] = "cappa approve";
+        }
+
+        fs.writeFileSync(
+          packageJsonPath,
+          JSON.stringify(packageJson, null, 2) + "\n",
+        );
+        logger.success("Added 'cappa' scripts to package.json");
       } catch (error) {
         logger.error("Failed to update package.json:", error);
       }
