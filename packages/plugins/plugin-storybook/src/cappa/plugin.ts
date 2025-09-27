@@ -186,6 +186,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                       page.locator(selector),
                     ),
                     omitBackground: options.omitBackground,
+                    saveDiffImage: true,
                   },
                 );
 

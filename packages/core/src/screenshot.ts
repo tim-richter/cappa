@@ -261,6 +261,7 @@ class ScreenshotTool {
     try {
       // Generate filename and take screenshot - save to actual directory
       const filepath = this.getActualFilePath(filename);
+      fs.mkdirSync(path.dirname(filepath), { recursive: true });
 
       // Take screenshot and get buffer
       const screenshotOptions = {
@@ -300,14 +301,17 @@ class ScreenshotTool {
       let diffImagePath: string | undefined;
 
       // Save diff image if requested and there are differences
-      if (options.saveDiffImage && comparisonResult.diffBuffer) {
-        const diffFilename =
-          options.diffImageFilename || filename.replace(/\.png$/, "-diff.png");
+      if (
+        options.saveDiffImage &&
+        comparisonResult.diffBuffer &&
+        !comparisonResult.passed
+      ) {
+        const diffFilename = options.diffImageFilename || filename;
         // Save to diff directory
         diffImagePath = this.getDiffFilePath(diffFilename);
 
+        fs.mkdirSync(path.dirname(diffImagePath), { recursive: true });
         fs.writeFileSync(diffImagePath, comparisonResult.diffBuffer);
-        console.log(`Diff image saved: ${diffImagePath}`);
       }
 
       return {

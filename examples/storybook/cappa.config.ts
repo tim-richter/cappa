@@ -8,7 +8,7 @@ export default defineConfig({
     includeAA: false,
     fastBufferCheck: true,
     maxDiffPixels: 0,
-    maxDiffPercentage: 10,
+    maxDiffPercentage: 0,
   },
   plugins: [cappaPluginStorybook({ storybookUrl: "http://localhost:8080" })],
 });

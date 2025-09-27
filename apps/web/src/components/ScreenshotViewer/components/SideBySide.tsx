@@ -14,9 +14,9 @@ export function SideBySide({ screenshot }: SideBySideProps) {
         </h3>
 
         <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
-          {screenshot.actualPath ? (
+          {screenshot.expectedPath ? (
             <ImagePanZoom
-              src={screenshot.actualPath || "/placeholder.svg"}
+              src={screenshot.expectedPath || "/placeholder.svg"}
               alt="Before"
               className="max-w-none rounded border border-border transition-transform"
             />
@@ -34,9 +34,9 @@ export function SideBySide({ screenshot }: SideBySideProps) {
         </h3>
 
         <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center">
-          {screenshot.expectedPath ? (
+          {screenshot.actualPath ? (
             <ImagePanZoom
-              src={screenshot.expectedPath || "/placeholder.svg"}
+              src={screenshot.actualPath || "/placeholder.svg"}
               alt="After"
               className="max-w-none rounded border border-border transition-transform"
             />

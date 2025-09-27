@@ -44,9 +44,9 @@ export function Overlay({
           {screenshot.actualPath && screenshot.expectedPath ? (
             <PanZoom contentSize={contentSize} className="w-full h-full">
               <div className="relative w-full h-full">
-                {/* Base image (actual) */}
+                {/* Base image */}
                 <img
-                  src={screenshot.actualPath || "/placeholder.svg"}
+                  src={screenshot.expectedPath || "/placeholder.svg"}
                   alt="Before"
                   className="max-w-none rounded border border-border absolute inset-0"
                   draggable={false}
@@ -58,9 +58,9 @@ export function Overlay({
                     });
                   }}
                 />
-                {/* Overlay image (expected) */}
+                {/* Overlay image */}
                 <img
-                  src={screenshot.expectedPath || "/placeholder.svg"}
+                  src={screenshot.actualPath || "/placeholder.svg"}
                   alt="After"
                   className="max-w-none rounded border border-border absolute inset-0"
                   style={{ opacity: overlayOpacity / 100 }}

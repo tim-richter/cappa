@@ -26,8 +26,7 @@ program
 program
   .command("capture")
   .description("Capture screenshots")
-  .option("-c, --clean", "clean output directory before running", false)
-  .action(async (options) => {
+  .action(async () => {
     // Initialize logger with the specified log level
     const logLevel = parseInt(program.opts().logLevel, 10);
     const logger = initLogger(logLevel);
@@ -40,17 +39,18 @@ program
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
+    logger.debug(`Cleaning output directory: ${config.outputDir}`);
+    if (fs.existsSync(`${config.outputDir}/actual`)) {
+      fs.rmSync(`${config.outputDir}/actual`, { recursive: true, force: true });
+    }
+    if (fs.existsSync(`${config.outputDir}/diff`)) {
+      fs.rmSync(`${config.outputDir}/diff`, { recursive: true, force: true });
+    }
+
     const screenshotTool = new ScreenshotTool({
       outputDir: config.outputDir,
       diff: config.diff,
     });
-
-    if (options.clean) {
-      logger.debug(`Cleaning output directory: ${config.outputDir}`);
-      if (fs.existsSync(config.outputDir)) {
-        fs.rmSync(config.outputDir, { recursive: true, force: true });
-      }
-    }
 
     try {
       // Wait for all plugins to complete

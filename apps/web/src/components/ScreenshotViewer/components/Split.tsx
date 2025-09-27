@@ -60,7 +60,7 @@ export const Split = ({ screenshot }: SplitProps) => {
           Split View
         </h3>
         <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
-          {screenshot.actualPath && screenshot.expectedPath ? (
+          {screenshot.expectedPath && screenshot.actualPath ? (
             <div
               ref={containerRef}
               className="relative w-full h-full overflow-hidden rounded border border-border"
@@ -68,7 +68,7 @@ export const Split = ({ screenshot }: SplitProps) => {
               {/* Before image (left side) */}
               <div className="absolute inset-0">
                 <img
-                  src={screenshot.actualPath}
+                  src={screenshot.expectedPath}
                   alt="Before"
                   className="w-full h-full object-contain"
                   draggable={false}
@@ -82,7 +82,7 @@ export const Split = ({ screenshot }: SplitProps) => {
                 style={{ clipPath: `inset(0 ${100 - splitPosition}% 0 0)` }}
               >
                 <img
-                  src={screenshot.expectedPath}
+                  src={screenshot.actualPath}
                   alt="After"
                   className="w-full h-full object-contain"
                   draggable={false}
@@ -104,7 +104,7 @@ export const Split = ({ screenshot }: SplitProps) => {
             </div>
           ) : (
             <div className="text-muted-foreground">
-              {!screenshot.actualPath && !screenshot.expectedPath
+              {!screenshot.expectedPath && !screenshot.actualPath
                 ? "No images available"
                 : !screenshot.actualPath
                   ? "No before image available"
