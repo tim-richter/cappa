@@ -148,8 +148,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             const options = await currentLatch.p;
             currentLatch = createLatch<ScreenshotOptions>();
 
-            logger.debug("options", options);
-
             if (options.skip) {
               logger.log(`Skipping story ${story.title} - ${story.name}`);
               results.push({
@@ -158,6 +156,10 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                 skipped: true,
               });
               continue;
+            }
+
+            if (options && Object.keys(options).length > 0) {
+              logger.debug("Taking screenshot with options", options);
             }
 
             await freezeUI(page);

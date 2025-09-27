@@ -13,17 +13,30 @@ export interface CompareResult {
   passed: boolean; // Whether the comparison passed based on threshold
 }
 
+const compare = (
+  image1: Uint8Array | Uint8ClampedArray,
+  image2: Uint8Array | Uint8ClampedArray,
+  diff: Uint8Array | Uint8ClampedArray | undefined,
+  width: number,
+  height: number,
+  options?: BlazeDiffOptions,
+) => {
+  return blazediff(image1, image2, diff, width, height, options);
+};
+
 /**
  * Compare two PNG images and return the difference
  * @param image1 - First image (file path or Buffer)
  * @param image2 - Second image (file path or Buffer)
+ * @param withDiff - Whether to create a diff image
  * @param options - Comparison options
- * @param maxDifferencePercent - Maximum allowed difference percentage (0-100). Default: 0.1
+ * @param maxDifferencePercent - Maximum allowed difference percentage (0-100)
  * @returns Comparison result
  */
 export async function compareImages(
   image1: string | Buffer,
   image2: string | Buffer,
+  withDiff: boolean = false,
   options: BlazeDiffOptions = {
     threshold: 0.1,
   },
@@ -33,34 +46,27 @@ export async function compareImages(
   const png1 = await loadPNG(image1);
   const png2 = await loadPNG(image2);
 
-  // Check if images have the same dimensions
-  if (png1.width !== png2.width || png1.height !== png2.height) {
-    throw new Error(
-      `Images have different dimensions: ${png1.width}x${png1.height} vs ${png2.width}x${png2.height}`,
-    );
-  }
-
   const { width, height } = png1;
-  const totalPixels = width * height;
 
   // Create diff image
-  const diff = new PNG({ width, height });
+  const diff = withDiff ? new PNG({ width, height }) : undefined;
 
   // Compare images using pixelmatch
-  const numDiffPixels = blazediff(
+  const numDiffPixels = compare(
     png1.data,
     png2.data,
-    diff.data,
+    diff?.data,
     width,
     height,
     options,
   );
 
+  const totalPixels = width * height;
   const percentDifference = (numDiffPixels / totalPixels) * 100;
   const passed = percentDifference <= maxDifferencePercent;
 
   // Convert diff image to buffer
-  const diffBuffer = PNG.sync.write(diff);
+  const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
 
   return {
     numDiffPixels,
@@ -100,7 +106,7 @@ export function saveDiffImage(result: CompareResult, outputPath: string): void {
  * Quick comparison function that returns only pass/fail
  * @param image1 - First image (file path or Buffer)
  * @param image2 - Second image (file path or Buffer)
- * @param maxDifferencePercent - Maximum allowed difference percentage (0-100). Default: 0.1
+ * @param maxDifferencePercent - Maximum allowed difference percentage (0-100)
  * @param options - Comparison options
  * @returns Whether the images are similar enough
  */
@@ -113,6 +119,7 @@ export async function imagesMatch(
   const result = await compareImages(
     image1,
     image2,
+    false,
     options,
     maxDifferencePercent,
   );

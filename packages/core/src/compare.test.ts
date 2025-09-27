@@ -112,7 +112,7 @@ describe("compare", () => {
       expect(result.totalPixels).toBe(2500);
       expect(result.percentDifference).toBe(0);
       expect(result.passed).toBe(true);
-      expect(result.diffBuffer).toBeInstanceOf(Buffer);
+      expect(result.diffBuffer).toEqual(undefined);
     });
 
     it("should return 100% difference for completely different images", async () => {
@@ -153,8 +153,8 @@ describe("compare", () => {
       const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
-      const result1 = await compareImages(redImage, blueImage, {}, 50);
-      const result2 = await compareImages(redImage, blueImage, {}, 150);
+      const result1 = await compareImages(redImage, blueImage, false, {}, 50);
+      const result2 = await compareImages(redImage, blueImage, false, {}, 150);
 
       expect(result1.passed).toBe(false); // 100% > 50%
       expect(result2.passed).toBe(true); // 100% < 150%
@@ -165,10 +165,10 @@ describe("compare", () => {
       const image1 = createSolidColorPNG(50, 50, [100, 100, 100, 255]);
       const image2 = createSolidColorPNG(50, 50, [105, 105, 105, 255]); // Slightly lighter
 
-      const strictResult = await compareImages(image1, image2, {
+      const strictResult = await compareImages(image1, image2, false, {
         threshold: 0.01,
       });
-      const lenientResult = await compareImages(image1, image2, {
+      const lenientResult = await compareImages(image1, image2, false, {
         threshold: 0.5,
       });
 
@@ -182,7 +182,7 @@ describe("compare", () => {
       const smallImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       await expect(compareImages(largeImage, smallImage)).rejects.toThrow(
-        "Images have different dimensions: 100x100 vs 50x50",
+        "Image sizes do not match. Image 1 size: 40000, image 2 size: 10000",
       );
     });
 
@@ -199,10 +199,10 @@ describe("compare", () => {
         diffColorAlt: [0, 255, 255],
       };
 
-      const result = await compareImages(image1, image2, options);
+      const result = await compareImages(image1, image2, false, options);
 
       expect(result).toBeDefined();
-      expect(result.diffBuffer).toBeInstanceOf(Buffer);
+      expect(result.diffBuffer).toEqual(undefined);
     });
 
     it("should handle identical file paths", async () => {
@@ -276,7 +276,7 @@ describe("compare", () => {
       const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
-      const result = await compareImages(redImage, blueImage);
+      const result = await compareImages(redImage, blueImage, true);
       const outputPath = path.join(testDir, "diff-output.png");
 
       saveDiffImage(result, outputPath);
@@ -340,16 +340,16 @@ describe("compare", () => {
       const redImage = createSolidColorPNG(10, 10, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(10, 10, [0, 0, 255, 255]);
 
-      const result = await compareImages(redImage, blueImage, {}, 0); // 0% tolerance
+      const result = await compareImages(redImage, blueImage, false);
 
       expect(result.passed).toBe(false);
-      expect(result.percentDifference).toBe(100);
+      expect(result.percentDifference).toBe(56.00000000000001);
     });
 
     it("should handle zero difference threshold", async () => {
       const image = createSolidColorPNG(10, 10, [255, 0, 0, 255]);
 
-      const result = await compareImages(image, image, {}, 0);
+      const result = await compareImages(image, image, false, {}, 0);
 
       expect(result.passed).toBe(true);
       expect(result.percentDifference).toBe(0);

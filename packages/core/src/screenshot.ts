@@ -276,12 +276,13 @@ class ScreenshotTool {
       const comparisonResult = await compareImages(
         screenshotBuffer,
         referenceImage,
+        true,
         options.compareOptions || {},
         options.maxDifferencePercent,
       );
 
       console.log(
-        `Comparison result: ${comparisonResult.percentDifference.toFixed(2)}% difference (${
+        `Comparison result: ${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%) (${
           comparisonResult.passed ? "PASSED" : "FAILED"
         })`,
       );
