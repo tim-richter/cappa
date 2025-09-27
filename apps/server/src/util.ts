@@ -10,13 +10,36 @@ export const resolveFromHere = (relative: string) => {
   return path.resolve(hereDir(), relative);
 };
 
-export const transformScreenshotPaths = (screenshots: Screenshot[]) => {
+export const transform = (screenshots: Screenshot[]) => {
+  const screenshotWithPaths = transformScreenshotPaths(screenshots);
+  const screenshotWithNextAndPrev =
+    transformScreenshotsWithNextAndPrev(screenshotWithPaths);
+  return screenshotWithNextAndPrev;
+};
+
+const transformScreenshotPaths = (screenshots: Screenshot[]) => {
   return screenshots.map((screenshot) => {
     return {
       ...screenshot,
-      actualPath: screenshot.actualPath ? "/assets/screenshots/" + screenshot.actualPath : undefined,
-      expectedPath: screenshot.expectedPath ? "/assets/screenshots/" + screenshot.expectedPath : undefined,
-      diffPath: screenshot.diffPath ? "/assets/screenshots/" + screenshot.diffPath : undefined,
+      actualPath: screenshot.actualPath
+        ? "/assets/screenshots/" + screenshot.actualPath
+        : undefined,
+      expectedPath: screenshot.expectedPath
+        ? "/assets/screenshots/" + screenshot.expectedPath
+        : undefined,
+      diffPath: screenshot.diffPath
+        ? "/assets/screenshots/" + screenshot.diffPath
+        : undefined,
+    };
+  });
+};
+
+const transformScreenshotsWithNextAndPrev = (screenshots: Screenshot[]) => {
+  return screenshots.map((screenshot, index) => {
+    return {
+      ...screenshot,
+      next: screenshots[index + 1]?.id,
+      prev: screenshots[index - 1]?.id,
     };
   });
 };
