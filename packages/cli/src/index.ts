@@ -42,6 +42,7 @@ program
 
     const screenshotTool = new ScreenshotTool({
       outputDir: config.outputDir,
+      diff: config.diff,
     });
 
     if (options.clean) {

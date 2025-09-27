@@ -15,6 +15,15 @@ import {
   type CompareResult,
   compareImages,
 } from "./compare";
+import type { DiffConfig } from "./types";
+
+const defaultDiffConfig: DiffConfig = {
+  threshold: 0.1,
+  includeAA: false,
+  fastBufferCheck: true,
+  maxDiffPixels: 0,
+  maxDiffPercentage: 0,
+};
 
 class ScreenshotTool {
   browserType: string;
@@ -28,6 +37,7 @@ class ScreenshotTool {
   browser: Browser | null = null;
   context: BrowserContext | null = null;
   page: Page | null = null;
+  diff: DiffConfig;
 
   constructor(options: {
     browserType?: string;
@@ -35,13 +45,14 @@ class ScreenshotTool {
     viewport?: { width: number; height: number };
     outputDir?: string;
     fullPage?: boolean;
+    diff?: DiffConfig;
   }) {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
     this.fullPage = options.fullPage !== false; // Default to full page
-
+    this.diff = { ...defaultDiffConfig, ...options.diff };
     // Set up subdirectories
     this.actualDir = path.join(this.outputDir, "actual");
     this.diffDir = path.join(this.outputDir, "diff");
@@ -277,8 +288,7 @@ class ScreenshotTool {
         screenshotBuffer,
         referenceImage,
         true,
-        options.compareOptions || {},
-        options.maxDifferencePercent,
+        { ...this.diff, ...options.compareOptions },
       );
 
       console.log(

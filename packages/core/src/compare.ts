@@ -2,6 +2,7 @@ import fs from "node:fs";
 import blazediff from "@blazediff/core";
 import type { BlazeDiffOptions } from "@blazediff/types";
 import { PNG } from "pngjs";
+import type { DiffConfig } from "./types";
 
 export type CompareOptions = BlazeDiffOptions;
 
@@ -37,10 +38,7 @@ export async function compareImages(
   image1: string | Buffer,
   image2: string | Buffer,
   withDiff: boolean = false,
-  options: BlazeDiffOptions = {
-    threshold: 0.1,
-  },
-  maxDifferencePercent: number = 0,
+  options: DiffConfig,
 ): Promise<CompareResult> {
   // Load images as PNG objects
   const png1 = await loadPNG(image1);
@@ -63,7 +61,7 @@ export async function compareImages(
 
   const totalPixels = width * height;
   const percentDifference = (numDiffPixels / totalPixels) * 100;
-  const passed = percentDifference <= maxDifferencePercent;
+  const passed = percentDifference <= (options.maxDiffPercentage || 0);
 
   // Convert diff image to buffer
   const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
@@ -113,15 +111,8 @@ export function saveDiffImage(result: CompareResult, outputPath: string): void {
 export async function imagesMatch(
   image1: string | Buffer,
   image2: string | Buffer,
-  maxDifferencePercent: number = 0.1,
-  options: BlazeDiffOptions = {},
+  options: DiffConfig,
 ): Promise<boolean> {
-  const result = await compareImages(
-    image1,
-    image2,
-    false,
-    options,
-    maxDifferencePercent,
-  );
+  const result = await compareImages(image1, image2, false, options);
   return result.passed;
 }

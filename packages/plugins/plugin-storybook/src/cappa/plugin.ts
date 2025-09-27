@@ -260,9 +260,22 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           );
         }
 
+        const skipped = results.filter((r) => r.skipped);
+        const failed = results.filter(
+          (r) => r.error || (!r.skipped && !r.success),
+        );
+        const successful = results.filter((r) => r.success);
+
+        const output = [
+          `${chalk.yellow("Skipped stories:")} ${skipped.length}`,
+          `${chalk.red("Failed stories:")} ${failed.length}`,
+          `${chalk.green("Successful stories:")} ${successful.length}`,
+          `${chalk.blue("Total stories:")} ${results.length}`,
+        ];
+
         logger.box({
           title: "Storybook Report",
-          message: `${chalk.yellow("Skipped stories:")} ${results.filter((r) => r.skipped).length}\n${chalk.red("Failed stories:")} ${results.filter((r) => r.error || !r.success).length}\n${chalk.green("Successful screenshots:")} ${results.filter((r) => r.success).length}`,
+          message: output.join("\n"),
         });
 
         return results;
