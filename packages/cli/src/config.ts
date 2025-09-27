@@ -14,6 +14,48 @@ export interface ScreenshotConfig {
   fullPage?: boolean;
 }
 
+export interface DiffConfig {
+  /**
+   * Matching threshold (0-1). Lower = more sensitive
+   * Default = 0.1
+   *
+   * This affects how similar a pixel needs to be to the reference image to be considered the same.
+   */
+  threshold?: number;
+  /**
+   * Include anti-aliased pixels in diff count
+   * Default = false
+   *
+   * For most users this should be false, because it makes comparisons very sensitive to sub-pixel differences of
+   * fonts and other UI elements.
+   */
+  includeAA?: boolean;
+  /**
+   * Use fast buffer comparison for identical images
+   * Default = true
+   */
+  fastBufferCheck?: boolean;
+  /**
+   * Maximum number of different pixels
+   * Default = 0
+   *
+   * The amount of pixels that can be different before the comparison fails.
+   */
+  maxDiffPixels?: number;
+  /**
+   * Maximum percentage of pixels different
+   * Default = 0
+   *
+   * The amount of pixels that can be different before the comparison fails as a percentage of the total pixels.
+   * 0 = no difference, 100 = 100% difference.
+   *
+   * Since this is a relative value, it is affected by the size of the images. A 100px image with a 10% difference
+   * is 10 pixels different, but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
+   * this can mean that small changes still slip through.
+   */
+  maxDiffPercentage?: number;
+}
+
 export interface PluginConfig {
   name?: string;
   path?: string;
@@ -23,6 +65,7 @@ export interface PluginConfig {
 export interface CappaConfig {
   browser?: BrowserConfig;
   screenshot?: ScreenshotConfig;
+  diff?: DiffConfig;
   plugins?: (string | PluginConfig)[];
 }
 

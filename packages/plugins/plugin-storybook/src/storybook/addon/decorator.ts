@@ -8,7 +8,7 @@ export const withCappaDecorator = makeDecorator({
   wrapper: (getStory, context, { parameters }) => {
     (window as any).__cappa_screenshot = true;
 
-    const hasPlayFunction = context.playFunction != null;
+    const _hasPlayFunction = context.playFunction != null;
 
     queueMicrotask(async () => {
       try {

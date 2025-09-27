@@ -18,7 +18,9 @@
     "./package.json": "./package.json"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "vitest",
+    "test:ui": "vitest --ui",
+    "test:coverage": "vitest --coverage",
     "example:basic": "node examples/basic-usage.js",
     "example:batch": "node examples/batch-screenshots.js",
     "example:responsive": "node examples/responsive-screenshots.js",
@@ -27,10 +29,16 @@
     "tsc": "tsc"
   },
   "dependencies": {
-    "playwright-core": "^1.55.0"
+    "@blazediff/core": "^1.1.0",
+    "@blazediff/types": "^1.1.0",
+    "pixelmatch": "^6.0.0",
+    "playwright-core": "^1.55.0",
+    "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
+    "@types/pixelmatch": "^5.2.4",
+    "@types/pngjs": "^6.0.4",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "consola": "3.4.2",

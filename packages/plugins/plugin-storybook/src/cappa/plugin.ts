@@ -1,6 +1,6 @@
 import type { Plugin, ScreenshotOptions } from "@cappa/core";
-import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 import chalk from "chalk";
+import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 
 export interface StorybookStory {
   id: string;
@@ -148,8 +148,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             const options = await currentLatch.p;
             currentLatch = createLatch<ScreenshotOptions>();
 
-            logger.debug("options", options);
-
             if (options.skip) {
               logger.log(`Skipping story ${story.title} - ${story.name}`);
               results.push({
@@ -158,6 +156,10 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                 skipped: true,
               });
               continue;
+            }
+
+            if (options && Object.keys(options).length > 0) {
+              logger.debug("Taking screenshot with options", options);
             }
 
             await freezeUI(page);
@@ -169,24 +171,63 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
             // Take screenshot with story-specific filename
             const filename = buildFilename(story);
+            const expectedExists = screenshotTool.hasExpectedImage(filename);
 
-            // Actually take the screenshot
-            const actualFilepath = await screenshotTool.takeScreenshot(
-              page,
-              filename,
-              {
-                fullPage: options.fullPage,
-                mask: options.mask?.map((selector) => page.locator(selector)),
-                omitBackground: options.omitBackground,
-              },
-            );
+            let actualFilepath: string | undefined;
+            if (expectedExists) {
+              const { screenshotPath, comparisonResult } =
+                await screenshotTool.takeScreenshotWithComparison(
+                  page,
+                  filename,
+                  screenshotTool.getExpectedImageBuffer(filename),
+                  {
+                    fullPage: options.fullPage,
+                    mask: options.mask?.map((selector) =>
+                      page.locator(selector),
+                    ),
+                    omitBackground: options.omitBackground,
+                    saveDiffImage: true,
+                  },
+                );
 
-            results.push({
-              storyId: story.id,
-              storyName: `${story.title} - ${story.name}`,
-              filepath: actualFilepath,
-              success: true,
-            });
+              actualFilepath = screenshotPath;
+              if (comparisonResult.passed) {
+                logger.log(
+                  `Story ${story.title} - ${story.name} passed visual comparison`,
+                );
+              } else {
+                logger.log(
+                  `Story ${story.title} - ${story.name} failed visual comparison`,
+                );
+              }
+
+              results.push({
+                storyId: story.id,
+                storyName: `${story.title} - ${story.name}`,
+                filepath: actualFilepath,
+                success: comparisonResult.passed,
+              });
+            } else {
+              logger.info(
+                `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
+              );
+              actualFilepath = await screenshotTool.takeScreenshot(
+                page,
+                filename,
+                {
+                  fullPage: options.fullPage,
+                  mask: options.mask?.map((selector) => page.locator(selector)),
+                  omitBackground: options.omitBackground,
+                },
+              );
+
+              results.push({
+                storyId: story.id,
+                storyName: `${story.title} - ${story.name}`,
+                filepath: actualFilepath,
+                success: true,
+              });
+            }
           } catch (error) {
             console.error(
               `Error taking screenshot of story ${story.title} - ${story.name}:`,
@@ -220,9 +261,22 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           );
         }
 
+        const skipped = results.filter((r) => r.skipped);
+        const failed = results.filter(
+          (r) => r.error || (!r.skipped && !r.success),
+        );
+        const successful = results.filter((r) => r.success);
+
+        const output = [
+          `${chalk.yellow("Skipped stories:")} ${skipped.length}`,
+          `${chalk.red("Failed stories:")} ${failed.length}`,
+          `${chalk.green("Successful stories:")} ${successful.length}`,
+          `${chalk.blue("Total stories:")} ${results.length}`,
+        ];
+
         logger.box({
           title: "Storybook Report",
-          message: `${chalk.yellow("Skipped stories:")} ${results.filter((r) => r.skipped).length}\n${chalk.red("Failed stories:")} ${results.filter((r) => r.error).length}\n${chalk.green("Successful screenshots:")} ${results.length}`,
+          message: output.join("\n"),
         });
 
         return results;

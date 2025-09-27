@@ -5,8 +5,9 @@
   "tasks": {
     "build": {
       "dependsOn": ["^build"],
-      "outputs": ["dist/**", "*.d.ts", "*.d.cts"],
+      "outputs": ["dist/**", "*.d.ts", "*.d.cts", "public/**"],
       "inputs": [
+        "build.sh",
         "src/**/*.ts",
         "src/**/*.tsx",
         "tsdown.config.ts",

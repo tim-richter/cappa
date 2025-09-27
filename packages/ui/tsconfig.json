@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@workspace/ui/*": ["./src/*"]
+    },
+    "jsx": "react-jsx",
+    "target": "ES2022",
+    "useDefineForClassFields": true,
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "module": "ESNext",
+    "skipLibCheck": true,
+    "moduleResolution": "bundler"
+  },
+  "include": ["."],
+  "exclude": ["node_modules", "dist"]
+}

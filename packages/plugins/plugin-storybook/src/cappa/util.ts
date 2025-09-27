@@ -40,36 +40,54 @@ export const waitForVisualIdle = async (page: Page) => {
   await page.waitForLoadState("networkidle");
 
   // fonts + images
-	await page.evaluate(async () => {
-		await (document as any).fonts?.ready?.catch(() => {})
-		const imgs = Array.from(document.images).filter(i => !i.complete)
-		await Promise.all(imgs.map(i => new Promise(res => { i.onload = i.onerror = () => res(null) })))
-	})
+  await page.evaluate(async () => {
+    await (document as any).fonts?.ready?.catch(() => {});
+    const imgs = Array.from(document.images).filter((i) => !i.complete);
+    await Promise.all(
+      imgs.map(
+        (i) =>
+          new Promise((res) => {
+            i.onload = i.onerror = () => res(null);
+          }),
+      ),
+    );
+  });
 
   // 2 animation frames + idle period with no DOM mutations
-	await page.evaluate(({ minIdleMs }) => new Promise<void>(resolve => {
-		let timer: number | null = null
-		let last = performance.now()
+  await page.evaluate(
+    ({ minIdleMs }) =>
+      new Promise<void>((resolve) => {
+        let timer: number | null = null;
+        let last = performance.now();
 
-		const done = () => {
-			if (timer) cancelAnimationFrame(timer)
-			resolve()
-		}
+        const done = () => {
+          if (timer) cancelAnimationFrame(timer);
+          resolve();
+        };
 
-		const mo = new MutationObserver(() => { last = performance.now() })
-		mo.observe(document, { attributes: true, childList: true, subtree: true, characterData: true })
+        const mo = new MutationObserver(() => {
+          last = performance.now();
+        });
+        mo.observe(document, {
+          attributes: true,
+          childList: true,
+          subtree: true,
+          characterData: true,
+        });
 
-		const tick = () => {
-			if (performance.now() - last >= minIdleMs) {
-				mo.disconnect()
-				done()
-			} else {
-				timer = requestAnimationFrame(tick)
-			}
-		}
+        const tick = () => {
+          if (performance.now() - last >= minIdleMs) {
+            mo.disconnect();
+            done();
+          } else {
+            timer = requestAnimationFrame(tick);
+          }
+        };
 
-		requestAnimationFrame(() => requestAnimationFrame(tick))
-	}), { minIdleMs: 100 })
+        requestAnimationFrame(() => requestAnimationFrame(tick));
+      }),
+    { minIdleMs: 100 },
+  );
 };
 
 /**
