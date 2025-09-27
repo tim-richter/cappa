@@ -1,26 +1,16 @@
 import type { Screenshot } from "@cappa/core";
 import { Badge } from "@ui/components/badge";
-import { Button } from "@ui/components/button";
 import { Card } from "@ui/components/card";
 import { cn } from "@ui/lib/utils";
-import { Download, Eye, MoreHorizontal } from "lucide-react";
 import type { FC } from "react";
 import { Link } from "react-router";
 import { findPreviewScreenshot } from "@/util/screenshot";
+import { CategoryBadge } from "./CategoryBadge";
 
 interface ScreenshotGridProps {
   screenshots: Screenshot[];
   category: "changed" | "new" | "deleted" | "passed";
 }
-
-const categoryColors = {
-  changed:
-    "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-400",
-  new: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-400",
-  deleted: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-400",
-  passed:
-    "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400",
-};
 
 export const Grid: FC<ScreenshotGridProps> = ({ screenshots, category }) => {
   return (
@@ -44,15 +34,10 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, category }) => {
                     className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                   />
 
-                  {/* Category badge */}
-                  <Badge
-                    className={cn(
-                      "absolute top-2 right-2 text-xs",
-                      categoryColors[category],
-                    )}
-                  >
-                    {category}
-                  </Badge>
+                  <CategoryBadge
+                    category={category}
+                    className="absolute top-2 right-2"
+                  />
                 </div>
 
                 <div className="p-4">

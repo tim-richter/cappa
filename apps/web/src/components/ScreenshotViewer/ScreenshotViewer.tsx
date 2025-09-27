@@ -17,6 +17,7 @@ import {
   SplitSquareHorizontal,
 } from "lucide-react";
 import { useState } from "react";
+import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";
@@ -80,6 +81,10 @@ export function ScreenshotComparison({
             <h1 className="text-lg font-semibold text-foreground">
               {screenshot.name}
             </h1>
+            <CategoryBadge
+              category={screenshot.category}
+              className="uppercase text-xs"
+            />
           </div>
 
           {screenshot.approved && (
@@ -134,13 +139,13 @@ export function ScreenshotComparison({
       {/* Comparison Content */}
       <div className="flex-1 overflow-hidden p-6">
         {screenshot.category === "new" && (
-          <Single screenshotPath={screenshot.actualPath} title="New" />
+          <Single screenshotPath={screenshot.actualPath} />
         )}
         {screenshot.category === "deleted" && (
-          <Single screenshotPath={screenshot.expectedPath} title="Deleted" />
+          <Single screenshotPath={screenshot.expectedPath} />
         )}
         {screenshot.category === "passed" && (
-          <Single screenshotPath={screenshot.actualPath} title="Passed" />
+          <Single screenshotPath={screenshot.actualPath} />
         )}
         {screenshot.category === "changed" && (
           <>

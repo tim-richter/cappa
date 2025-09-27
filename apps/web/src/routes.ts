@@ -37,11 +37,11 @@ export const router = createBrowserRouter([
           },
         ],
       },
-
-      {
-        path: "screenshots/:id",
-        Component: Screenshot,
-      },
     ],
+  },
+
+  {
+    path: "screenshots/:id",
+    Component: Screenshot,
   },
 ]);
