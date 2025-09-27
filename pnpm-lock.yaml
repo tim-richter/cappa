@@ -243,6 +243,12 @@ importers:
 
   packages/core:
     dependencies:
+      '@blazediff/core':
+        specifier: ^1.1.0
+        version: 1.1.0
+      '@blazediff/types':
+        specifier: ^1.1.0
+        version: 1.1.0
       pixelmatch:
         specifier: ^6.0.0
         version: 6.0.0
@@ -545,6 +551,12 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@blazediff/core@1.1.0':
+    resolution: {integrity: sha512-f1qdZ2Z0f9bqityiH07mFz29uVGBL9QySKFpBz6dyTjt5ucCdW0pb4umTepZI5rKJVzaw0ZAsE7VoGC56usO/g==}
+
+  '@blazediff/types@1.1.0':
+    resolution: {integrity: sha512-yNTG53982iTy6sFzEdxnt0pLcFyMuLVY+FKaeMQiyeCaOjELGmELmamDxltIHfDnr8/laxijPgdnmTRy58sOiQ==}
 
   '@bundled-es-modules/cookie@2.0.1':
     resolution: {integrity: sha512-8o+5fRPLNbjbdGRRmJj3h6Hh1AQJf2dk3qQ/5ZFb+PXkRNiSoMGGUKlsgLfrxneb72axVJyIYji64E2+nNfYyw==}
@@ -4518,6 +4530,12 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.2.4':
     optional: true
+
+  '@blazediff/core@1.1.0':
+    dependencies:
+      '@blazediff/types': 1.1.0
+
+  '@blazediff/types@1.1.0': {}
 
   '@bundled-es-modules/cookie@2.0.1':
     dependencies:

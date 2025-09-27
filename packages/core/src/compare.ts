@@ -1,15 +1,9 @@
 import fs from "node:fs";
-import pixelmatch from "pixelmatch";
+import blazediff from "@blazediff/core";
+import type { BlazeDiffOptions } from "@blazediff/types";
 import { PNG } from "pngjs";
 
-export interface CompareOptions {
-  threshold?: number; // Matching threshold, ranges from 0 to 1. Smaller is more sensitive. Default: 0.1
-  includeAA?: boolean; // If true, disables detecting and ignoring anti-aliased pixels. Default: false
-  alpha?: number; // Blending factor of unchanged pixels in the diff output. Default: 0.1
-  aaColor?: [number, number, number]; // The color of anti-aliased pixels in the diff output. Default: [255, 255, 0]
-  diffColor?: [number, number, number]; // The color of differing pixels in the diff output. Default: [255, 0, 0]
-  diffColorAlt?: [number, number, number]; // Alternative color for dark on light differences. Default: null
-}
+export type CompareOptions = BlazeDiffOptions;
 
 export interface CompareResult {
   numDiffPixels: number;
@@ -30,18 +24,11 @@ export interface CompareResult {
 export async function compareImages(
   image1: string | Buffer,
   image2: string | Buffer,
-  options: CompareOptions = {},
-  maxDifferencePercent: number = 0.1,
+  options: BlazeDiffOptions = {
+    threshold: 0.1,
+  },
+  maxDifferencePercent: number = 0,
 ): Promise<CompareResult> {
-  const {
-    threshold = 0.1,
-    includeAA = false,
-    alpha = 0.1,
-    aaColor = [255, 255, 0],
-    diffColor = [255, 0, 0],
-    diffColorAlt,
-  } = options;
-
   // Load images as PNG objects
   const png1 = await loadPNG(image1);
   const png2 = await loadPNG(image2);
@@ -60,20 +47,13 @@ export async function compareImages(
   const diff = new PNG({ width, height });
 
   // Compare images using pixelmatch
-  const numDiffPixels = pixelmatch(
+  const numDiffPixels = blazediff(
     png1.data,
     png2.data,
     diff.data,
     width,
     height,
-    {
-      threshold,
-      includeAA,
-      alpha,
-      aaColor,
-      diffColor,
-      diffColorAlt,
-    },
+    options,
   );
 
   const percentDifference = (numDiffPixels / totalPixels) * 100;
@@ -128,7 +108,7 @@ export async function imagesMatch(
   image1: string | Buffer,
   image2: string | Buffer,
   maxDifferencePercent: number = 0.1,
-  options: CompareOptions = {},
+  options: BlazeDiffOptions = {},
 ): Promise<boolean> {
   const result = await compareImages(
     image1,

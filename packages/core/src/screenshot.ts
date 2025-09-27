@@ -277,7 +277,7 @@ class ScreenshotTool {
         screenshotBuffer,
         referenceImage,
         options.compareOptions || {},
-        options.maxDifferencePercent || 0.1,
+        options.maxDifferencePercent,
       );
 
       console.log(

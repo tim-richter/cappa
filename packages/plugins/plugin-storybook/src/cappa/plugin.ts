@@ -197,6 +197,13 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                   `Story ${story.title} - ${story.name} failed visual comparison`,
                 );
               }
+
+              results.push({
+                storyId: story.id,
+                storyName: `${story.title} - ${story.name}`,
+                filepath: actualFilepath,
+                success: comparisonResult.passed,
+              });
             } else {
               logger.info(
                 `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
@@ -210,14 +217,14 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                   omitBackground: options.omitBackground,
                 },
               );
-            }
 
-            results.push({
-              storyId: story.id,
-              storyName: `${story.title} - ${story.name}`,
-              filepath: actualFilepath,
-              success: true,
-            });
+              results.push({
+                storyId: story.id,
+                storyName: `${story.title} - ${story.name}`,
+                filepath: actualFilepath,
+                success: true,
+              });
+            }
           } catch (error) {
             console.error(
               `Error taking screenshot of story ${story.title} - ${story.name}:`,
@@ -253,7 +260,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         logger.box({
           title: "Storybook Report",
-          message: `${chalk.yellow("Skipped stories:")} ${results.filter((r) => r.skipped).length}\n${chalk.red("Failed stories:")} ${results.filter((r) => r.error).length}\n${chalk.green("Successful screenshots:")} ${results.length}`,
+          message: `${chalk.yellow("Skipped stories:")} ${results.filter((r) => r.skipped).length}\n${chalk.red("Failed stories:")} ${results.filter((r) => r.error || !r.success).length}\n${chalk.green("Successful screenshots:")} ${results.filter((r) => r.success).length}`,
         });
 
         return results;
