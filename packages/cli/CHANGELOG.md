@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.1.2
+
+### Patch Changes
+
+- a772b76: Add better logging + cleanup
+- Updated dependencies [a772b76]
+  - @cappa/server@0.1.2
+  - @cappa/core@0.1.2
+  - @cappa/logger@0.0.2
+
 ## 0.1.1
 
 ### Patch Changes
