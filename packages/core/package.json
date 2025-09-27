@@ -1,6 +1,6 @@
 {
   "name": "@cappa/core",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Core Playwright screenshot functionality for Cappa",
   "author": "tim-richter",
   "license": "MIT",

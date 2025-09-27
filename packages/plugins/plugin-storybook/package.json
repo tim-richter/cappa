@@ -1,6 +1,6 @@
 {
   "name": "@cappa/plugin-storybook",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "description": "Storybook plugin for Cappa - takes screenshots of Storybook stories",
   "publishConfig": {
     "access": "public"

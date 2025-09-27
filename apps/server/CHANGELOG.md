@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.1.3
+
+### Patch Changes
+
+- f6456fb: feat: add retry functionality
+- Updated dependencies [f6456fb]
+  - @cappa/core@0.1.3
+
 ## 0.1.2
 
 ### Patch Changes
