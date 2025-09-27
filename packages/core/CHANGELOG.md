@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.1.1
+
+### Patch Changes
+
+- d640855: Fix server public folder publish
+
 ## 0.1.0
 
 ### Minor Changes
