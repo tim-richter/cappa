@@ -6,9 +6,11 @@ import {
   SidebarMenuButton,
 } from "@ui/components/sidebar";
 import { Check, Plus, Trash, TriangleAlert } from "lucide-react";
-import { Link } from "react-router";
+import { Link, useLocation } from "react-router";
 
 export const AppSidebar = () => {
+  const pathname = useLocation().pathname;
+
   return (
     <Sidebar>
       <SidebarHeader className="border-b py-4">
@@ -20,25 +22,25 @@ export const AppSidebar = () => {
         </p>
       </SidebarHeader>
 
-      <SidebarContent className="mt-4">
-        <SidebarMenuButton size="lg" asChild>
+      <SidebarContent className="mt-4 p-2">
+        <SidebarMenuButton asChild isActive={pathname === "/changed"}>
           <Link to="changed">
-            <TriangleAlert /> <span>Changed</span>
+            <TriangleAlert className="size-4" /> <span>Changed</span>
           </Link>
         </SidebarMenuButton>
-        <SidebarMenuButton size="lg" asChild>
+        <SidebarMenuButton asChild isActive={pathname === "/new"}>
           <Link to="new">
-            <Plus /> <span>New</span>
+            <Plus className="size-4" /> <span>New</span>
           </Link>
         </SidebarMenuButton>
-        <SidebarMenuButton size="lg" asChild>
+        <SidebarMenuButton asChild isActive={pathname === "/deleted"}>
           <Link to="deleted">
-            <Trash /> <span>Deleted</span>
+            <Trash className="size-4" /> <span>Deleted</span>
           </Link>
         </SidebarMenuButton>
-        <SidebarMenuButton size="lg" asChild>
+        <SidebarMenuButton asChild isActive={pathname === "/passed"}>
           <Link to="passed">
-            <Check /> <span>Passed</span>
+            <Check className="size-4" /> <span>Passed</span>
           </Link>
         </SidebarMenuButton>
       </SidebarContent>
