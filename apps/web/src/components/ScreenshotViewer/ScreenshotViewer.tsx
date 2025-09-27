@@ -68,8 +68,9 @@ export function ScreenshotComparison({
   return (
     <div className="flex flex-col h-full bg-background">
       {/* Header */}
-      <div className="flex items-center justify-between p-4 border-b border-border bg-card">
-        <div className="flex items-center gap-3">
+      <div className="grid grid-cols-3 items-center p-4 border-b border-border bg-card">
+        {/* Left side */}
+        <div className="flex items-center gap-3 justify-start">
           <Button
             variant="ghost"
             size="sm"
@@ -78,8 +79,8 @@ export function ScreenshotComparison({
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h1 className="text-lg font-semibold text-foreground">
+          <div className="min-w-0">
+            <h1 className="text-lg font-semibold text-foreground truncate">
               {screenshot.name}
             </h1>
             <CategoryBadge
@@ -98,22 +99,8 @@ export function ScreenshotComparison({
           )}
         </div>
 
-        <div className="flex items-center gap-4">
-          {!screenshot.approved && (
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  onClick={handleApprove}
-                  size="icon"
-                  className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
-                >
-                  <Check className="size-8" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>Approve</TooltipContent>
-            </Tooltip>
-          )}
-
+        {/* Center - Next/Prev buttons */}
+        <div className="flex items-center justify-center">
           <div className="flex items-center gap-2">
             {screenshot.prev && (
               <Button variant="ghost" size="sm" asChild>
@@ -131,10 +118,28 @@ export function ScreenshotComparison({
               </Button>
             )}
           </div>
+        </div>
+
+        {/* Right side */}
+        <div className="flex items-center gap-4 justify-end">
+          {!screenshot.approved && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={handleApprove}
+                  size="icon"
+                  className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
+                >
+                  <Check className="size-8" />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Approve</TooltipContent>
+            </Tooltip>
+          )}
 
           {/* View Mode Controls */}
           {screenshot.category === "changed" && (
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 flex-wrap">
               {viewModes.map((mode) => {
                 const Icon = mode.icon;
                 return (
@@ -146,7 +151,7 @@ export function ScreenshotComparison({
                     className="gap-2"
                   >
                     <Icon className="h-4 w-4" />
-                    {mode.label}
+                    <span className="hidden sm:inline">{mode.label}</span>
                   </Button>
                 );
               })}
