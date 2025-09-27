@@ -28,3 +28,6 @@ storybook-static
 
 .devenv
 .devenv.flake.nix
+
+*.tgz
+*.tar.gz
