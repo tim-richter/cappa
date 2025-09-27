@@ -78,7 +78,6 @@ program
     const logLevel = parseInt(program.opts().logLevel, 10);
     const logger = initLogger(logLevel);
 
-    logger.info("Cappa CLI starting...");
     logger.debug(`Log level set to: ${logLevel}`);
 
     const result = await getCosmiConfig("cappa");
@@ -114,8 +113,10 @@ program
       isProd: true,
       outputDir: path.resolve(config.outputDir),
       screenshots: groupedScreenshots,
+      logger: logLevel >= 4,
     });
 
+    logger.success("Review UI available at http://localhost:3000");
     await server.listen({ port: 3000 });
   });
 

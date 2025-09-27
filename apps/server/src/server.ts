@@ -17,10 +17,11 @@ interface StartServerOptions {
   uiRoot?: string;
   outputDir: string;
   screenshots: Screenshot[];
+  logger?: boolean;
 }
 
 export async function createServer(opts: StartServerOptions) {
-  const app = Fastify({ logger: true });
+  const app = Fastify({ logger: opts.logger ?? true });
 
   // Add screenshots data to the app instance for use in plugins
   app.decorate("screenshots", transform(opts.screenshots));
