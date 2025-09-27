@@ -92,7 +92,7 @@ export function ScreenshotComparison({
           {screenshot.approved && (
             <Badge
               variant="default"
-              className="text-green-100 bg-green-800 cursor-default"
+              className="text-green-100 bg-green-800 cursor-default self-end"
             >
               <BadgeCheckIcon /> Approved
             </Badge>
