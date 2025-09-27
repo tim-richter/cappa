@@ -4,7 +4,10 @@
  * @param timeoutMs - The timeout in milliseconds
  * @returns The function or rejects if the function is not exposed within the timeout
  */
-export const waitForExposed = (name: string, timeoutMs = 5000) => {
+export const waitForExposed = (
+  name: string,
+  timeoutMs = 5000,
+): Promise<(parameters: any) => void> => {
   return new Promise((resolve, reject) => {
     const start = performance.now();
 

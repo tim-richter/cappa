@@ -149,15 +149,19 @@ describe("compare", () => {
       expect(result.passed).toBe(false);
     });
 
-    it("should respect maxDifferencePercent parameter", async () => {
+    it("should respect maxDiffPercentage parameter", async () => {
       const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
-      const result1 = await compareImages(redImage, blueImage, false, {}, 50);
-      const result2 = await compareImages(redImage, blueImage, false, {}, 150);
+      const result1 = await compareImages(redImage, blueImage, false, {
+        maxDiffPercentage: 50,
+      });
+      const result2 = await compareImages(redImage, blueImage, false, {
+        maxDiffPercentage: 100,
+      });
 
       expect(result1.passed).toBe(false); // 100% > 50%
-      expect(result2.passed).toBe(true); // 100% < 150%
+      expect(result2.passed).toBe(true); // 100% < 100%
     });
 
     it("should apply threshold option correctly", async () => {
@@ -238,8 +242,12 @@ describe("compare", () => {
       const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
-      const strictMatch = await imagesMatch(redImage, blueImage, 50);
-      const lenientMatch = await imagesMatch(redImage, blueImage, 150);
+      const strictMatch = await imagesMatch(redImage, blueImage, {
+        maxDiffPercentage: 50,
+      });
+      const lenientMatch = await imagesMatch(redImage, blueImage, {
+        maxDiffPercentage: 150,
+      });
 
       expect(strictMatch).toBe(false);
       expect(lenientMatch).toBe(true);
@@ -258,10 +266,12 @@ describe("compare", () => {
       const image1 = createSolidColorPNG(50, 50, [100, 100, 100, 255]);
       const image2 = createSolidColorPNG(50, 50, [105, 105, 105, 255]);
 
-      const strictMatch = await imagesMatch(image1, image2, 50, {
+      const strictMatch = await imagesMatch(image1, image2, {
+        maxDiffPercentage: 50,
         threshold: 0.01,
       });
-      const lenientMatch = await imagesMatch(image1, image2, 50, {
+      const lenientMatch = await imagesMatch(image1, image2, {
+        maxDiffPercentage: 50,
         threshold: 0.5,
       });
 
@@ -349,7 +359,9 @@ describe("compare", () => {
     it("should handle zero difference threshold", async () => {
       const image = createSolidColorPNG(10, 10, [255, 0, 0, 255]);
 
-      const result = await compareImages(image, image, false, {}, 0);
+      const result = await compareImages(image, image, false, {
+        maxDiffPercentage: 0,
+      });
 
       expect(result.passed).toBe(true);
       expect(result.percentDifference).toBe(0);

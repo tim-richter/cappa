@@ -1,3 +1,5 @@
+import { getLogger } from "@cappa/logger";
+
 /**
  * Configuration system for Cappa CLI
  */
@@ -140,7 +142,10 @@ async function loadConfig(configPath: string): Promise<CappaConfig> {
 
     return mergeConfig(config);
   } catch (error: any) {
-    console.error(`Error loading config from ${configPath}:`, error.message);
+    getLogger().error(
+      `Error loading config from ${configPath}:`,
+      error.message,
+    );
     throw error;
   }
 }

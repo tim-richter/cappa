@@ -1,5 +1,7 @@
-import type { Plugin, ScreenshotOptions } from "@cappa/core";
+import type { Plugin } from "@cappa/core";
+import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
+import type { ScreenshotOptionsStorybook } from "../types";
 import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 
 export interface StorybookStory {
@@ -48,13 +50,15 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
     description:
       "Takes screenshots of Storybook stories with configurable options",
     version: "1.0.0",
-    execute: async (screenshotTool, logger) => {
+    execute: async (screenshotTool) => {
       if (!options) {
         throw new Error("Storybook plugin options are required");
       }
       if (!options.storybookUrl) {
         throw new Error("storybookUrl is required");
       }
+
+      const logger = getLogger();
 
       const {
         storybookUrl,
@@ -63,17 +67,17 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       } = options;
 
       const storiesUrl = `${storybookUrl}/index.json`;
-      console.log(`Fetching stories from: ${storiesUrl}`);
+      logger.debug(`Fetching stories from: ${storiesUrl}`);
+
+      // Fetch stories from Storybook
+      const response = await fetch(storiesUrl);
+      if (!response.ok) {
+        throw new Error(
+          `Failed to fetch stories: ${response.status} ${response.statusText}`,
+        );
+      }
 
       try {
-        // Fetch stories from Storybook
-        const response = await fetch(storiesUrl);
-        if (!response.ok) {
-          throw new Error(
-            `Failed to fetch stories: ${response.status} ${response.statusText}`,
-          );
-        }
-
         const data = (await response.json()) as StorybookStoriesResponse;
         const stories = Object.values(data.entries);
 
@@ -104,7 +108,9 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           (story) => story.type === "story",
         );
 
-        console.log(`Found ${filteredStories.length} stories to screenshot`);
+        logger.start(
+          `Found ${filteredStories.length} stories to screenshot...`,
+        );
 
         const results: Array<{
           storyId: string;
@@ -117,11 +123,11 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         await screenshotTool.init();
 
-        let currentLatch = createLatch<ScreenshotOptions>();
+        let currentLatch = createLatch<ScreenshotOptionsStorybook>();
 
         await screenshotTool.page?.exposeFunction(
           "__cappa_parameters",
-          async (payload: ScreenshotOptions) => {
+          async (payload: ScreenshotOptionsStorybook) => {
             currentLatch.resolve(payload);
           },
         );
@@ -146,10 +152,10 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             await page.goto(storyUrl);
 
             const options = await currentLatch.p;
-            currentLatch = createLatch<ScreenshotOptions>();
+            currentLatch = createLatch<ScreenshotOptionsStorybook>();
 
             if (options.skip) {
-              logger.log(`Skipping story ${story.title} - ${story.name}`);
+              logger.warn(`Skipping story ${story.title} - ${story.name}`);
               results.push({
                 storyId: story.id,
                 storyName: `${story.title} - ${story.name}`,
@@ -191,15 +197,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
                 );
 
               actualFilepath = screenshotPath;
-              if (comparisonResult.passed) {
-                logger.log(
-                  `Story ${story.title} - ${story.name} passed visual comparison`,
-                );
-              } else {
-                logger.log(
-                  `Story ${story.title} - ${story.name} failed visual comparison`,
-                );
-              }
 
               results.push({
                 storyId: story.id,
@@ -229,7 +226,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               });
             }
           } catch (error) {
-            console.error(
+            logger.error(
               `Error taking screenshot of story ${story.title} - ${story.name}:`,
               (error as Error).message,
             );
@@ -243,7 +240,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         // Print error report if there are any errors
         if (results.some((r) => r.error)) {
-          console.log(
+          logger.error(
             `Error report: \n${results
               .filter((r) => r.error)
               .map((r) => `${r.storyName}: ${r.error}`)
@@ -253,7 +250,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         // Print skipped stories if there are any
         if (results.some((r) => r.skipped)) {
-          console.log(
+          logger.warn(
             `Skipped stories: \n${results
               .filter((r) => r.skipped)
               .map((r) => `${r.storyName}`)
@@ -281,7 +278,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         return results;
       } catch (error) {
-        console.error("Error in Storybook plugin:", (error as Error).message);
+        logger.error("Error in Storybook plugin:", (error as Error).message);
         throw error;
       }
     },

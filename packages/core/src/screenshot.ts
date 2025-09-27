@@ -1,5 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
+import { getLogger, type Logger } from "@cappa/logger";
 import {
   type Browser,
   type BrowserContext,
@@ -15,7 +16,7 @@ import {
   type CompareResult,
   compareImages,
 } from "./compare";
-import type { DiffConfig } from "./types";
+import type { DiffConfig, ScreenshotOptions } from "./types";
 
 const defaultDiffConfig: DiffConfig = {
   threshold: 0.1,
@@ -26,39 +27,42 @@ const defaultDiffConfig: DiffConfig = {
 };
 
 class ScreenshotTool {
-  browserType: string;
+  browserType: "chromium" | "firefox" | "webkit";
   headless: boolean;
   viewport: { width: number; height: number };
   outputDir: string;
   actualDir: string;
   diffDir: string;
   expectedDir: string;
-  fullPage: boolean;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
   page: Page | null = null;
   diff: DiffConfig;
+  logger: Logger;
 
   constructor(options: {
-    browserType?: string;
+    browserType?: "chromium" | "firefox" | "webkit";
     headless?: boolean;
     viewport?: { width: number; height: number };
     outputDir?: string;
-    fullPage?: boolean;
     diff?: DiffConfig;
   }) {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
-    this.fullPage = options.fullPage !== false; // Default to full page
     this.diff = { ...defaultDiffConfig, ...options.diff };
     // Set up subdirectories
     this.actualDir = path.join(this.outputDir, "actual");
     this.diffDir = path.join(this.outputDir, "diff");
     this.expectedDir = path.join(this.outputDir, "expected");
+
+    this.logger = getLogger();
   }
 
+  /**
+   * Initialize playwright and page
+   */
   async init() {
     // Create output directories if they don't exist
     this.createDirectories();
@@ -70,8 +74,7 @@ class ScreenshotTool {
       webkit,
     };
 
-    const browserClass =
-      browserMap[this.browserType as keyof typeof browserMap];
+    const browserClass = browserMap[this.browserType];
     if (!browserClass) {
       throw new Error(`Unsupported browser type: ${this.browserType}`);
     }
@@ -88,12 +91,16 @@ class ScreenshotTool {
       reducedMotion: "reduce",
       deviceScaleFactor: 2,
       userAgent: `${await defaultUserAgent} CappaStorybook`,
+      viewport: this.viewport,
     });
 
     this.page = await this.context?.newPage();
-    this.page?.setViewportSize(this.viewport);
   }
 
+  /**
+   * Closes browser
+   * If not closed, the process will not exit
+   */
   async close() {
     if (this.context) {
       await this.context.close();
@@ -103,6 +110,9 @@ class ScreenshotTool {
     }
   }
 
+  /**
+   * Navigates to a URL with "domcontentloaded" waitUntil
+   */
   async goTo(page: Page, url: string) {
     if (!this.context) {
       throw new Error("Browser not initialized");
@@ -110,6 +120,9 @@ class ScreenshotTool {
     await page.goto(url, { waitUntil: "domcontentloaded" });
   }
 
+  /**
+   * Creates directories for screenshots and other files
+   */
   private createDirectories() {
     // Create main output directory and subdirectories
     const directories = [
@@ -122,39 +135,46 @@ class ScreenshotTool {
     for (const dir of directories) {
       if (!fs.existsSync(dir)) {
         fs.mkdirSync(dir, { recursive: true });
-        console.log(`Created directory: ${dir}`);
+        this.logger.debug(`Initialized directory: ${dir}`);
       }
     }
   }
 
+  /**
+   * Gets the path to the actual screenshot file
+   */
   getActualFilePath(filename: string): string {
     return path.join(this.actualDir, filename);
   }
 
+  /**
+   * Gets the path to the diff screenshot file
+   */
   getDiffFilePath(filename: string): string {
     return path.join(this.diffDir, filename);
   }
 
+  /**
+   * Gets the path to the expected screenshot file
+   */
   getExpectedFilePath(filename: string): string {
     return path.join(this.expectedDir, filename);
   }
 
-  // Keep original method for backward compatibility
-  getFilePath(filename: string) {
-    return this.getActualFilePath(filename);
-  }
-
+  /**
+   * Takes a screenshot of the page
+   */
   async takeScreenshot(
     page: Page,
     filename: string,
-    options: {
-      fullPage?: boolean;
-      mask?: Locator[];
-      omitBackground?: boolean;
-    } = {},
+    options: ScreenshotOptions,
   ) {
     if (!this.browser) {
       throw new Error("Browser not initialized");
+    }
+
+    if (options.skip) {
+      return;
     }
 
     try {
@@ -164,74 +184,28 @@ class ScreenshotTool {
       // Take screenshot
       const screenshotOptions = {
         path: filepath,
-        fullPage:
-          (options.fullPage as boolean) !== undefined
-            ? options.fullPage
-            : this.fullPage,
-        type: "png",
+        fullPage: options.fullPage,
+        type: "png" as const,
         timeout: 60000,
         mask: options.mask,
         omitBackground: options.omitBackground,
         scale: "css" as const,
       } satisfies PageScreenshotOptions;
 
+      if (options.delay) {
+        await page.waitForTimeout(options.delay);
+      }
+
       await page.screenshot(screenshotOptions);
 
-      console.log(`Screenshot saved: ${filepath}`);
+      this.logger.success(`Screenshot saved: ${filepath}`);
       return filepath;
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Error taking screenshot of ${page.url()}:`,
         (error as Error).message,
       );
       throw error;
-    }
-  }
-
-  async takeElementScreenshot(
-    page: Page,
-    selector: string,
-    options: {
-      filename?: string;
-      fullPage?: boolean;
-    } = {},
-  ) {
-    if (!this.browser) {
-      throw new Error("Browser not initialized");
-    }
-
-    try {
-      // Wait for element to be visible
-      await page.waitForSelector(selector, { timeout: 10000 });
-
-      const element = await page.$(selector);
-      if (!element) {
-        throw new Error(`Element not found: ${selector}`);
-      }
-
-      const filename =
-        (options.filename as string | undefined) ||
-        `${selector.replace(/[^a-zA-Z0-9]/g, "_")}.png`;
-      // Save to actual directory
-      const filepath = this.getActualFilePath(filename);
-
-      const elementScreenshotOptions = {
-        path: filepath,
-        type: "png",
-      } satisfies PageScreenshotOptions;
-
-      await element.screenshot(elementScreenshotOptions);
-
-      console.log(`Element screenshot saved: ${filepath}`);
-      return filepath;
-    } catch (error) {
-      console.error(
-        `Error taking element screenshot of ${page.url()}:`,
-        (error as Error).message,
-      );
-      throw error;
-    } finally {
-      await page.close();
     }
   }
 
@@ -265,10 +239,7 @@ class ScreenshotTool {
 
       // Take screenshot and get buffer
       const screenshotOptions = {
-        fullPage:
-          (options.fullPage as boolean) !== undefined
-            ? options.fullPage
-            : this.fullPage,
+        fullPage: options.fullPage,
         type: "png" as const,
         timeout: 60000,
         mask: options.mask,
@@ -282,7 +253,7 @@ class ScreenshotTool {
       // Save screenshot to actual directory
       fs.writeFileSync(filepath, screenshotBuffer);
 
-      console.log(`Screenshot saved: ${filepath}`);
+      this.logger.success(`Screenshot saved: ${filepath}`);
 
       // Perform comparison
       const comparisonResult = await compareImages(
@@ -292,11 +263,15 @@ class ScreenshotTool {
         { ...this.diff, ...options.compareOptions },
       );
 
-      console.log(
-        `Comparison result: ${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%) (${
-          comparisonResult.passed ? "PASSED" : "FAILED"
-        })`,
+      this.logger.debug(
+        `Comparison result: ${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`,
       );
+
+      if (comparisonResult.passed) {
+        this.logger.success(`Screenshot passed visual comparison`);
+      } else {
+        this.logger.error(`Screenshot failed visual comparison`);
+      }
 
       let diffImagePath: string | undefined;
 
@@ -312,6 +287,8 @@ class ScreenshotTool {
 
         fs.mkdirSync(path.dirname(diffImagePath), { recursive: true });
         fs.writeFileSync(diffImagePath, comparisonResult.diffBuffer);
+
+        this.logger.debug(`Diff image saved: ${diffImagePath}`);
       }
 
       return {
@@ -320,108 +297,12 @@ class ScreenshotTool {
         diffImagePath,
       };
     } catch (error) {
-      console.error(
+      this.logger.error(
         `Error taking screenshot with comparison of ${page.url()}:`,
         (error as Error).message,
       );
       throw error;
     }
-  }
-
-  async batchScreenshots(urls: string[], options = {}) {
-    const results: {
-      url: string;
-      success: boolean;
-      filepath: string;
-      error?: string;
-    }[] = [];
-
-    for (const url of urls) {
-      try {
-        const page = this.page;
-        if (!page) {
-          throw new Error("Page not initialized");
-        }
-        await this.goTo(page, url);
-        const filepath = await this.takeScreenshot(page, url, options);
-        results.push({ url, success: true, filepath });
-      } catch (error) {
-        results.push({
-          url,
-          success: false,
-          error: (error as Error).message,
-          filepath: "",
-        });
-      }
-    }
-
-    return results;
-  }
-
-  async takeResponsiveScreenshots(
-    url: string,
-    viewports: { width: number; height: number; name: string }[] = [
-      { width: 1920, height: 1080, name: "desktop" },
-      { width: 768, height: 1024, name: "tablet" },
-      { width: 375, height: 667, name: "mobile" },
-    ],
-    options: {
-      fullPage?: boolean;
-    } = {},
-  ) {
-    if (!this.context) {
-      throw new Error("Browser not initialized");
-    }
-
-    const results: {
-      viewport: string;
-      success: boolean;
-      filepath: string;
-      error?: string;
-    }[] = [];
-
-    for (const viewport of viewports) {
-      try {
-        const page = await this.context?.newPage();
-        await page.setViewportSize(viewport);
-
-        await page.goto(url, { waitUntil: "domcontentloaded" });
-        await page.waitForTimeout(2000);
-
-        const filename = `${viewport.name}.png`;
-        // Save to actual directory
-        const filepath = this.getActualFilePath(filename);
-
-        const responsiveScreenshotOptions = {
-          path: filepath,
-          fullPage:
-            (options.fullPage as boolean) !== undefined
-              ? options.fullPage
-              : this.fullPage,
-          type: "png" as const,
-        };
-
-        await page.screenshot(responsiveScreenshotOptions);
-
-        await page.close();
-
-        console.log(`Responsive screenshot saved: ${filepath}`);
-        results.push({ viewport: viewport.name, success: true, filepath });
-      } catch (error) {
-        console.error(
-          `Error taking responsive screenshot for ${viewport.name}:`,
-          (error as Error).message,
-        );
-        results.push({
-          viewport: viewport.name,
-          success: false,
-          error: (error as Error).message,
-          filepath: "",
-        });
-      }
-    }
-
-    return results;
   }
 
   // Utility method to check if expected image exists

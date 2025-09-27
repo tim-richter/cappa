@@ -1,13 +1,17 @@
+import type { Locator } from "playwright-core";
 import type { Plugin, PluginDef } from "./plugin";
 
 export type PossiblePromise<T> = Promise<T> | T;
 
+/**
+ * Configuration for the comparison of images
+ */
 export interface DiffConfig {
   /**
    * Matching threshold (0-1). Lower = more sensitive
    * Default = 0.1
    *
-   * This affects how similar a pixel needs to be to the reference image to be considered the same.
+   * This affects how similar a pixel needs to be in the reference image to be considered the same.
    */
   threshold?: number;
   /**
@@ -55,33 +59,27 @@ export interface DiffConfig {
  */
 export type UserConfig = {
   /**
-   * The project root directory, which can be either an absolute path or a path relative to the location of your `cappa.config.ts` file.
-   * @default process.cwd()
+   * The directory to save screenshots and other files in
    */
-  root?: string;
   outputDir?: string;
+  /**
+   * Configuration for the comparison of images
+   */
   diff?: DiffConfig;
   /**
-   * An array of Cappa plugins used for generation. Each plugin may have additional configurable options (defined within the plugin itself). If a plugin relies on another plugin, an error will occur if the required dependency is missing. Refer to "pre" for more details.
+   * An array of Cappa plugins used for generation.
+   * Each plugin may have additional configurable options (defined within the plugin itself).
    */
   plugins?: Array<Plugin | PluginDef>;
 };
 
 export type ScreenshotOptions = {
   fullPage?: boolean;
-  waitForSelector?: string;
-  waitForTimeout?: number;
   delay?: number;
   skip?: boolean;
-  mask?: string[];
+  mask?: Locator[];
   omitBackground?: boolean;
 };
-
-export interface Exposed {
-  emitCapture(opt: ScreenshotOptions): void;
-  getBaseScreenshotOptions(): ScreenshotOptions;
-  waitBrowserMetricsStable(): Promise<void>;
-}
 
 export interface Screenshot {
   id: string;

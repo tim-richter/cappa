@@ -31,14 +31,13 @@ const compare = (
  * @param image2 - Second image (file path or Buffer)
  * @param withDiff - Whether to create a diff image
  * @param options - Comparison options
- * @param maxDifferencePercent - Maximum allowed difference percentage (0-100)
  * @returns Comparison result
  */
 export async function compareImages(
   image1: string | Buffer,
   image2: string | Buffer,
   withDiff: boolean = false,
-  options: DiffConfig,
+  options: DiffConfig = {},
 ): Promise<CompareResult> {
   // Load images as PNG objects
   const png1 = await loadPNG(image1);
@@ -46,10 +45,8 @@ export async function compareImages(
 
   const { width, height } = png1;
 
-  // Create diff image
   const diff = withDiff ? new PNG({ width, height }) : undefined;
 
-  // Compare images using pixelmatch
   const numDiffPixels = compare(
     png1.data,
     png2.data,
@@ -61,7 +58,6 @@ export async function compareImages(
 
   const totalPixels = width * height;
   const percentDifference = (numDiffPixels / totalPixels) * 100;
-  const passed = percentDifference <= (options.maxDiffPercentage || 0);
 
   // Convert diff image to buffer
   const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
@@ -71,7 +67,7 @@ export async function compareImages(
     totalPixels,
     percentDifference,
     diffBuffer,
-    passed,
+    passed: isPassed(percentDifference, numDiffPixels, options),
   };
 }
 
@@ -104,15 +100,39 @@ export function saveDiffImage(result: CompareResult, outputPath: string): void {
  * Quick comparison function that returns only pass/fail
  * @param image1 - First image (file path or Buffer)
  * @param image2 - Second image (file path or Buffer)
- * @param maxDifferencePercent - Maximum allowed difference percentage (0-100)
  * @param options - Comparison options
- * @returns Whether the images are similar enough
+ * @returns Whether the images match
  */
 export async function imagesMatch(
   image1: string | Buffer,
   image2: string | Buffer,
-  options: DiffConfig,
+  options: DiffConfig = {},
 ): Promise<boolean> {
   const result = await compareImages(image1, image2, false, options);
+
   return result.passed;
 }
+
+const isPassed = (
+  percentDifference: number,
+  numDiffPixels: number,
+  options: DiffConfig,
+) => {
+  if (options.maxDiffPercentage && options.maxDiffPixels) {
+    return (
+      percentDifference <= options.maxDiffPercentage &&
+      numDiffPixels <= options.maxDiffPixels
+    );
+  }
+
+  if (options.maxDiffPercentage) {
+    return percentDifference <= options.maxDiffPercentage;
+  }
+
+  if (options.maxDiffPixels) {
+    return numDiffPixels <= options.maxDiffPixels;
+  }
+
+  // fallback to 0 pixels
+  return numDiffPixels === 0;
+};

@@ -1,12 +1,12 @@
 import fs from "node:fs";
 import path from "node:path";
 import { ScreenshotTool } from "@cappa/core";
+import { getLogger, initLogger } from "@cappa/logger";
 import { createServer } from "@cappa/server";
 import chalk from "chalk";
 import { Command } from "commander";
 import { glob } from "glob";
 import { version } from "../package.json";
-import { initLogger } from "./logger";
 import { getConfig } from "./utils/getConfig";
 import { getCosmiConfig } from "./utils/getCosmiConfig";
 import { groupScreenshots } from "./utils/groupScreenshots";
@@ -21,18 +21,18 @@ program
     "-l, --log-level <level>",
     "set log level (0: fatal and error, 1: warn, 2: log, 3: info, 4: debug, 5: trace)",
     "3",
-  );
+  )
+  .hook("preAction", (thisCommand) => {
+    const logLevel = parseInt(thisCommand.opts().logLevel, 10);
+    const logger = initLogger(logLevel);
+    logger.debug(`Log level set to: ${logLevel}`);
+  });
 
 program
   .command("capture")
   .description("Capture screenshots")
   .action(async () => {
-    // Initialize logger with the specified log level
-    const logLevel = parseInt(program.opts().logLevel, 10);
-    const logger = initLogger(logLevel);
-
-    logger.info("Cappa CLI starting...");
-    logger.debug(`Log level set to: ${logLevel}`);
+    const logger = getLogger();
 
     const result = await getCosmiConfig("cappa");
     const config = await getConfig(result);
@@ -56,7 +56,7 @@ program
       // Wait for all plugins to complete
       for (const plugin of config.plugins) {
         logger.debug(`Executing plugin: ${plugin.name || "unnamed"}`);
-        await plugin.execute(screenshotTool, logger);
+        await plugin.execute(screenshotTool);
       }
       logger.success("All plugins completed successfully");
     } catch (error) {
@@ -64,9 +64,7 @@ program
       throw error;
     } finally {
       // Always close the browser to ensure the process exits
-      logger.debug("Closing screenshot tool...");
       await screenshotTool.close();
-      logger.info("Cappa CLI finished");
     }
   });
 
@@ -74,11 +72,7 @@ program
   .command("review")
   .description("Review screenshots")
   .action(async () => {
-    // Initialize logger with the specified log level
-    const logLevel = parseInt(program.opts().logLevel, 10);
-    const logger = initLogger(logLevel);
-
-    logger.debug(`Log level set to: ${logLevel}`);
+    const logger = getLogger();
 
     const result = await getCosmiConfig("cappa");
     const config = await getConfig(result);
@@ -113,7 +107,7 @@ program
       isProd: true,
       outputDir: path.resolve(config.outputDir),
       screenshots: groupedScreenshots,
-      logger: logLevel >= 4,
+      logger: getLogger().level >= 4,
     });
 
     logger.success("Review UI available at http://localhost:3000");
@@ -128,12 +122,7 @@ program
     "only approve screenshots whose name includes the provided filter value(s)",
   )
   .action(async (options) => {
-    // Initialize logger with the specified log level
-    const logLevel = parseInt(program.opts().logLevel, 10);
-    const logger = initLogger(logLevel);
-
-    logger.info("Cappa CLI starting...");
-    logger.debug(`Log level set to: ${logLevel}`);
+    const logger = getLogger();
 
     const result = await getCosmiConfig("cappa");
     const config = await getConfig(result);
@@ -183,7 +172,6 @@ program
 
       // Create destination directory if it doesn't exist
       fs.mkdirSync(destDir, { recursive: true });
-
       fs.copyFileSync(screenshot, destPath);
 
       const diffPath = path.resolve(
@@ -210,11 +198,7 @@ program
   .command("status")
   .description("Get status of screenshots")
   .action(async () => {
-    // Initialize logger with the specified log level
-    const logLevel = parseInt(program.opts().logLevel, 10);
-    const logger = initLogger(logLevel);
-
-    logger.debug(`Log level set to: ${logLevel}`);
+    const logger = getLogger();
 
     const result = await getCosmiConfig("cappa");
     const config = await getConfig(result);
@@ -260,10 +244,7 @@ program
   .command("init")
   .description("Initialize Cappa in the current directory")
   .action(async () => {
-    const logLevel = parseInt(program.opts().logLevel, 10);
-    const logger = initLogger(logLevel);
-
-    logger.info("Initializing Cappa...");
+    const logger = getLogger();
 
     const configPath = path.resolve(process.cwd(), "cappa.config.ts");
     const packageJsonPath = path.resolve(process.cwd(), "package.json");
@@ -276,6 +257,13 @@ program
 
 export default defineConfig({
   outputDir: "./screenshots",
+  diff: {
+    threshold: 0.1,
+    includeAA: false,
+    fastBufferCheck: true,
+    maxDiffPixels: 0,
+    maxDiffPercentage: 0,
+  },
   plugins: [],
 });
 `;
@@ -284,7 +272,7 @@ export default defineConfig({
       logger.success("Created cappa.config.ts");
     }
 
-    // Add script to package.json
+    // Add scripts to package.json
     if (fs.existsSync(packageJsonPath)) {
       try {
         const packageJson = JSON.parse(
@@ -311,14 +299,6 @@ export default defineConfig({
           packageJson.scripts["cappa:review"] = "cappa review";
         }
 
-        if (packageJson.scripts["cappa:approve"]) {
-          logger.warn(
-            "'cappa:approve' script already exists in package.json, skipping...",
-          );
-        } else {
-          packageJson.scripts["cappa:approve"] = "cappa approve";
-        }
-
         fs.writeFileSync(
           packageJsonPath,
           `${JSON.stringify(packageJson, null, 2)}\n`,
@@ -332,7 +312,9 @@ export default defineConfig({
     }
 
     logger.success("Cappa initialization complete!");
-    logger.info("Run 'npm run cappa' or 'pnpm cappa' to capture screenshots");
+    logger.warn(
+      "cappa relies on playwright to capture screenshots. Please install playwright and browsers before running cappa.",
+    );
   });
 
 export async function run(): Promise<void> {

@@ -1,13 +1,9 @@
-import type { ConsolaInstance } from "consola";
 import type ScreenshotTool from "./screenshot";
 
 /**
  * Plugin function type definition
  */
-export type PluginFunction = (
-  screenshotTool: ScreenshotTool,
-  logger: ConsolaInstance,
-) => Promise<any[]>;
+export type PluginFunction = (screenshotTool: ScreenshotTool) => Promise<any[]>;
 
 /**
  * Plugin definition interface
@@ -15,9 +11,7 @@ export type PluginFunction = (
 export type PluginDef = {
   name: string;
   description: string;
-  version: string;
   execute: PluginFunction;
-  validateOptions?: (options: any) => boolean;
 };
 
 /**
