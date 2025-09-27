@@ -162,6 +162,17 @@ export const handlers = [
       });
     }
 
+    if (params.id === "5") {
+      return HttpResponse.json<Screenshot>({
+        name: params.id as string,
+        id: params.id as string,
+        actualPath: "/images/1a.jpeg",
+        expectedPath: "/images/1b.jpeg",
+        diffPath: "/images/1diff.png",
+        category: "changed",
+      });
+    }
+
     return HttpResponse.json<Screenshot>({
       name: params.id as string,
       id: params.id as string,

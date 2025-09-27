@@ -85,7 +85,9 @@ export function usePanZoom(
   limits: PanZoomLimits = {},
   initialScale = 1,
 ): [PanZoomState, PanZoomApi] {
-  const { minScale = 0.25, maxScale = 8, padding = 16 } = limits;
+  const minScaleLimit = limits.minScale ?? 0.25;
+  const maxScaleLimit = limits.maxScale ?? 8;
+  const padding = limits.padding ?? 16;
 
   const [state, setState] = useState<PanZoomState>({
     scale: initialScale,
@@ -93,6 +95,7 @@ export function usePanZoom(
     translateY: 0,
   });
 
+  const [containerSize, setContainerSize] = useState<ContainerSize | null>(null);
   const containerSizeRef = useRef<ContainerSize | null>(null);
   const pointersRef = useRef<ActivePointers>(new Map());
   const lastPinchDistRef = useRef<number | null>(null);
@@ -109,7 +112,9 @@ export function usePanZoom(
     const ro = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const cr = entry.contentRect;
-        containerSizeRef.current = { width: cr.width, height: cr.height };
+        const size = { width: cr.width, height: cr.height };
+        containerSizeRef.current = size;
+        setContainerSize(size);
         // When container changes, re-clamp
         setState((s) => {
           if (!contentSize) return s;
@@ -130,6 +135,18 @@ export function usePanZoom(
     ro.observe(el);
     return () => ro.disconnect();
   }, [containerRef, contentSize, padding]);
+
+  const getScaleBounds = useCallback(() => {
+    if (!contentSize || !containerSizeRef.current) {
+      return { min: minScaleLimit, max: maxScaleLimit };
+    }
+
+    const { width: cw, height: ch } = containerSizeRef.current;
+    const fitScale = Math.min(cw / contentSize.width, ch / contentSize.height);
+    const min = Math.min(minScaleLimit, fitScale);
+    const max = Math.max(min, maxScaleLimit);
+    return { min, max };
+  }, [contentSize, maxScaleLimit, minScaleLimit]);
 
   // Apply transform with RAF to avoid layout thrash
   const schedule = useCallback((next: PanZoomState) => {
@@ -182,7 +199,8 @@ export function usePanZoom(
   const zoomTo = useCallback(
     (nextScale: number, focal?: { x: number; y: number }) => {
       if (!contentSize || !containerSizeRef.current) return;
-      const scale = clamp(nextScale, minScale, maxScale);
+      const { min, max } = getScaleBounds();
+      const scale = clamp(nextScale, min, max);
       if (scale === state.scale) return;
 
       // If no focal provided, zoom around center
@@ -207,7 +225,7 @@ export function usePanZoom(
       );
       schedule({ scale, translateX: clamped.x, translateY: clamped.y });
     },
-    [state, contentSize, minScale, maxScale, padding, schedule],
+    [state, contentSize, getScaleBounds, padding, schedule],
   );
 
   const setScale = useCallback(
@@ -232,21 +250,70 @@ export function usePanZoom(
   );
 
   const reset = useCallback(() => {
-    schedule({ scale: 1, translateX: 0, translateY: 0 });
-  }, [schedule]);
+    const { min, max } = getScaleBounds();
+    const nextScale = clamp(initialScale, min, max);
+    schedule({ scale: nextScale, translateX: 0, translateY: 0 });
+  }, [getScaleBounds, initialScale, schedule]);
 
   const fit = useCallback(() => {
     if (!contentSize || !containerSizeRef.current) return;
     const { width: cw, height: ch } = containerSizeRef.current;
     const sx = cw / contentSize.width;
     const sy = ch / contentSize.height;
-    const scale = clamp(Math.min(sx, sy), minScale, maxScale);
+    const { min, max } = getScaleBounds();
+    const scale = clamp(Math.min(sx, sy), min, max);
     const w = contentSize.width * scale;
     const h = contentSize.height * scale;
     const tx = (cw - w) / 2;
     const ty = (ch - h) / 2;
     schedule({ scale, translateX: tx, translateY: ty });
-  }, [contentSize, minScale, maxScale, schedule]);
+  }, [contentSize, getScaleBounds, schedule]);
+
+  useEffect(() => {
+    if (!contentSize || !containerSize) return;
+    const size = containerSizeRef.current;
+    if (!size) return;
+
+    setState((current) => {
+      const { min, max } = getScaleBounds();
+      const nextScale = clamp(current.scale, min, max);
+
+      let nextTx = current.translateX;
+      let nextTy = current.translateY;
+
+      if (nextScale !== current.scale) {
+        const cx = size.width / 2;
+        const cy = size.height / 2;
+        const contentX = (cx - current.translateX) / current.scale;
+        const contentY = (cy - current.translateY) / current.scale;
+        nextTx = cx - contentX * nextScale;
+        nextTy = cy - contentY * nextScale;
+      }
+
+      const clamped = clampTranslate(
+        nextTx,
+        nextTy,
+        nextScale,
+        contentSize,
+        size,
+        padding,
+      );
+
+      if (
+        nextScale === current.scale &&
+        clamped.x === current.translateX &&
+        clamped.y === current.translateY
+      ) {
+        return current;
+      }
+
+      return {
+        scale: nextScale,
+        translateX: clamped.x,
+        translateY: clamped.y,
+      };
+    });
+  }, [contentSize, containerSize, getScaleBounds, padding]);
 
   // Pointer / touch handling (Pointer Events)
   useEffect(() => {

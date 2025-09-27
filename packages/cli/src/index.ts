@@ -121,7 +121,11 @@ program
 program
   .command("approve")
   .description("Approve screenshots")
-  .action(async () => {
+  .option(
+    "-f, --filter <filter...>",
+    "only approve screenshots whose name includes the provided filter value(s)",
+  )
+  .action(async (options) => {
     // Initialize logger with the specified log level
     const logLevel = parseInt(program.opts().logLevel, 10);
     const logger = initLogger(logLevel);
@@ -140,8 +144,34 @@ program
 
     const [actualScreenshots] = await Promise.all([actualScreenshotsPromise]);
 
+    let screenshotsToApprove = actualScreenshots;
+
+    if (options.filter?.length) {
+      const filters = options.filter.map((filter: string) =>
+        filter.toLowerCase()
+      );
+      logger.debug(
+        `Filtering actual screenshots by filter: ${filters.join(", ")}`,
+      );
+
+      screenshotsToApprove = actualScreenshots.filter((screenshot) => {
+        const screenshotName = path.basename(screenshot).toLowerCase();
+        const screenshotPath = screenshot.toLowerCase();
+
+        return filters.some(
+          (filter: string) =>
+            screenshotName.includes(filter) || screenshotPath.includes(filter),
+        );
+      });
+
+      if (screenshotsToApprove.length === 0) {
+        logger.warn("No screenshots matched the provided filter(s)");
+        return;
+      }
+    }
+
     // copy actual screenshots to expected directory
-    for (const screenshot of actualScreenshots) {
+    for (const screenshot of screenshotsToApprove) {
       const destPath = path.resolve(
         config.outputDir,
         "expected",
@@ -153,9 +183,21 @@ program
       fs.mkdirSync(destDir, { recursive: true });
 
       fs.copyFileSync(screenshot, destPath);
+
+      const diffPath = path.resolve(config.outputDir, "diff", path.relative(config.outputDir + "/actual", screenshot));
+
+      if (fs.existsSync(diffPath)) {
+        fs.unlinkSync(diffPath);
+      }
     }
 
-    logger.success("All screenshots approved");
+    if (screenshotsToApprove.length === actualScreenshots.length) {
+      logger.success("All screenshots approved");
+    } else {
+      logger.success(
+        `${screenshotsToApprove.length} screenshot(s) approved (filtered)`,
+      );
+    }
   });
 
 program
