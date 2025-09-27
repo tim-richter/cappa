@@ -9,6 +9,7 @@ import {
 } from "@ui/components/tooltip";
 import {
   ArrowLeft,
+  ArrowRight,
   BadgeCheckIcon,
   Check,
   Eye,
@@ -17,6 +18,7 @@ import {
   SplitSquareHorizontal,
 } from "lucide-react";
 import { useState } from "react";
+import { Link } from "react-router";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
@@ -25,7 +27,7 @@ import { Single } from "./components/Single";
 import { Split } from "./components/Split";
 
 interface ScreenshotComparisonProps {
-  screenshot: Screenshot;
+  screenshot: Screenshot & { next: string; prev: string };
   onBack: () => void;
 }
 
@@ -45,7 +47,6 @@ export function ScreenshotComparison({
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
   const [overlayOpacity, setOverlayOpacity] = useState(50);
   const queryClient = useQueryClient();
-
   const { mutate: approveScreenshot } = useMutation({
     mutationFn: (approved: boolean) => {
       return fetch(`/api/screenshots/${screenshot.id}`, {
@@ -112,6 +113,24 @@ export function ScreenshotComparison({
               <TooltipContent>Approve</TooltipContent>
             </Tooltip>
           )}
+
+          <div className="flex items-center gap-2">
+            {screenshot.prev && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to={`/screenshots/${screenshot.prev}`}>
+                  <ArrowLeft className="h-4 w-4" />
+                  Prev
+                </Link>
+              </Button>
+            )}
+            {screenshot.next && (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to={`/screenshots/${screenshot.next}`}>
+                  Next <ArrowRight className="h-4 w-4" />
+                </Link>
+              </Button>
+            )}
+          </div>
 
           {/* View Mode Controls */}
           {screenshot.category === "changed" && (

@@ -118,40 +118,49 @@ export const handlers = [
 
   http.get("/api/screenshots/:id", ({ params }) => {
     if (params.id === "1") {
-      return HttpResponse.json<Screenshot>({
+      return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,
         id: params.id as string,
         actualPath: "/images/4a.png",
         expectedPath: undefined,
         diffPath: undefined,
         category: "new",
+
+        next: "2",
+        prev: "5",
       });
     }
 
     if (params.id === "2") {
-      return HttpResponse.json<Screenshot>({
+      return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,
         id: params.id as string,
         actualPath: undefined,
         expectedPath: "/images/4b.png",
         diffPath: undefined,
         category: "deleted",
+
+        next: "3",
+        prev: "1",
       });
     }
 
     if (params.id === "3") {
-      return HttpResponse.json<Screenshot>({
+      return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,
         id: params.id as string,
         actualPath: "/images/4a.png",
         expectedPath: "/images/4b.png",
         diffPath: "/images/4diff.png",
         category: "changed",
+
+        next: "4",
+        prev: "2",
       });
     }
 
     if (params.id === "4") {
-      return HttpResponse.json<Screenshot>({
+      return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,
         id: params.id as string,
         actualPath: "/images/4a.png",
@@ -159,24 +168,33 @@ export const handlers = [
         diffPath: undefined,
         category: "passed",
         approved: true,
+
+        next: "5",
+        prev: "3",
       });
     }
 
     if (params.id === "5") {
-      return HttpResponse.json<Screenshot>({
+      return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,
         id: params.id as string,
         actualPath: "/images/1a.jpeg",
         expectedPath: "/images/1b.jpeg",
         diffPath: "/images/1diff.png",
         category: "changed",
+
+        next: "1",
+        prev: "4",
       });
     }
 
-    return HttpResponse.json<Screenshot>({
+    return HttpResponse.json<Screenshot & { next: string; prev: string }>({
       name: params.id as string,
       id: params.id as string,
       category: "new",
+
+      next: "2",
+      prev: "5",
     });
   }),
 
