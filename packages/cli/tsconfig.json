@@ -1,5 +1,5 @@
 {
-  "extends": "@cappa/config-ts/bundler.json",
+  "extends": "../config-ts/bundler.json",
   "compilerOptions": {
     "baseUrl": ".",
     "types": ["vitest"]
