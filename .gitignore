@@ -31,3 +31,5 @@ storybook-static
 
 *.tgz
 *.tar.gz
+
+coverage

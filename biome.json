@@ -1,4 +1,13 @@
 {
+  "files": {
+    "includes": [
+      "**",
+      "!**/node_modules",
+      "!**/dist",
+      "!**/public",
+      "!**/coverage"
+    ]
+  },
   "formatter": {
     "enabled": true,
     "indentStyle": "space",
