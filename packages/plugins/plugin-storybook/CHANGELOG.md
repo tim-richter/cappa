@@ -1,5 +1,13 @@
 # @cappa/plugin-storybook
 
+## 0.1.4
+
+### Patch Changes
+
+- a1d91c6: feat: add viewport options
+- Updated dependencies [a1d91c6]
+  - @cappa/core@0.1.4
+
 ## 0.1.3
 
 ### Patch Changes
