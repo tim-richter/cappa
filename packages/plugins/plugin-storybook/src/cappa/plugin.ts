@@ -168,6 +168,13 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               logger.debug("Taking screenshot with options", options);
             }
 
+            // setting viewport early because of timing
+            if (options.viewport) {
+              await page.setViewportSize(options.viewport);
+            } else {
+              await page.setViewportSize(screenshotTool.viewport); // reset
+            }
+
             await freezeUI(page);
             await waitForVisualIdle(page);
 

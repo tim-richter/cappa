@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import blazediff from "@blazediff/core";
 import type { BlazeDiffOptions } from "@blazediff/types";
+import { getLogger } from "@cappa/logger";
 import { PNG } from "pngjs";
 import type { DiffConfig } from "./types";
 
@@ -12,6 +13,8 @@ export interface CompareResult {
   percentDifference: number;
   diffBuffer?: Buffer; // PNG buffer of the diff image
   passed: boolean; // Whether the comparison passed based on threshold
+  error?: string; // Error message if the comparison failed
+  differentSizes: boolean; // Whether the images have different sizes
 }
 
 const compare = (
@@ -45,30 +48,54 @@ export async function compareImages(
 
   const { width, height } = png1;
 
+  if (width !== png2.width || height !== png2.height) {
+    return {
+      numDiffPixels: 0,
+      totalPixels: 0,
+      percentDifference: 0,
+      passed: false,
+      differentSizes: true,
+    };
+  }
+
   const diff = withDiff ? new PNG({ width, height }) : undefined;
 
-  const numDiffPixels = compare(
-    png1.data,
-    png2.data,
-    diff?.data,
-    width,
-    height,
-    options,
-  );
+  try {
+    const numDiffPixels = compare(
+      png1.data,
+      png2.data,
+      diff?.data,
+      width,
+      height,
+      options,
+    );
 
-  const totalPixels = width * height;
-  const percentDifference = (numDiffPixels / totalPixels) * 100;
+    const totalPixels = width * height;
+    const percentDifference = (numDiffPixels / totalPixels) * 100;
 
-  // Convert diff image to buffer
-  const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
+    // Convert diff image to buffer
+    const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
 
-  return {
-    numDiffPixels,
-    totalPixels,
-    percentDifference,
-    diffBuffer,
-    passed: isPassed(percentDifference, numDiffPixels, options),
-  };
+    return {
+      numDiffPixels,
+      totalPixels,
+      percentDifference,
+      diffBuffer,
+      passed: isPassed(percentDifference, numDiffPixels, options),
+      differentSizes: false,
+    };
+  } catch (error) {
+    getLogger().error((error as Error).message || "Unknown error");
+
+    return {
+      numDiffPixels: 0,
+      totalPixels: 0,
+      percentDifference: 0,
+      passed: false,
+      differentSizes: false,
+      error: (error as Error).message || "Unknown error",
+    };
+  }
 }
 
 /**
@@ -136,3 +163,23 @@ const isPassed = (
   // fallback to 0 pixels
   return numDiffPixels === 0;
 };
+
+/**
+ * Create different size png image with all pixels red
+ * @returns
+ */
+export function createDiffSizePngImage(width: number, height: number): Buffer {
+  const png = new PNG({ width, height });
+
+  for (let y = 0; y < height; y++) {
+    for (let x = 0; x < width; x++) {
+      const idx = (width * y + x) << 2;
+      png.data[idx] = 255; // red
+      png.data[idx + 1] = 0; // green
+      png.data[idx + 2] = 0; // blue
+      png.data[idx + 3] = 255; // alpha
+    }
+  }
+
+  return PNG.sync.write(png);
+}

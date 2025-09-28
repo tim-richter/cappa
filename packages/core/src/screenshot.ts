@@ -6,15 +6,14 @@ import {
   type BrowserContext,
   chromium,
   firefox,
-  type Locator,
   type Page,
   type PageScreenshotOptions,
   webkit,
 } from "playwright-core";
 import {
-  type CompareOptions,
   type CompareResult,
   compareImages,
+  createDiffSizePngImage,
 } from "./compare";
 import type { DiffConfig, ScreenshotOptions } from "./types";
 
@@ -170,7 +169,9 @@ class ScreenshotTool {
   async takeScreenshot(
     page: Page,
     filename: string,
-    options: ScreenshotOptions,
+    options: ScreenshotOptions & {
+      viewport?: { width: number; height: number };
+    },
   ) {
     if (!this.browser) {
       throw new Error("Browser not initialized");
@@ -193,7 +194,13 @@ class ScreenshotTool {
         mask: options.mask,
         omitBackground: options.omitBackground,
         scale: "css" as const,
+        animations: "disabled",
+        caret: "hide",
       } satisfies PageScreenshotOptions;
+
+      if (options.viewport) {
+        await page.setViewportSize(options.viewport);
+      }
 
       if (options.delay) {
         await page.waitForTimeout(options.delay);
@@ -211,6 +218,55 @@ class ScreenshotTool {
     }
   }
 
+  /**
+   * Takes a screenshot and returns the buffer (for comparison purposes)
+   */
+  async takeScreenshotBuffer(
+    page: Page,
+    options: ScreenshotOptions & {
+      viewport?: { width: number; height: number };
+    },
+  ): Promise<Buffer> {
+    if (!this.browser) {
+      throw new Error("Browser not initialized");
+    }
+
+    if (options.skip) {
+      throw new Error("Screenshot skipped");
+    }
+
+    try {
+      // Take screenshot without saving to file
+      const screenshotOptions = {
+        fullPage: options.fullPage,
+        type: "png" as const,
+        timeout: 60000,
+        mask: options.mask,
+        omitBackground: options.omitBackground,
+        scale: "css" as const,
+        animations: "disabled",
+        caret: "hide",
+      } satisfies PageScreenshotOptions;
+
+      if (options.viewport) {
+        await page.setViewportSize(options.viewport);
+      }
+
+      if (options.delay) {
+        await page.waitForTimeout(options.delay);
+      }
+
+      const buffer = await page.screenshot(screenshotOptions);
+      return buffer;
+    } catch (error) {
+      this.logger.error(
+        `Error taking screenshot of ${page.url()}:`,
+        (error as Error).message,
+      );
+      throw error;
+    }
+  }
+
   async takeScreenshotWithComparison(
     page: Page,
     filename: string,
@@ -218,6 +274,7 @@ class ScreenshotTool {
     options: ScreenshotOptions & {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
+      viewport?: { width: number; height: number };
     },
   ): Promise<{
     screenshotPath: string;
@@ -241,14 +298,14 @@ class ScreenshotTool {
         mask: options.mask,
         omitBackground: options.omitBackground,
         scale: "css" as const,
+        animations: "disabled",
+        caret: "hide",
       } satisfies PageScreenshotOptions;
 
-      const retryScreenshot = await this.retryScreenshot(
-        page,
-        filename,
-        referenceImage,
-        screenshotOptions,
-      );
+      const retryScreenshot = await this.retryScreenshot(page, referenceImage, {
+        ...screenshotOptions,
+        viewport: options.viewport,
+      });
 
       if (!retryScreenshot.screenshotPath) {
         throw new Error("Screenshot buffer is undefined");
@@ -285,6 +342,20 @@ class ScreenshotTool {
         this.logger.debug(`Diff image saved: ${diffImagePath}`);
       }
 
+      // different sizes diff image
+      if (retryScreenshot.comparisonResult.differentSizes) {
+        this.logger.warn(`Screenshot has different sizes than reference image`);
+
+        const diffFilename = options.diffImageFilename || filename;
+        diffImagePath = this.getDiffFilePath(diffFilename);
+        const diffBuffer = createDiffSizePngImage(200, 200);
+
+        fs.mkdirSync(path.dirname(diffImagePath), { recursive: true });
+        fs.writeFileSync(diffImagePath, diffBuffer);
+
+        this.logger.debug(`Diff Size image saved: ${diffImagePath}`);
+      }
+
       return {
         screenshotPath: filepath,
         comparisonResult: retryScreenshot.comparisonResult,
@@ -301,18 +372,19 @@ class ScreenshotTool {
 
   async retryScreenshot(
     page: Page,
-    filename: string,
     referenceImage: Buffer,
     options: ScreenshotOptions & {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
+      viewport?: { width: number; height: number };
     },
   ) {
     for (let i = 0; i < this.retries; i++) {
       try {
-        const screenshotBuffer = await this.takeScreenshot(page, filename, {
+        const screenshotBuffer = await this.takeScreenshotBuffer(page, {
           ...options,
           delay: this.getIncBackoffDelay(i, options.delay || 0),
+          viewport: options.viewport,
         });
 
         if (!screenshotBuffer) {
@@ -325,6 +397,15 @@ class ScreenshotTool {
           true,
           { ...this.diff, ...options },
         );
+
+        // bail early if the images are different sizes
+        if (comparisonResult.differentSizes) {
+          return {
+            screenshotPath: screenshotBuffer,
+            comparisonResult,
+            passed: false,
+          };
+        }
 
         // last retry
         if (i === this.retries - 1 && !comparisonResult.passed) {
