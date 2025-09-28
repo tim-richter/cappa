@@ -1,4 +1,5 @@
 import fs from "node:fs";
+import path from "node:path";
 import type { Screenshot } from "@cappa/core";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
@@ -9,6 +10,7 @@ import { resolveFromHere, transform } from "./util";
 declare module "fastify" {
   interface FastifyInstance {
     screenshots: Screenshot[];
+    outputDir: string;
   }
 }
 
@@ -25,6 +27,7 @@ export async function createServer(opts: StartServerOptions) {
 
   // Add screenshots data to the app instance for use in plugins
   app.decorate("screenshots", transform(opts.screenshots));
+  app.decorate("outputDir", opts.outputDir);
 
   app.get("/api/health", async () => ({ ok: true }));
 
@@ -33,7 +36,7 @@ export async function createServer(opts: StartServerOptions) {
 
   if (fs.existsSync(opts.outputDir)) {
     app.register(fastifyStatic, {
-      root: opts.outputDir,
+      root: path.resolve(opts.outputDir),
       prefix: "/assets/screenshots",
       // security: disable dotfiles and traversal
       decorateReply: false,
@@ -47,7 +50,7 @@ export async function createServer(opts: StartServerOptions) {
       opts.uiRoot ?? process.env.UI_ROOT ?? resolveFromHere("../public");
 
     app.register(fastifyStatic, {
-      root: uiRoot,
+      root: path.resolve(uiRoot),
       prefix: "/",
     });
 

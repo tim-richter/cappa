@@ -21,8 +21,8 @@
       "outputs": ["dist/**/*.d.ts", "dist/**/*.d.cts"],
       "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json"]
     },
-    "test": {
-      "dependsOn": ["^test"],
+    "test:run": {
+      "dependsOn": ["^test:run"],
       "outputs": ["coverage/**"],
       "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json"]
     }

@@ -1,4 +1,8 @@
+import fs from "node:fs";
+import path from "node:path";
+import type { Screenshot } from "@cappa/core";
 import type { FastifyPluginAsync } from "fastify";
+import { z } from "zod/mini";
 
 /**
  * Fastify plugin for screenshots routes
@@ -17,7 +21,7 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
       category?: "new" | "deleted" | "changed" | "passed";
     };
 
-    let screenshots = fastify.screenshots || [];
+    let screenshots = fastify.screenshots;
 
     // Filter by category if provided
     if (category) {
@@ -40,7 +44,7 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
   // GET /api/screenshots/:id - Get specific screenshot
   fastify.get("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    const screenshots = fastify.screenshots || [];
+    const screenshots = fastify.screenshots;
     const screenshot = screenshots.find((s) => s.id === decodeURIComponent(id));
 
     if (!screenshot) {
@@ -51,17 +55,62 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
     return screenshot;
   });
 
-  // POST /api/screenshots - Create new screenshot (example)
-  fastify.post("/", async (request, reply) => {
-    const screenshot = request.body;
-    // Add your screenshot creation logic here
-    reply.code(201).send({ message: "Screenshot created", screenshot });
-  });
-
-  // DELETE /api/screenshots/:id - Delete screenshot
-  fastify.delete("/:id", async (request, reply) => {
+  // PATCH /api/screenshots - Update screenshot
+  fastify.patch("/:id", async (request, reply) => {
     const { id } = request.params as { id: string };
-    // Add your screenshot deletion logic here
-    reply.send({ message: `Screenshot ${id} deleted` });
+    const screenshot = request.body as Screenshot;
+    const screenshots = fastify.screenshots;
+
+    const screenshotToUpdate = screenshots.find(
+      (s) => s.id === decodeURIComponent(id),
+    );
+
+    if (!screenshotToUpdate) {
+      reply.code(404).send({ error: "Screenshot not found" });
+      return;
+    }
+
+    const validatedScreenshot = z
+      .object({
+        approved: z.boolean("approved must be a boolean"),
+      })
+      .safeParse(screenshot);
+
+    if (validatedScreenshot.error) {
+      reply
+        .code(400)
+        .send({ error: z.flattenError(validatedScreenshot.error) });
+      return;
+    }
+
+    const updatedScreenshot = {
+      ...screenshotToUpdate,
+      ...validatedScreenshot.data,
+    };
+
+    // update the screenshot in the screenshots array
+    fastify.screenshots = screenshots.map((s) =>
+      s.id === decodeURIComponent(id) ? updatedScreenshot : s,
+    );
+
+    const outputDir = fastify.outputDir;
+
+    if (updatedScreenshot.approved) {
+      const dir = path.dirname(
+        `${outputDir}/expected/${updatedScreenshot.name}`,
+      );
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, {
+          recursive: true,
+        });
+      }
+
+      fs.copyFileSync(
+        `${outputDir}/actual/${updatedScreenshot.name}.png`,
+        `${outputDir}/expected/${updatedScreenshot.name}.png`,
+      );
+    }
+
+    reply.code(200).send(updatedScreenshot);
   });
 };
