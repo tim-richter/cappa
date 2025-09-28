@@ -185,9 +185,13 @@ describe("compare", () => {
       const largeImage = createSolidColorPNG(100, 100, [255, 0, 0, 255]);
       const smallImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
-      await expect(compareImages(largeImage, smallImage)).rejects.toThrow(
-        "Image sizes do not match. Image 1 size: 40000, image 2 size: 10000",
-      );
+      const result = await compareImages(largeImage, smallImage);
+
+      expect(result.differentSizes).toBe(true);
+      expect(result.numDiffPixels).toBe(0);
+      expect(result.totalPixels).toBe(0);
+      expect(result.percentDifference).toBe(0);
+      expect(result.passed).toBe(false);
     });
 
     it("should handle custom compare options", async () => {

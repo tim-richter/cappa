@@ -20,6 +20,11 @@
       "dependsOn": ["^tsc"],
       "outputs": ["dist/**/*.d.ts", "dist/**/*.d.cts"],
       "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json"]
+    },
+    "test": {
+      "dependsOn": ["^test"],
+      "outputs": ["coverage/**"],
+      "inputs": ["src/**/*.ts", "src/**/*.tsx", "tsconfig.json"]
     }
   }
 }
