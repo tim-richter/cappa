@@ -307,6 +307,7 @@ describe("compare", () => {
         totalPixels: 100,
         percentDifference: 0,
         passed: true,
+        differentSizes: false,
         // diffBuffer is undefined
       };
 

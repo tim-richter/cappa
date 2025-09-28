@@ -83,6 +83,7 @@ export type ScreenshotOptions = {
   skip?: boolean;
   mask?: Locator[];
   omitBackground?: boolean;
+  viewport?: { width: number; height: number };
 };
 
 export interface Screenshot {

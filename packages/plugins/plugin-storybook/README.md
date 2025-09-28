@@ -52,6 +52,7 @@ Cappa uses a storybook addon that allows you to pass options from storybook into
 | fullPage | Whether to take a full page screenshot          | true            |
 | mask     | An array of selectors to mask in the screenshot | []              |
 | omitBackground | Whether to omit the background in the screenshot | false |
+| viewport | The viewport to use for the screenshot | null (use default viewport) |
 
 #### Example
 
@@ -63,6 +64,7 @@ export const Primary: Story = {
       delay: 1000,
       fullPage: false,
       mask: ["#my-element", ".my-class"],
+      viewport: { width: 1920, height: 1080 },
     },
   },
 };
