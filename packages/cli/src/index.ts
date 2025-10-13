@@ -1,11 +1,11 @@
 import fs from "node:fs";
+import { glob } from "node:fs/promises";
 import path from "node:path";
 import { ScreenshotTool } from "@cappa/core";
 import { getLogger, initLogger } from "@cappa/logger";
 import { createServer } from "@cappa/server";
 import chalk from "chalk";
 import { Command } from "commander";
-import { glob } from "glob";
 import { version } from "../package.json";
 import { getConfig } from "./utils/getConfig";
 import { getCosmiConfig } from "./utils/getCosmiConfig";

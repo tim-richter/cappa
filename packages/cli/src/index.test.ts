@@ -1,5 +1,13 @@
 import path from "node:path";
-import { beforeAll, beforeEach, afterEach, describe, expect, test, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  test,
+  vi,
+} from "vitest";
 
 const fsMock = {
   existsSync: vi.fn(),
@@ -67,12 +75,12 @@ vi.mock("@cappa/server", () => ({
   createServer: createServerMock,
 }));
 
-const globMock = vi.fn<
-  [pattern: string],
-  Promise<string[]>
->(() => Promise.resolve([]));
+const globMock = vi.fn<[pattern: string], Promise<string[]>>(() =>
+  Promise.resolve([]),
+);
 
-vi.mock("glob", () => ({
+vi.mock("node:fs/promises", () => ({
+  __esModule: true,
   glob: globMock,
 }));
 
@@ -114,7 +122,9 @@ beforeAll(async () => {
 });
 
 beforeEach(() => {
-  Object.values(fsMock).forEach((mockFn) => mockFn.mockReset());
+  Object.values(fsMock).forEach((mockFn) => {
+    mockFn.mockReset();
+  });
   screenshotToolInstances.length = 0;
   serverInstances.length = 0;
   globMock.mockReset();
@@ -150,8 +160,9 @@ describe("cappa CLI", () => {
       plugins: [{ name: "plugin", execute: pluginExecute }],
     });
 
-    fsMock.existsSync.mockImplementation((target: string) =>
-      target.includes("/actual") || target.includes("/diff"),
+    fsMock.existsSync.mockImplementation(
+      (target: string) =>
+        target.includes("/actual") || target.includes("/diff"),
     );
 
     process.argv = ["node", "cappa", "capture"];
@@ -260,17 +271,11 @@ describe("cappa CLI", () => {
 
     globMock.mockResolvedValue(actualScreenshots);
 
-    fsMock.existsSync.mockImplementation((target: string) =>
-      target === "/tmp/screens/diff/foo.png",
+    fsMock.existsSync.mockImplementation(
+      (target: string) => target === "/tmp/screens/diff/foo.png",
     );
 
-    process.argv = [
-      "node",
-      "cappa",
-      "approve",
-      "--filter",
-      "foo",
-    ];
+    process.argv = ["node", "cappa", "approve", "--filter", "foo"];
 
     await run();
 
@@ -302,17 +307,9 @@ describe("cappa CLI", () => {
       diff: {},
     });
 
-    globMock.mockResolvedValue([
-      "/tmp/screens/actual/foo.png",
-    ]);
+    globMock.mockResolvedValue(["/tmp/screens/actual/foo.png"]);
 
-    process.argv = [
-      "node",
-      "cappa",
-      "approve",
-      "--filter",
-      "bar",
-    ];
+    process.argv = ["node", "cappa", "approve", "--filter", "bar"];
 
     await run();
 
