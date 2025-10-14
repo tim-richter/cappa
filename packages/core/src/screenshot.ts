@@ -15,7 +15,12 @@ import {
   compareImages,
   createDiffSizePngImage,
 } from "./compare";
-import type { DiffConfig, ScreenshotOptions } from "./types";
+import type {
+  DiffConfig,
+  ScreenshotOptions,
+  ScreenshotSettings,
+  ScreenshotVariant,
+} from "./types";
 
 const defaultDiffConfig: DiffConfig = {
   threshold: 0.1,
@@ -24,6 +29,37 @@ const defaultDiffConfig: DiffConfig = {
   maxDiffPixels: 0,
   maxDiffPercentage: 0,
 };
+
+export interface ScreenshotCaptureDetails {
+  filename: string;
+  filepath?: string;
+  comparisonResult?: CompareResult;
+  diffImagePath?: string;
+  skipped?: boolean;
+}
+
+export interface ScreenshotVariantCaptureDetails
+  extends ScreenshotCaptureDetails {
+  id: string;
+  label?: string;
+}
+
+export interface ScreenshotCaptureResult {
+  base: ScreenshotCaptureDetails;
+  variants: ScreenshotVariantCaptureDetails[];
+}
+
+export interface ScreenshotCaptureExtras {
+  saveDiffImage?: boolean;
+  diffImageFilename?: string;
+  variants?: Record<
+    string,
+    {
+      saveDiffImage?: boolean;
+      diffImageFilename?: string;
+    }
+  >;
+}
 
 class ScreenshotTool {
   browserType: "chromium" | "firefox" | "webkit";
@@ -169,9 +205,7 @@ class ScreenshotTool {
   async takeScreenshot(
     page: Page,
     filename: string,
-    options: ScreenshotOptions & {
-      viewport?: { width: number; height: number };
-    },
+    options: ScreenshotSettings,
   ) {
     if (!this.browser) {
       throw new Error("Browser not initialized");
@@ -198,15 +232,13 @@ class ScreenshotTool {
         caret: "hide",
       } satisfies PageScreenshotOptions;
 
-      if (options.viewport) {
-        await page.setViewportSize(options.viewport);
-      }
+      await this.withViewport(page, options.viewport, async () => {
+        if (options.delay) {
+          await page.waitForTimeout(options.delay);
+        }
 
-      if (options.delay) {
-        await page.waitForTimeout(options.delay);
-      }
-
-      await page.screenshot(screenshotOptions);
+        await page.screenshot(screenshotOptions);
+      });
 
       return filepath;
     } catch (error) {
@@ -218,14 +250,33 @@ class ScreenshotTool {
     }
   }
 
+  private async withViewport<T>(
+    page: Page,
+    viewport: ScreenshotSettings["viewport"],
+    action: () => Promise<T>,
+  ): Promise<T> {
+    if (!viewport) {
+      return action();
+    }
+
+    const previousViewport = page.viewportSize();
+    await page.setViewportSize(viewport);
+
+    try {
+      return await action();
+    } finally {
+      if (previousViewport) {
+        await page.setViewportSize(previousViewport);
+      }
+    }
+  }
+
   /**
    * Takes a screenshot and returns the buffer (for comparison purposes)
    */
   async takeScreenshotBuffer(
     page: Page,
-    options: ScreenshotOptions & {
-      viewport?: { width: number; height: number };
-    },
+    options: ScreenshotSettings,
   ): Promise<Buffer> {
     if (!this.browser) {
       throw new Error("Browser not initialized");
@@ -248,15 +299,18 @@ class ScreenshotTool {
         caret: "hide",
       } satisfies PageScreenshotOptions;
 
-      if (options.viewport) {
-        await page.setViewportSize(options.viewport);
-      }
+      const buffer = await this.withViewport(
+        page,
+        options.viewport,
+        async () => {
+          if (options.delay) {
+            await page.waitForTimeout(options.delay);
+          }
 
-      if (options.delay) {
-        await page.waitForTimeout(options.delay);
-      }
+          return page.screenshot(screenshotOptions);
+        },
+      );
 
-      const buffer = await page.screenshot(screenshotOptions);
       return buffer;
     } catch (error) {
       this.logger.error(
@@ -271,10 +325,9 @@ class ScreenshotTool {
     page: Page,
     filename: string,
     referenceImage: Buffer,
-    options: ScreenshotOptions & {
+    options: ScreenshotSettings & {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
-      viewport?: { width: number; height: number };
     },
   ): Promise<{
     screenshotPath: string;
@@ -290,22 +343,19 @@ class ScreenshotTool {
       const filepath = this.getActualFilePath(filename);
       fs.mkdirSync(path.dirname(filepath), { recursive: true });
 
-      // Take screenshot and get buffer
-      const screenshotOptions = {
+      const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage,
-        type: "png" as const,
-        timeout: 60000,
         mask: options.mask,
         omitBackground: options.omitBackground,
-        scale: "css" as const,
-        animations: "disabled",
-        caret: "hide",
-      } satisfies PageScreenshotOptions;
-
-      const retryScreenshot = await this.retryScreenshot(page, referenceImage, {
-        ...screenshotOptions,
+        delay: options.delay,
         viewport: options.viewport,
-      });
+      };
+
+      const retryScreenshot = await this.retryScreenshot(
+        page,
+        referenceImage,
+        screenshotSettings,
+      );
 
       if (!retryScreenshot.screenshotPath) {
         throw new Error("Screenshot buffer is undefined");
@@ -373,18 +423,13 @@ class ScreenshotTool {
   async retryScreenshot(
     page: Page,
     referenceImage: Buffer,
-    options: ScreenshotOptions & {
-      saveDiffImage?: boolean;
-      diffImageFilename?: string;
-      viewport?: { width: number; height: number };
-    },
+    options: ScreenshotSettings,
   ) {
     for (let i = 0; i < this.retries; i++) {
       try {
         const screenshotBuffer = await this.takeScreenshotBuffer(page, {
           ...options,
           delay: this.getIncBackoffDelay(i, options.delay || 0),
-          viewport: options.viewport,
         });
 
         if (!screenshotBuffer) {
@@ -395,7 +440,7 @@ class ScreenshotTool {
           screenshotBuffer,
           referenceImage,
           true,
-          { ...this.diff, ...options },
+          this.diff,
         );
 
         // bail early if the images are different sizes
@@ -445,6 +490,134 @@ class ScreenshotTool {
     };
   }
 
+  getVariantFilename(filename: string, variant: ScreenshotVariant): string {
+    if (variant.filename) {
+      return variant.filename;
+    }
+
+    const parsed = path.parse(filename);
+    const sanitizedId = variant.id
+      .trim()
+      .replace(/[^a-zA-Z0-9_-]+/g, "-")
+      .replace(/-+/g, "-")
+      .replace(/^-|-$/g, "");
+    const suffix = sanitizedId || "variant";
+    const ext = parsed.ext || ".png";
+    const variantName = `${parsed.name}--${suffix}${ext}`;
+
+    return parsed.dir ? path.join(parsed.dir, variantName) : variantName;
+  }
+
+  async capture(
+    page: Page,
+    filename: string,
+    options: ScreenshotOptions,
+    extras: ScreenshotCaptureExtras = {},
+  ): Promise<ScreenshotCaptureResult> {
+    if (!this.browser) {
+      throw new Error("Browser not initialized");
+    }
+
+    const { variants = [], ...baseOptions } = options;
+    const baseResult: ScreenshotCaptureDetails = { filename };
+    const variantResults: ScreenshotVariantCaptureDetails[] = [];
+
+    const baseSaveDiff = extras.saveDiffImage ?? false;
+    const baseDiffFilename = extras.diffImageFilename ?? filename;
+
+    if (baseOptions.skip) {
+      return {
+        base: { ...baseResult, skipped: true },
+        variants: variants.map((variant) => ({
+          id: variant.id,
+          label: variant.label,
+          filename: this.getVariantFilename(filename, variant),
+          skipped: true,
+        })),
+      };
+    }
+
+    if (this.hasExpectedImage(filename)) {
+      const { screenshotPath, comparisonResult, diffImagePath } =
+        await this.takeScreenshotWithComparison(
+          page,
+          filename,
+          this.getExpectedImageBuffer(filename),
+          {
+            ...baseOptions,
+            saveDiffImage: baseSaveDiff,
+            diffImageFilename: baseDiffFilename,
+          },
+        );
+
+      baseResult.filepath = screenshotPath;
+      baseResult.comparisonResult = comparisonResult;
+      baseResult.diffImagePath = diffImagePath;
+    } else {
+      baseResult.filepath = await this.takeScreenshot(
+        page,
+        filename,
+        baseOptions,
+      );
+    }
+
+    for (const variant of variants) {
+      const variantFilename = this.getVariantFilename(filename, variant);
+      const variantOptions: ScreenshotSettings = {
+        ...baseOptions,
+        ...variant.options,
+      };
+
+      const variantResult: ScreenshotVariantCaptureDetails = {
+        id: variant.id,
+        label: variant.label,
+        filename: variantFilename,
+      };
+
+      if (variantOptions.skip) {
+        variantResult.skipped = true;
+        variantResults.push(variantResult);
+        continue;
+      }
+
+      const variantExtra = extras.variants?.[variant.id];
+      const variantSaveDiff = variantExtra?.saveDiffImage ?? baseSaveDiff;
+      const variantDiffFilename =
+        variantExtra?.diffImageFilename ?? variantFilename;
+
+      if (this.hasExpectedImage(variantFilename)) {
+        const { screenshotPath, comparisonResult, diffImagePath } =
+          await this.takeScreenshotWithComparison(
+            page,
+            variantFilename,
+            this.getExpectedImageBuffer(variantFilename),
+            {
+              ...variantOptions,
+              saveDiffImage: variantSaveDiff,
+              diffImageFilename: variantDiffFilename,
+            },
+          );
+
+        variantResult.filepath = screenshotPath;
+        variantResult.comparisonResult = comparisonResult;
+        variantResult.diffImagePath = diffImagePath;
+      } else {
+        variantResult.filepath = await this.takeScreenshot(
+          page,
+          variantFilename,
+          variantOptions,
+        );
+      }
+
+      variantResults.push(variantResult);
+    }
+
+    return {
+      base: baseResult,
+      variants: variantResults,
+    };
+  }
+
   /**
    * Gets the exponential backoff delay
    */
@@ -467,5 +640,12 @@ class ScreenshotTool {
     return fs.readFileSync(expectedPath);
   }
 }
+
+export type {
+  ScreenshotCaptureDetails,
+  ScreenshotCaptureExtras,
+  ScreenshotCaptureResult,
+  ScreenshotVariantCaptureDetails,
+};
 
 export default ScreenshotTool;

@@ -77,13 +77,26 @@ export type UserConfig = {
   plugins?: Array<Plugin | PluginDef>;
 };
 
-export type ScreenshotOptions = {
+export type Viewport = { width: number; height: number };
+
+export type ScreenshotSettings = {
   fullPage?: boolean;
   delay?: number;
   skip?: boolean;
   mask?: Locator[];
   omitBackground?: boolean;
-  viewport?: { width: number; height: number };
+  viewport?: Viewport;
+};
+
+export type ScreenshotVariant = {
+  id: string;
+  label?: string;
+  filename?: string;
+  options?: ScreenshotSettings;
+};
+
+export type ScreenshotOptions = ScreenshotSettings & {
+  variants?: ScreenshotVariant[];
 };
 
 export interface Screenshot {

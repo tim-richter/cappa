@@ -53,6 +53,7 @@ Cappa uses a storybook addon that allows you to pass options from storybook into
 | mask     | An array of selectors to mask in the screenshot | []              |
 | omitBackground | Whether to omit the background in the screenshot | false |
 | viewport | The viewport to use for the screenshot | null (use default viewport) |
+| variants | Additional screenshot variants to capture | [] |
 
 #### Example
 
@@ -65,10 +66,26 @@ export const Primary: Story = {
       fullPage: false,
       mask: ["#my-element", ".my-class"],
       viewport: { width: 1920, height: 1080 },
+      variants: [
+        {
+          id: "mobile",
+          label: "Mobile",
+          options: { viewport: { width: 375, height: 812 } },
+        },
+        {
+          id: "tablet",
+          options: { viewport: { width: 768, height: 1024 } },
+        },
+      ],
     },
   },
 };
 ```
+
+Each variant captures an additional screenshot using the provided options. Variants inherit the base configuration by default,
+so you can override only the properties that should differ (for example, a viewport or an additional delay). Variant filenames
+are generated automatically using the pattern `<base-name>--<variant-id>.png`, but you can supply a custom `filename` if you
+need to control the output path.
 
 ## Flakiness
 
