@@ -1,0 +1,56 @@
+---
+title: Quickstart
+description: Install the CLI and configure Cappa to capture your first batch of screenshots.
+---
+
+Follow these steps to set up Cappa inside an existing frontend project.
+
+## 1. Install dependencies
+
+Cappa is distributed as a set of packages. Install the CLI alongside the core runtime with your
+preferred package manager:
+
+```bash
+pnpm add -D @cappa/cli @cappa/core
+```
+
+Cappa delegates browser automation to [Playwright](https://playwright.dev/). Install the Playwright
+browsers if your project has not already done so:
+
+```bash
+npx playwright install --with-deps
+```
+
+## 2. Create a configuration file
+
+Create a `cappa.config.ts` file in the root of your project and define where screenshots should be
+saved:
+
+```ts
+import { defineConfig } from '@cappa/core';
+
+export default defineConfig({
+  outputDir: 'screenshots'
+});
+```
+
+Configuration objects can include additional options like custom commands, plugin settings, and CI
+integration hooks. Explore the [Configuration](./configuration) guide for a deeper tour.
+
+## 3. Capture, review, and approve
+
+With the configuration in place you can run the standard workflow:
+
+```bash
+# capture screenshots with Playwright
+cappa capture
+
+# review diffs in an interactive UI
+cappa review
+
+# approve changes and update baselines
+cappa approve
+```
+
+The CLI keeps track of the working directory so you can review screenshots locally or as part of a
+continuous integration job.
