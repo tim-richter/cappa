@@ -2,8 +2,8 @@ import starlight from "@astrojs/starlight";
 import { defineConfig } from "astro/config";
 
 export default defineConfig({
-  site: 'https://tim-richter.github.io',
-  base: '/cappa',
+  site: "https://tim-richter.github.io",
+  base: "/cappa",
   integrations: [
     starlight({
       title: "Cappa Documentation",
@@ -23,6 +23,7 @@ export default defineConfig({
             { label: "CLI Workflow", link: "/cli-workflow" },
             { label: "Configuration", link: "/configuration" },
             { label: "Plugins", link: "/plugins" },
+            { label: "Storybook integration", link: "/storybook" },
           ],
         },
       ],

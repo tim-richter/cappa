@@ -8,20 +8,22 @@ export a configuration created with `defineConfig` from `@cappa/core`.
 
 ```ts
 import { defineConfig } from '@cappa/core';
+import { cappaPluginStorybook } from '@cappa/plugin-storybook';
 
 export default defineConfig({
   outputDir: 'screenshots',
-  storybook: {
-    url: 'http://localhost:6006'
-  }
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006'
+    })
+  ]
 });
 ```
 
 ### Key options
 
 - **`outputDir`** – Folder where screenshots and diffs are written.
-- **`storybook`** – Configure the Storybook plugin with a URL and stories to target.
-- **`plugins`** – Register additional plugins to expand how Cappa discovers pages or state.
+- **`plugins`** – Register additional plugins to expand how Cappa discovers pages or state. See the [Storybook integration](./storybook) guide for the official addon.
 - **`commands`** – Expose custom CLI commands for project-specific automation.
 
 ### Project structure

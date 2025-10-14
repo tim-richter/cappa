@@ -8,24 +8,25 @@ Cappa includes a plugin system so teams can adapt the screenshot workflow to the
 ## Using the Storybook plugin
 
 The official Storybook plugin (`@cappa/plugin-storybook`) connects Storybook stories to Cappa's
-capture pipeline. After installing the package, enable it in `cappa.config.ts`:
+capture pipeline. For a full walkthrough covering installation, Storybook setup, and per-story
+options, read the [Storybook integration](./storybook) guide. The high-level integration looks like
+this:
 
 ```ts
 import { defineConfig } from '@cappa/core';
-import { storybookPlugin } from '@cappa/plugin-storybook';
+import { cappaPluginStorybook } from '@cappa/plugin-storybook';
 
 export default defineConfig({
   outputDir: 'screenshots',
   plugins: [
-    storybookPlugin({
-      url: 'http://localhost:6006'
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006'
     })
   ]
 });
 ```
 
-Run `cappa capture` while Storybook is running to create screenshots for every selected story. The
-plugin is a convenient starting point for integrating Cappa into component libraries.
+Run `cappa capture` while Storybook is running to create screenshots for every selected story.
 
 ## Authoring custom plugins
 
