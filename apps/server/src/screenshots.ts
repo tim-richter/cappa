@@ -1,6 +1,4 @@
-import fs from "node:fs";
-import path from "node:path";
-import type { Screenshot } from "@cappa/core";
+import { type Screenshot, ScreenshotFileSystem } from "@cappa/core";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod/mini";
 
@@ -93,22 +91,9 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
       s.id === decodeURIComponent(id) ? updatedScreenshot : s,
     );
 
-    const outputDir = fastify.outputDir;
-
     if (updatedScreenshot.approved) {
-      const dir = path.dirname(
-        `${outputDir}/expected/${updatedScreenshot.name}`,
-      );
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, {
-          recursive: true,
-        });
-      }
-
-      fs.copyFileSync(
-        `${outputDir}/actual/${updatedScreenshot.name}.png`,
-        `${outputDir}/expected/${updatedScreenshot.name}.png`,
-      );
+      const fileSystem = new ScreenshotFileSystem(fastify.outputDir);
+      fileSystem.approveByName(updatedScreenshot.name);
     }
 
     reply.code(200).send(updatedScreenshot);
