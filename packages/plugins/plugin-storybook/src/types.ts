@@ -1,3 +1,12 @@
+export interface StorybookRenderOptions {
+  viewMode?: "story" | "docs";
+  args?: Record<string, unknown>;
+  globals?: Record<string, string | number | boolean>;
+  query?: Record<string, string | number | boolean>;
+  fullscreen?: boolean;
+  singleStory?: boolean;
+}
+
 export interface ScreenshotVariantOverrideStorybook {
   fullPage?: boolean;
   delay?: number;
@@ -17,4 +26,5 @@ export interface ScreenshotVariantOptionsStorybook {
 export interface ScreenshotOptionsStorybook
   extends ScreenshotVariantOverrideStorybook {
   variants?: ScreenshotVariantOptionsStorybook[];
+  storybook?: StorybookRenderOptions;
 }

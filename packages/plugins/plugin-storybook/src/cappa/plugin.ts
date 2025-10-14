@@ -6,7 +6,11 @@ import type {
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
-import type { ScreenshotOptionsStorybook } from "../types";
+import type {
+  ScreenshotOptionsStorybook,
+  StorybookRenderOptions,
+} from "../types";
+import { buildStorybookIframeUrl } from "./storybook-url";
 import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
 
 export interface StorybookStory {
@@ -29,6 +33,7 @@ interface StorybookPluginOptions {
   defaultViewport?: { width: number; height: number };
   waitForSelector?: string;
   waitForTimeout?: number;
+  storybook?: StorybookRenderOptions;
 }
 
 /**
@@ -70,6 +75,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         includeStories = [],
         excludeStories = [],
         defaultViewport,
+        storybook: defaultStorybookOptions,
       } = options;
 
       const storiesUrl = `${storybookUrl}/index.json`;
@@ -142,7 +148,38 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         for (const story of filteredStories) {
           let storyParameters: ScreenshotOptionsStorybook | undefined;
           try {
-            const storyUrl = `${storybookUrl}/iframe.html?id=${story.id}&viewMode=story`;
+            const storybookOverrides = storyParameters?.storybook;
+            const mergedArgs = {
+              ...(defaultStorybookOptions?.args ?? {}),
+              ...(storybookOverrides?.args ?? {}),
+            };
+            const mergedGlobals = {
+              ...(defaultStorybookOptions?.globals ?? {}),
+              ...(storybookOverrides?.globals ?? {}),
+            };
+            const mergedQuery = {
+              ...(defaultStorybookOptions?.query ?? {}),
+              ...(storybookOverrides?.query ?? {}),
+            };
+            const hasArgs = Object.keys(mergedArgs).length > 0;
+            const hasGlobals = Object.keys(mergedGlobals).length > 0;
+            const hasQuery = Object.keys(mergedQuery).length > 0;
+            const storyUrl = buildStorybookIframeUrl({
+              baseUrl: storybookUrl,
+              storyId: story.id,
+              viewMode:
+                storybookOverrides?.viewMode ??
+                defaultStorybookOptions?.viewMode,
+              args: hasArgs ? mergedArgs : undefined,
+              globals: hasGlobals ? mergedGlobals : undefined,
+              query: hasQuery ? mergedQuery : undefined,
+              fullscreen:
+                storybookOverrides?.fullscreen ??
+                defaultStorybookOptions?.fullscreen,
+              singleStory:
+                storybookOverrides?.singleStory ??
+                defaultStorybookOptions?.singleStory,
+            });
 
             const page = screenshotTool.page;
             if (!page) {
