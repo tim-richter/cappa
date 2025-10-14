@@ -23,6 +23,7 @@ export default defineConfig({
             { label: "CLI Workflow", link: "/cli-workflow" },
             { label: "Configuration", link: "/configuration" },
             { label: "Plugins", link: "/plugins" },
+            { label: "Storybook integration", link: "/storybook" },
           ],
         },
       ],

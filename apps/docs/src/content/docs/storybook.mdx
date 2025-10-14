@@ -1,0 +1,135 @@
+---
+title: Storybook integration
+description: Configure Cappa to capture Storybook stories with the official plugin and addon.
+---
+
+The `@cappa/plugin-storybook` package bridges Storybook with Cappa's screenshot pipeline. It fetches
+stories from a running Storybook instance, opens each story in Playwright, and captures images using
+the same comparison workflow as other targets. This guide walks through installing the plugin,
+connecting it to Storybook, and fine-tuning how screenshots are generated.
+
+## Install the plugin
+
+Add the Storybook plugin alongside the Cappa core packages inside your project:
+
+```bash
+pnpm add -D @cappa/plugin-storybook
+```
+
+Next, register the plugin inside `cappa.config.ts` so that the CLI knows how to discover stories. The
+`storybookUrl` should point at the running Storybook server.
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { cappaPluginStorybook } from '@cappa/plugin-storybook';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006',
+    }),
+  ],
+});
+```
+
+You can add additional plugin options to filter the stories that are captured:
+
+- **`includeStories`** – Only capture stories whose title or name contains one of the provided
+  strings.
+- **`excludeStories`** – Skip stories whose title or name matches one of the provided strings.
+- **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
+  own settings.
+
+## Wire up the Storybook addon
+
+The plugin ships with a Storybook addon that exposes story-level configuration to Cappa. Enable it by
+adding `@cappa/plugin-storybook` to the Storybook addons list:
+
+```ts title=".storybook/main.ts"
+import type { StorybookConfig } from '@storybook/react-vite';
+
+const config: StorybookConfig = {
+  addons: ['@cappa/plugin-storybook'],
+};
+
+export default config;
+```
+
+The addon registers a global decorator that collects parameters for each story. If you need to adjust
+Storybook's runtime when Cappa is in control, you can use the exported `isCappa` helper in
+`.storybook/preview.ts`:
+
+```ts title=".storybook/preview.ts"
+import { isCappa } from '@cappa/plugin-storybook/browser';
+
+if (isCappa()) {
+  // Disable animations, load mock data, etc.
+}
+```
+
+## Capture stories
+
+Start Storybook in one terminal and keep it running so the plugin can connect to the `storybookUrl`.
+From another terminal, run the Cappa capture command from the directory that contains your config:
+
+```bash
+# Terminal 1
+pnpm storybook
+
+# Terminal 2
+pnpm cappa capture
+```
+
+Cappa will fetch the list of stories, load each one in Playwright, and write screenshots, diffs, and
+reports to the configured output directory. Pair it with `cappa review` and `cappa approve` to follow
+the normal approval workflow.
+
+## Control per-story behaviour
+
+Story-specific parameters can override how Cappa captures each story. Define them in your story file
+under `parameters.cappa`.
+
+| Option | Description | Default |
+| --- | --- | --- |
+| `skip` | Skip capturing the story. | `false` |
+| `delay` | Wait (in ms) before taking the screenshot. | `null` (no delay) |
+| `fullPage` | Capture the full page instead of the viewport. | `true` |
+| `mask` | Array of selectors to blur or hide in the screenshot. | `[]` |
+| `omitBackground` | Capture the page with a transparent background. | `false` |
+| `viewport` | Override the viewport size for the story. | Playwright default |
+| `variants` | Additional screenshots to capture with overrides. | `[]` |
+
+```ts title="Button.stories.tsx"
+export const Primary = {
+  parameters: {
+    cappa: {
+      delay: 250,
+      mask: ['.tooltip'],
+      variants: [
+        {
+          id: 'mobile',
+          label: 'Mobile',
+          options: { viewport: { width: 375, height: 812 } },
+        },
+        {
+          id: 'dark-mode',
+          label: 'Dark mode',
+          options: { omitBackground: true },
+        },
+      ],
+    },
+  },
+};
+```
+
+Each variant inherits the base configuration, so you only need to specify the properties that differ
+from the root story. Variant filenames follow the `<story>--<variant>` convention, and you can supply
+`filename` inside a variant to control the output name when necessary.
+
+## Keep screenshots stable
+
+Cappa already pauses CSS animations and waits for the DOM to become idle, but certain components may
+require extra setup. Use the `isCappa` helper shown above to load stability-specific styles or disable
+third-party animation libraries when Cappa is present. Ensuring the Storybook server is warmed up
+before capturing can also reduce flakiness in CI environments.
