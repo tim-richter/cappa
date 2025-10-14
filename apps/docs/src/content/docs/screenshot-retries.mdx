@@ -1,0 +1,43 @@
+---
+title: Screenshot retries
+description: Understand how Cappa stabilizes screenshot comparisons with incremental retries and configurable timing.
+---
+
+Cappa reruns a screenshot comparison when the rendered pixels do not match the saved baseline. The
+same Playwright page is reused for every attempt so that subsequent comparisons start from an
+identical browser state while avoiding the cost of reopening the story or route.
+
+## How the retry loop works
+
+The core screenshot tool makes up to `retries` attempts for every capture. Each pass captures a fresh
+image and compares it with the reference using the same diffing pipeline that powers the rest of the
+CLI. A retry only happens when the diff returns mismatched pixels—dimension mismatches end the loop
+immediately so that you can investigate layout shifts without waiting for unnecessary attempts.
+
+Retries use incremental backoff to give the UI time to settle. The first attempt runs immediately,
+and every additional attempt waits `500ms`, doubling each time, plus any `delay` that was configured
+for the screenshot. For example, with the default settings the second attempt waits `500ms` and the
+third waits `1,500ms` before recapturing.
+
+Cappa logs the outcome of every attempt. Successful comparisons exit the loop and save the passing
+result. When the final attempt still fails, the tool logs the mismatch and returns the latest diff so
+you can review what changed rather than silently swallowing the failure.
+
+## Configure the number of retries
+
+The retry budget is controlled by the `retries` option in `cappa.config.ts`. The value represents the
+total number of attempts that will be made for each screenshot (the default is `2`). Increase it when
+you need extra buffer for slower components or reduce it to fail fast in deterministic environments.
+
+```ts
+import { defineConfig } from '@cappa/core';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  retries: 4,
+});
+```
+
+The configured `delay` for a screenshot is added to the backoff window on every retry. This gives you
+fine-grained control over how long Cappa waits for dynamic effects—such as transitions or async data
+loading—before capturing a fresh frame.
