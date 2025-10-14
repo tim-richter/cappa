@@ -30,6 +30,13 @@ const screenshotToolInstances: Array<{
   close: ReturnType<typeof vi.fn>;
 }> = [];
 
+const screenshotFileSystemInstances: Array<{
+  outputDir: string;
+  clearActual: ReturnType<typeof vi.fn>;
+  clearDiff: ReturnType<typeof vi.fn>;
+  approveFromActualPath: ReturnType<typeof vi.fn>;
+}> = [];
+
 vi.mock("@cappa/core", () => ({
   ScreenshotTool: class {
     options: unknown;
@@ -39,6 +46,20 @@ vi.mock("@cappa/core", () => ({
       this.options = options;
       this.close = vi.fn();
       screenshotToolInstances.push(this);
+    }
+  },
+  ScreenshotFileSystem: class {
+    outputDir: string;
+    clearActual: ReturnType<typeof vi.fn>;
+    clearDiff: ReturnType<typeof vi.fn>;
+    approveFromActualPath: ReturnType<typeof vi.fn>;
+
+    constructor(outputDir: string) {
+      this.outputDir = outputDir;
+      this.clearActual = vi.fn();
+      this.clearDiff = vi.fn();
+      this.approveFromActualPath = vi.fn();
+      screenshotFileSystemInstances.push(this);
     }
   },
 }));
@@ -126,6 +147,7 @@ beforeEach(() => {
     mockFn.mockReset();
   });
   screenshotToolInstances.length = 0;
+  screenshotFileSystemInstances.length = 0;
   serverInstances.length = 0;
   globMock.mockReset();
   globMock.mockImplementation(() => Promise.resolve([]));
@@ -160,24 +182,17 @@ describe("cappa CLI", () => {
       plugins: [{ name: "plugin", execute: pluginExecute }],
     });
 
-    fsMock.existsSync.mockImplementation(
-      (target: string) =>
-        target.includes("/actual") || target.includes("/diff"),
-    );
-
     process.argv = ["node", "cappa", "capture"];
     await run();
 
     expect(getCosmiConfigMock).toHaveBeenCalledWith("cappa");
     expect(getConfigMock).toHaveBeenCalled();
-    expect(fsMock.rmSync).toHaveBeenCalledWith("/tmp/screenshots/actual", {
-      recursive: true,
-      force: true,
+    expect(screenshotFileSystemInstances).toHaveLength(1);
+    expect(screenshotFileSystemInstances[0]).toMatchObject({
+      outputDir: "/tmp/screenshots",
     });
-    expect(fsMock.rmSync).toHaveBeenCalledWith("/tmp/screenshots/diff", {
-      recursive: true,
-      force: true,
-    });
+    expect(screenshotFileSystemInstances[0].clearActual).toHaveBeenCalled();
+    expect(screenshotFileSystemInstances[0].clearDiff).toHaveBeenCalled();
 
     expect(pluginExecute).toHaveBeenCalledTimes(1);
     expect(screenshotToolInstances).toHaveLength(1);
@@ -271,25 +286,17 @@ describe("cappa CLI", () => {
 
     globMock.mockResolvedValue(actualScreenshots);
 
-    fsMock.existsSync.mockImplementation(
-      (target: string) => target === "/tmp/screens/diff/foo.png",
-    );
-
     process.argv = ["node", "cappa", "approve", "--filter", "foo"];
 
     await run();
 
-    const expectedDest = path.resolve("/tmp/screens", "expected", "foo.png");
-    expect(fsMock.mkdirSync).toHaveBeenCalledWith(path.dirname(expectedDest), {
-      recursive: true,
-    });
-    expect(fsMock.copyFileSync).toHaveBeenCalledWith(
-      "/tmp/screens/actual/foo.png",
-      expectedDest,
-    );
-    expect(fsMock.unlinkSync).toHaveBeenCalledWith(
-      path.resolve("/tmp/screens", "diff", "foo.png"),
-    );
+    expect(screenshotFileSystemInstances).toHaveLength(1);
+    expect(
+      screenshotFileSystemInstances[0].approveFromActualPath,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      screenshotFileSystemInstances[0].approveFromActualPath,
+    ).toHaveBeenCalledWith("/tmp/screens/actual/foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );
@@ -316,7 +323,7 @@ describe("cappa CLI", () => {
     expect(loggerInstance.warn).toHaveBeenCalledWith(
       "No screenshots matched the provided filter(s)",
     );
-    expect(fsMock.copyFileSync).not.toHaveBeenCalled();
+    expect(screenshotFileSystemInstances).toHaveLength(0);
     expect(loggerInstance.success).not.toHaveBeenCalledWith(
       expect.stringContaining("approved"),
     );

@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import { glob } from "node:fs/promises";
 import path from "node:path";
-import { ScreenshotTool } from "@cappa/core";
+import { ScreenshotFileSystem, ScreenshotTool } from "@cappa/core";
 import { getLogger, initLogger } from "@cappa/logger";
 import { createServer } from "@cappa/server";
 import chalk from "chalk";
@@ -40,12 +40,9 @@ program
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
     logger.debug(`Cleaning output directory: ${config.outputDir}`);
-    if (fs.existsSync(`${config.outputDir}/actual`)) {
-      fs.rmSync(`${config.outputDir}/actual`, { recursive: true, force: true });
-    }
-    if (fs.existsSync(`${config.outputDir}/diff`)) {
-      fs.rmSync(`${config.outputDir}/diff`, { recursive: true, force: true });
-    }
+    const fileSystem = new ScreenshotFileSystem(config.outputDir);
+    fileSystem.clearActual();
+    fileSystem.clearDiff();
 
     const screenshotTool = new ScreenshotTool({
       outputDir: config.outputDir,
@@ -162,28 +159,11 @@ program
       }
     }
 
+    const fileSystem = new ScreenshotFileSystem(config.outputDir);
+
     // copy actual screenshots to expected directory
     for (const screenshot of screenshotsToApprove) {
-      const destPath = path.resolve(
-        config.outputDir,
-        "expected",
-        path.relative(`${config.outputDir}/actual`, screenshot),
-      );
-      const destDir = path.dirname(destPath);
-
-      // Create destination directory if it doesn't exist
-      fs.mkdirSync(destDir, { recursive: true });
-      fs.copyFileSync(screenshot, destPath);
-
-      const diffPath = path.resolve(
-        config.outputDir,
-        "diff",
-        path.relative(`${config.outputDir}/actual`, screenshot),
-      );
-
-      if (fs.existsSync(diffPath)) {
-        fs.unlinkSync(diffPath);
-      }
+      fileSystem.approveFromActualPath(screenshot);
     }
 
     if (screenshotsToApprove.length === actualScreenshots.length) {
