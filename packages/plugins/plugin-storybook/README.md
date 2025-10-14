@@ -54,6 +54,7 @@ Cappa uses a storybook addon that allows you to pass options from storybook into
 | omitBackground | Whether to omit the background in the screenshot | false |
 | viewport | The viewport to use for the screenshot | null (use default viewport) |
 | variants | Additional screenshot variants to capture | [] |
+| storybook | Overrides for Storybook rendering (args, globals, view mode, etc.) | {} |
 
 #### Example
 
@@ -77,9 +78,28 @@ export const Primary: Story = {
           options: { viewport: { width: 768, height: 1024 } },
         },
       ],
+      storybook: {
+        args: { label: "Primary" },
+        globals: { locale: "en" },
+      },
     },
   },
 };
+```
+
+You can also provide default Storybook render options for every capture via the plugin configuration:
+
+```ts
+export default defineConfig({
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: "http://localhost:8080",
+      storybook: {
+        globals: { locale: "en" },
+      },
+    }),
+  ],
+});
 ```
 
 Each variant captures an additional screenshot using the provided options. Variants inherit the base configuration by default,
