@@ -1,4 +1,9 @@
-import type { Plugin } from "@cappa/core";
+import type {
+  Plugin,
+  ScreenshotCaptureExtras,
+  ScreenshotOptions,
+  ScreenshotVariant,
+} from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { ScreenshotOptionsStorybook } from "../types";
@@ -64,6 +69,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         storybookUrl,
         includeStories = [],
         excludeStories = [],
+        defaultViewport,
       } = options;
 
       const storiesUrl = `${storybookUrl}/index.json`;
@@ -134,6 +140,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         // Take screenshots of each story
         for (const story of filteredStories) {
+          let storyParameters: ScreenshotOptionsStorybook | undefined;
           try {
             const storyUrl = `${storybookUrl}/iframe.html?id=${story.id}&viewMode=story`;
 
@@ -151,85 +158,143 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
             await page.goto(storyUrl);
 
-            const options = await currentLatch.p;
+            storyParameters = await currentLatch.p;
             currentLatch = createLatch<ScreenshotOptionsStorybook>();
 
-            if (options.skip) {
+            const variantParameters = storyParameters?.variants ?? [];
+
+            if (storyParameters?.skip) {
               logger.warn(`Skipping story ${story.title} - ${story.name}`);
               results.push({
                 storyId: story.id,
                 storyName: `${story.title} - ${story.name}`,
                 skipped: true,
               });
+              for (const variant of variantParameters) {
+                results.push({
+                  storyId: `${story.id}__${variant.id}`,
+                  storyName: `${story.title} - ${story.name} [${variant.label ?? variant.id}]`,
+                  skipped: true,
+                });
+              }
               continue;
             }
 
-            if (options && Object.keys(options).length > 0) {
-              logger.debug("Taking screenshot with options", options);
+            if (storyParameters && Object.keys(storyParameters).length > 0) {
+              logger.debug("Taking screenshot with options", storyParameters);
             }
 
-            // setting viewport early because of timing
-            if (options.viewport) {
-              await page.setViewportSize(options.viewport);
-            } else {
-              await page.setViewportSize(screenshotTool.viewport); // reset
-            }
+            const resolvedViewport =
+              storyParameters?.viewport ??
+              defaultViewport ??
+              screenshotTool.viewport;
+
+            await page.setViewportSize(resolvedViewport);
 
             await freezeUI(page);
             await waitForVisualIdle(page);
 
-            if (options.delay) {
-              await page.waitForTimeout(options.delay);
-            }
+            const toLocatorMask = (mask?: string[]) =>
+              mask?.map((selector) => page.locator(selector));
 
-            // Take screenshot with story-specific filename
+            const screenshotVariants: ScreenshotVariant[] =
+              variantParameters.map((variant) => ({
+                id: variant.id,
+                label: variant.label,
+                filename: variant.filename,
+                options: variant.options
+                  ? {
+                      ...variant.options,
+                      mask: toLocatorMask(variant.options.mask),
+                    }
+                  : undefined,
+              }));
+
+            const screenshotOptions: ScreenshotOptions = {
+              fullPage: storyParameters?.fullPage,
+              delay: storyParameters?.delay,
+              omitBackground: storyParameters?.omitBackground,
+              skip: storyParameters?.skip,
+              viewport: storyParameters?.viewport ?? defaultViewport,
+              mask: toLocatorMask(storyParameters?.mask),
+              variants: screenshotVariants.length
+                ? screenshotVariants
+                : undefined,
+            };
+
             const filename = buildFilename(story);
             const expectedExists = screenshotTool.hasExpectedImage(filename);
-
-            let actualFilepath: string | undefined;
-            if (expectedExists) {
-              const { screenshotPath, comparisonResult } =
-                await screenshotTool.takeScreenshotWithComparison(
-                  page,
-                  filename,
-                  screenshotTool.getExpectedImageBuffer(filename),
-                  {
-                    fullPage: options.fullPage,
-                    mask: options.mask?.map((selector) =>
-                      page.locator(selector),
-                    ),
-                    omitBackground: options.omitBackground,
-                    saveDiffImage: true,
-                  },
-                );
-
-              actualFilepath = screenshotPath;
-
-              results.push({
-                storyId: story.id,
-                storyName: `${story.title} - ${story.name}`,
-                filepath: actualFilepath,
-                success: comparisonResult.passed,
-              });
-            } else {
+            if (!expectedExists) {
               logger.info(
                 `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
               );
-              actualFilepath = await screenshotTool.takeScreenshot(
-                page,
-                filename,
-                {
-                  fullPage: options.fullPage,
-                  mask: options.mask?.map((selector) => page.locator(selector)),
-                  omitBackground: options.omitBackground,
-                },
-              );
+            }
 
+            const variantFilenameMap = new Map<string, string>();
+            for (const variant of screenshotVariants) {
+              const variantFilename = screenshotTool.getVariantFilename(
+                filename,
+                variant,
+              );
+              variantFilenameMap.set(variant.id, variantFilename);
+
+              if (!screenshotTool.hasExpectedImage(variantFilename)) {
+                logger.info(
+                  `Expected image not found for variant ${story.title} - ${story.name} [${variant.label ?? variant.id}], taking screenshot`,
+                );
+              }
+            }
+
+            const variantExtrasEntries = screenshotVariants.map(
+              (variant) =>
+                [
+                  variant.id,
+                  {
+                    saveDiffImage: true,
+                    diffImageFilename:
+                      variantFilenameMap.get(variant.id) ?? filename,
+                  },
+                ] as const,
+            );
+
+            const captureExtras: ScreenshotCaptureExtras = {
+              saveDiffImage: true,
+              diffImageFilename: filename,
+              variants: variantExtrasEntries.length
+                ? Object.fromEntries(variantExtrasEntries)
+                : undefined,
+            };
+
+            const captureResult = await screenshotTool.capture(
+              page,
+              filename,
+              screenshotOptions,
+              captureExtras,
+            );
+
+            results.push({
+              storyId: story.id,
+              storyName: `${story.title} - ${story.name}`,
+              filepath: captureResult.base.filepath,
+              success: captureResult.base.skipped
+                ? undefined
+                : captureResult.base.comparisonResult
+                  ? captureResult.base.comparisonResult.passed
+                  : Boolean(captureResult.base.filepath),
+              skipped: captureResult.base.skipped,
+            });
+
+            for (const variantResult of captureResult.variants) {
               results.push({
-                storyId: story.id,
-                storyName: `${story.title} - ${story.name}`,
-                filepath: actualFilepath,
-                success: true,
+                storyId: `${story.id}__${variantResult.id}`,
+                storyName: `${story.title} - ${story.name} [${variantResult.label ?? variantResult.id}]`,
+                filepath: variantResult.filepath,
+                success: variantResult.skipped
+                  ? undefined
+                  : variantResult.comparisonResult
+                    ? variantResult.comparisonResult.passed
+                    : Boolean(variantResult.filepath),
+                skipped: variantResult.skipped,
               });
             }
           } catch (error) {
@@ -242,6 +307,13 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               storyName: `${story.title} - ${story.name}`,
               error: (error as Error)?.message ?? "Unknown error",
             });
+            for (const variant of storyParameters?.variants ?? []) {
+              results.push({
+                storyId: `${story.id}__${variant.id}`,
+                storyName: `${story.title} - ${story.name} [${variant.label ?? variant.id}]`,
+                error: (error as Error)?.message ?? "Unknown error",
+              });
+            }
           }
         }
 

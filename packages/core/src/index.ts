@@ -1,8 +1,20 @@
 import { defineConfig } from "./config";
 import { ScreenshotFileSystem } from "./filesystem";
 import type { Plugin, PluginDef, PluginFunction } from "./plugin";
-import ScreenshotTool from "./screenshot";
-import type { Screenshot, ScreenshotOptions, UserConfig } from "./types";
+import ScreenshotTool, {
+  type ScreenshotCaptureDetails,
+  type ScreenshotCaptureExtras,
+  type ScreenshotCaptureResult,
+  type ScreenshotVariantCaptureDetails,
+} from "./screenshot";
+import type {
+  Screenshot,
+  ScreenshotOptions,
+  ScreenshotSettings,
+  ScreenshotVariant,
+  UserConfig,
+  Viewport,
+} from "./types";
 
 export {
   ScreenshotTool,
@@ -13,5 +25,12 @@ export {
   type PluginDef,
   type UserConfig,
   type ScreenshotOptions,
+  type ScreenshotSettings,
+  type ScreenshotVariant,
   type Screenshot,
+  type ScreenshotCaptureResult,
+  type ScreenshotCaptureDetails,
+  type ScreenshotVariantCaptureDetails,
+  type ScreenshotCaptureExtras,
+  type Viewport,
 };
