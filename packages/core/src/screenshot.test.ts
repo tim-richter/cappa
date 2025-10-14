@@ -1,5 +1,5 @@
-import { beforeAll, describe, expect, it } from "vitest";
 import { initLogger } from "@cappa/logger";
+import { beforeAll, describe, expect, it } from "vitest";
 import ScreenshotTool from "./screenshot";
 
 beforeAll(() => {

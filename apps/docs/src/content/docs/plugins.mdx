@@ -1,0 +1,50 @@
+---
+title: Plugins
+description: Extend Cappa with plugins that discover stories, data sources, or rendering targets.
+---
+
+Cappa includes a plugin system so teams can adapt the screenshot workflow to their stack.
+
+## Using the Storybook plugin
+
+The official Storybook plugin (`@cappa/plugin-storybook`) connects Storybook stories to Cappa's
+capture pipeline. After installing the package, enable it in `cappa.config.ts`:
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { storybookPlugin } from '@cappa/plugin-storybook';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  plugins: [
+    storybookPlugin({
+      url: 'http://localhost:6006'
+    })
+  ]
+});
+```
+
+Run `cappa capture` while Storybook is running to create screenshots for every selected story. The
+plugin is a convenient starting point for integrating Cappa into component libraries.
+
+## Authoring custom plugins
+
+Plugins can hook into the capture lifecycle to register new pages, mutate context, or send
+notifications. Start by creating a function that returns an object conforming to the plugin API from
+`@cappa/core`.
+
+```ts
+import type { CappaPlugin } from '@cappa/core';
+
+export function myPlugin(): CappaPlugin {
+  return {
+    name: 'my-plugin',
+    async onBeforeCapture({ page }) {
+      await page.addStyleTag({ content: ':root { color-scheme: dark; }' });
+    }
+  };
+}
+```
+
+Register the plugin in `cappa.config.ts` and iterate on the callbacks until they match your use
+case. Combine plugins to orchestrate complex capture flows without bloating the core CLI.

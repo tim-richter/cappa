@@ -1,0 +1,33 @@
+---
+title: Configuration
+description: Discover the options available in cappa.config.ts and how to customize them.
+---
+
+The `cappa.config.ts` file controls how screenshots are captured, stored, and reviewed. Config files
+export a configuration created with `defineConfig` from `@cappa/core`.
+
+```ts
+import { defineConfig } from '@cappa/core';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  storybook: {
+    url: 'http://localhost:6006'
+  }
+});
+```
+
+### Key options
+
+- **`outputDir`** – Folder where screenshots and diffs are written.
+- **`storybook`** – Configure the Storybook plugin with a URL and stories to target.
+- **`plugins`** – Register additional plugins to expand how Cappa discovers pages or state.
+- **`commands`** – Expose custom CLI commands for project-specific automation.
+
+### Project structure
+
+Store the config at the root of your repository so that Playwright can resolve relative imports and
+so CI jobs can run `cappa` without additional flags. When using workspaces, define workspace-level
+scripts that call the CLI from the directory containing the config file.
+
+See the [Plugins](./plugins) guide to learn how to extend Cappa with custom integrations.
