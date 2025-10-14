@@ -26,6 +26,10 @@ export default defineConfig({
             { label: "Storybook integration", link: "/storybook" },
           ],
         },
+        {
+          label: "Examples",
+          items: [{ label: "Examples", link: "/examples" }],
+        },
       ],
       social: {
         github: "https://github.com/cappajs/cappa",
