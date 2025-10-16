@@ -9,6 +9,9 @@ export default defineConfig({
       title: "Cappa",
       description:
         "Learn how to capture, review, and approve visual regressions with Cappa.",
+      editLink: {
+        baseUrl: "https://github.com/tim-richter/cappa/edit/main/apps/docs",
+      },
       sidebar: [
         {
           label: "Overview",
