@@ -1,5 +1,21 @@
 # @cappa/plugin-storybook
 
+## 0.2.0
+
+### Minor Changes
+
+- 5b1f66f: Add support for capturing screenshot variants and configure Storybook stories to request multiple viewport screenshots.
+- 4cd0ee2: Allow configuring Storybook args and globals for captured screenshots.
+
+### Patch Changes
+
+- a1d91c6: feat: add viewport options
+- Updated dependencies [5b1f66f]
+- Updated dependencies [87c8ab9]
+- Updated dependencies [a1d91c6]
+- Updated dependencies [88b3648]
+  - @cappa/core@0.2.0
+
 ## 0.1.3
 
 ### Patch Changes

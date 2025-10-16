@@ -1,5 +1,19 @@
 # @cappa/cli
 
+## 0.1.4
+
+### Patch Changes
+
+- 4428907: Add unit test coverage for CLI commands.
+- 88b3648: Centralize screenshot directory management in the core package and update the CLI and server to consume the shared helpers.
+- f3f64c6: Switch CLI globbing to the built-in Node.js implementation.
+- Updated dependencies [5b1f66f]
+- Updated dependencies [87c8ab9]
+- Updated dependencies [a1d91c6]
+- Updated dependencies [88b3648]
+  - @cappa/core@0.2.0
+  - @cappa/server@0.1.4
+
 ## 0.1.3
 
 ### Patch Changes

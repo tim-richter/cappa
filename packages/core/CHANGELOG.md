@@ -1,5 +1,18 @@
 # @cappa/core
 
+## 0.2.0
+
+### Minor Changes
+
+- 5b1f66f: Add support for capturing screenshot variants and configure Storybook stories to request multiple viewport screenshots.
+- 88b3648: Centralize screenshot directory management in the core package and update the CLI and server to consume the shared helpers.
+
+### Patch Changes
+
+- 87c8ab9: Document how screenshot retries work in the docs so users know how to
+  configure and reason about the behaviour.
+- a1d91c6: feat: add viewport options
+
 ## 0.1.3
 
 ### Patch Changes
