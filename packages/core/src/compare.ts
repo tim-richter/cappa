@@ -42,7 +42,6 @@ export async function compareImages(
   withDiff: boolean = false,
   options: DiffConfig = {},
 ): Promise<CompareResult> {
-  // Load images as PNG objects
   const png1 = await loadPNG(image1);
   const png2 = await loadPNG(image2);
 
@@ -140,6 +139,13 @@ export async function imagesMatch(
   return result.passed;
 }
 
+/**
+ * Check if the comparison passed based on the options
+ * @param percentDifference - Percentage difference between the images
+ * @param numDiffPixels - Number of different pixels
+ * @param options - Comparison options
+ * @returns Whether the comparison passed
+ */
 const isPassed = (
   percentDifference: number,
   numDiffPixels: number,

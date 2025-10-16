@@ -641,11 +641,4 @@ class ScreenshotTool {
   }
 }
 
-export type {
-  ScreenshotCaptureDetails,
-  ScreenshotCaptureExtras,
-  ScreenshotCaptureResult,
-  ScreenshotVariantCaptureDetails,
-};
-
 export default ScreenshotTool;

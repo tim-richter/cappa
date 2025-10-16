@@ -28,6 +28,13 @@ export default defineConfig({
 Folder where screenshots and diffs are written.
 Cappa will create actual, expected, and diff directories within this folder.
 
+## retries
+
+- **type**: `number`
+- **default**: `2`
+
+The number of times to retry a screenshot if it fails. See the [Screenshot retries](./screenshot-retries) guide for more information.
+
 ## screenshot
 
 Screenshot configuration might get overwritten by plugins or more specific settings, while taking

@@ -1,6 +1,9 @@
 import fs from "node:fs";
 import path from "node:path";
 
+/**
+ * Class for interacting with the local file system to store the screenshots.
+ */
 export class ScreenshotFileSystem {
   private readonly actualDir: string;
   private readonly expectedDir: string;
@@ -25,6 +28,11 @@ export class ScreenshotFileSystem {
     this.clearDiff();
   }
 
+  /**
+   * Approve a screenshot based on its actual file path.
+   * @param actualFilePath - The path to the actual screenshot file.
+   * @returns The paths to the actual, expected, and diff screenshot files.
+   */
   approveFromActualPath(actualFilePath: string) {
     const actualAbsolute = this.resolveActualPath(actualFilePath);
     const relativePath = path.relative(this.actualDir, actualAbsolute);
@@ -38,12 +46,22 @@ export class ScreenshotFileSystem {
     return this.approveRelative(relativePath);
   }
 
+  /**
+   * Approve a screenshot based on its name.
+   * @param name - The name of the screenshot. Can include '.png' extension.
+   * @returns The paths to the actual, expected, and diff screenshot files.
+   */
   approveByName(name: string) {
     const relativeWithExtension = name.endsWith(".png") ? name : `${name}.png`;
 
     return this.approveRelative(relativeWithExtension);
   }
 
+  /**
+   * Approve a screenshot based on a relative path.
+   * @param relativePath - The relative path to the screenshot.
+   * @returns The paths to the actual, expected, and diff screenshot files.
+   */
   private approveRelative(relativePath: string) {
     const actualPath = path.resolve(this.actualDir, relativePath);
     const expectedPath = path.resolve(this.expectedDir, relativePath);
@@ -64,6 +82,10 @@ export class ScreenshotFileSystem {
     };
   }
 
+  /**
+   * Ensure the parent directory of a file exists. If not, it creates it.
+   * @param filePath - The path to the file.
+   */
   private ensureParentDir(filePath: string) {
     const dir = path.dirname(filePath);
 
@@ -72,12 +94,21 @@ export class ScreenshotFileSystem {
     }
   }
 
+  /**
+   * Remove a directory and all its contents.
+   * @param dir - The path to the directory.
+   */
   private removeDir(dir: string) {
     if (fs.existsSync(dir)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
   }
 
+  /**
+   * Resolve the actual path of a screenshot file.
+   * @param filePath - The path to the screenshot file.
+   * @returns The actual path of the screenshot file.
+   */
   private resolveActualPath(filePath: string) {
     if (path.isAbsolute(filePath)) {
       return filePath;
