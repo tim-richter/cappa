@@ -32,9 +32,13 @@ export default defineConfig({
           ],
         },
       ],
-      social: {
-        github: "https://github.com/tim-richter/cappa",
-      },
+      social: [
+        {
+          label: "GitHub",
+          icon: "github",
+          href: "https://github.com/tim-richter/cappa",
+        },
+      ],
     }),
   ],
 });

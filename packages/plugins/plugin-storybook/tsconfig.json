@@ -1,0 +1,13 @@
+{
+  "extends": "../../config-ts/bundler.json",
+  "compilerOptions": {
+    "baseUrl": ".",
+    "types": ["vitest"]
+  },
+  "include": [
+    "src/**/*",
+    "./package.json",
+    "./tsdown.config.ts",
+    "./vitest.config.ts"
+  ]
+}

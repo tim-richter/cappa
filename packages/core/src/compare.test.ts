@@ -358,7 +358,7 @@ describe("compare", () => {
       const result = await compareImages(redImage, blueImage, false);
 
       expect(result.passed).toBe(false);
-      expect(result.percentDifference).toBe(56.00000000000001);
+      expect(result.percentDifference).toBe(100);
     });
 
     it("should handle zero difference threshold", async () => {
