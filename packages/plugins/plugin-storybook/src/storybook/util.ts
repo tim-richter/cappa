@@ -7,7 +7,7 @@
 export const waitForExposed = (
   name: string,
   timeoutMs = 5000,
-): Promise<(parameters: any) => void> => {
+): Promise<(id: string, parameters: any) => void> => {
   return new Promise((resolve, reject) => {
     const start = performance.now();
 

@@ -69,6 +69,9 @@ class ScreenshotTool {
   browser: Browser | null = null;
   context: BrowserContext | null = null;
   page: Page | null = null;
+  concurrency: number;
+  contexts: BrowserContext[] = [];
+  pages: Page[] = [];
   diff: DiffConfig;
   logger: Logger;
   retries: number;
@@ -81,12 +84,14 @@ class ScreenshotTool {
     outputDir?: string;
     diff?: DiffConfig;
     retries?: number;
+    concurrency?: number;
   }) {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = { ...defaultDiffConfig, ...options.diff };
+    this.concurrency = Math.max(1, options.concurrency || 1);
 
     this.logger = getLogger();
     this.retries = options.retries || 2;
@@ -117,14 +122,26 @@ class ScreenshotTool {
       .newPage()
       .then((page) => page.evaluate(() => navigator.userAgent));
 
-    this.context = await this.browser.newContext({
-      reducedMotion: "reduce",
-      deviceScaleFactor: 2,
-      userAgent: `${await defaultUserAgent} CappaStorybook`,
-      viewport: this.viewport,
-    });
+    // Create N contexts and pages
+    this.contexts = [];
+    this.pages = [];
 
-    this.page = await this.context?.newPage();
+    for (let i = 0; i < this.concurrency; i++) {
+      const context = await this.browser.newContext({
+        reducedMotion: "reduce",
+        deviceScaleFactor: 2,
+        userAgent: `${await defaultUserAgent} CappaStorybook`,
+        viewport: this.viewport,
+      });
+      const page = await context.newPage();
+
+      this.contexts.push(context);
+      this.pages.push(page);
+    }
+
+    // Backward compatibility
+    this.context = this.contexts[0] ?? null;
+    this.page = this.pages[0] ?? null;
   }
 
   /**
@@ -132,8 +149,8 @@ class ScreenshotTool {
    * If not closed, the process will not exit
    */
   async close() {
-    if (this.context) {
-      await this.context.close();
+    for (const context of this.contexts) {
+      await context.close();
     }
     if (this.browser) {
       await this.browser.close();
@@ -586,6 +603,27 @@ class ScreenshotTool {
    */
   getIncBackoffDelay(i: number, delay: number): number {
     return i > 0 ? 500 * 2 ** (i - 1) + (delay || 0) : 0;
+  }
+
+  /**
+   * Get a page from the pool by index
+   */
+  getPageFromPool(index: number): Page {
+    if (index < 0) {
+      throw new Error(`Page index ${index} must be non-negative`);
+    }
+
+    if (index >= this.pages.length) {
+      throw new Error(
+        `Page index ${index} exceeds pool size ${this.pages.length}`,
+      );
+    }
+
+    if (!this.pages[index]) {
+      throw new Error(`Page index ${index} is undefined`);
+    }
+
+    return this.pages[index];
   }
 }
 

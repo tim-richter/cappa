@@ -14,7 +14,7 @@ export const withCappaDecorator = makeDecorator({
       try {
         const cappaParameters = await waitForExposed("__cappa_parameters");
 
-        cappaParameters(parameters ?? {});
+        cappaParameters(context.id, parameters ?? {});
       } catch (error) {
         console.error(error);
       }

@@ -18,6 +18,7 @@
     "clean": "pnpm -r clean",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
+    "tsc": "pnpm -r tsc",
     "release": "turbo build && pnpm --filter server build && changeset publish",
     "example:storybook": "pnpm --filter @cappa/example-storybook screenshot"
   },

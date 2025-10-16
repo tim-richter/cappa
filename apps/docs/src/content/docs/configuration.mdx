@@ -35,6 +35,15 @@ Cappa will create actual, expected, and diff directories within this folder.
 
 The number of times to retry a screenshot if it fails. See the [Screenshot retries](screenshot-retries) guide for more information.
 
+## concurrency
+
+- **type**: `number`
+- **default**: `1`
+
+The number of parallel browser contexts to use when taking screenshots. Each context can process screenshots independently, significantly speeding up large screenshot runs.
+
+Higher values will consume more system resources (CPU and memory).
+
 ## screenshot
 
 Screenshot configuration might get overwritten by plugins or more specific settings, while taking

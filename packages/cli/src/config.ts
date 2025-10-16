@@ -68,6 +68,7 @@ export interface CappaConfig {
   browser?: BrowserConfig;
   screenshot?: ScreenshotConfig;
   diff?: DiffConfig;
+  concurrency?: number;
   plugins?: (string | PluginConfig)[];
 }
 
@@ -86,6 +87,7 @@ export function defineConfig(config: CappaConfig): CappaConfig {
 const defaultConfig: CappaConfig = {
   outputDir: "./screenshots",
   plugins: [],
+  concurrency: 1,
   browser: {
     type: "chromium",
     headless: true,

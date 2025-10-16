@@ -96,9 +96,7 @@ vi.mock("@cappa/server", () => ({
   createServer: createServerMock,
 }));
 
-const globMock = vi.fn<[pattern: string], Promise<string[]>>(() =>
-  Promise.resolve([]),
-);
+const globMock = vi.fn().mockResolvedValue([]);
 
 vi.mock("node:fs/promises", () => ({
   __esModule: true,
@@ -169,6 +167,7 @@ afterEach(() => {
 describe("cappa CLI", () => {
   test("capture command cleans directories and runs plugins", async () => {
     const pluginExecute = vi.fn().mockResolvedValue(undefined);
+    const pluginDiscover = vi.fn().mockResolvedValue([]);
 
     getCosmiConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
@@ -179,7 +178,9 @@ describe("cappa CLI", () => {
       outputDir: "/tmp/screenshots",
       diff: { threshold: 0.2 },
       retries: 5,
-      plugins: [{ name: "plugin", execute: pluginExecute }],
+      plugins: [
+        { name: "plugin", discover: pluginDiscover, execute: pluginExecute },
+      ],
     });
 
     process.argv = ["node", "cappa", "capture"];
@@ -191,13 +192,14 @@ describe("cappa CLI", () => {
     expect(screenshotFileSystemInstances[0]).toMatchObject({
       outputDir: "/tmp/screenshots",
     });
-    expect(screenshotFileSystemInstances[0].clearActual).toHaveBeenCalled();
-    expect(screenshotFileSystemInstances[0].clearDiff).toHaveBeenCalled();
+    expect(screenshotFileSystemInstances[0]?.clearActual).toHaveBeenCalled();
+    expect(screenshotFileSystemInstances[0]?.clearDiff).toHaveBeenCalled();
 
-    expect(pluginExecute).toHaveBeenCalledTimes(1);
+    expect(pluginDiscover).toHaveBeenCalledTimes(1);
+    expect(pluginExecute).toHaveBeenCalledTimes(0); // No tasks to execute
     expect(screenshotToolInstances).toHaveLength(1);
-    expect(pluginExecute).toHaveBeenCalledWith(screenshotToolInstances[0]);
-    expect(screenshotToolInstances[0].close).toHaveBeenCalled();
+    expect(pluginDiscover).toHaveBeenCalledWith(screenshotToolInstances[0]);
+    expect(screenshotToolInstances[0]?.close).toHaveBeenCalled();
     expect(screenshotToolInstances[0]).toMatchObject({
       options: {
         outputDir: "/tmp/screenshots",
@@ -261,7 +263,7 @@ describe("cappa CLI", () => {
     });
 
     expect(serverInstances).toHaveLength(1);
-    expect(serverInstances[0].listen).toHaveBeenCalledWith({ port: 3000 });
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({ port: 3000 });
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "Review UI available at http://localhost:3000",
     );
@@ -292,10 +294,10 @@ describe("cappa CLI", () => {
 
     expect(screenshotFileSystemInstances).toHaveLength(1);
     expect(
-      screenshotFileSystemInstances[0].approveFromActualPath,
+      screenshotFileSystemInstances[0]?.approveFromActualPath,
     ).toHaveBeenCalledTimes(1);
     expect(
-      screenshotFileSystemInstances[0].approveFromActualPath,
+      screenshotFileSystemInstances[0]?.approveFromActualPath,
     ).toHaveBeenCalledWith("/tmp/screens/actual/foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",

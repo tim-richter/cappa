@@ -5,9 +5,9 @@ import type {
   ScreenshotVariant,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
-import chalk from "chalk";
 import type {
   ScreenshotOptionsStorybook,
+  ScreenshotVariantOptionsStorybook,
   StorybookRenderOptions,
 } from "../types";
 import { buildStorybookIframeUrl } from "./storybook-url";
@@ -59,8 +59,8 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
     name: "StorybookPlugin",
     description:
       "Takes screenshots of Storybook stories with configurable options",
-    version: "1.0.0",
-    execute: async (screenshotTool) => {
+
+    discover: async () => {
       if (!options) {
         throw new Error("Storybook plugin options are required");
       }
@@ -74,14 +74,12 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         storybookUrl,
         includeStories = [],
         excludeStories = [],
-        defaultViewport,
         storybook: defaultStorybookOptions,
       } = options;
 
       const storiesUrl = `${storybookUrl}/index.json`;
       logger.debug(`Fetching stories from: ${storiesUrl}`);
 
-      // Fetch stories from Storybook
       const response = await fetch(storiesUrl);
       if (!response.ok) {
         throw new Error(
@@ -89,314 +87,228 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         );
       }
 
-      try {
-        const data = (await response.json()) as StorybookStoriesResponse;
-        const stories = Object.values(data.entries);
+      const data = (await response.json()) as StorybookStoriesResponse;
+      const stories = Object.values(data.entries);
 
-        // Filter stories based on include/exclude patterns
-        let filteredStories = stories;
+      // Filter stories based on include/exclude patterns
+      let filteredStories = stories;
 
-        if (includeStories.length > 0) {
-          filteredStories = filteredStories.filter((story) =>
-            includeStories.some(
+      if (includeStories.length > 0) {
+        filteredStories = filteredStories.filter((story) =>
+          includeStories.some(
+            (pattern) =>
+              story.title.includes(pattern) || story.name.includes(pattern),
+          ),
+        );
+      }
+
+      if (excludeStories.length > 0) {
+        filteredStories = filteredStories.filter(
+          (story) =>
+            !excludeStories.some(
               (pattern) =>
                 story.title.includes(pattern) || story.name.includes(pattern),
             ),
+        );
+      }
+
+      filteredStories = filteredStories.filter(
+        (story) => story.type === "story",
+      );
+
+      logger.start(`Found ${filteredStories.length} stories to screenshot...`);
+
+      // Return tasks
+      return filteredStories.map((story) => ({
+        id: story.id,
+        url: buildStorybookIframeUrl({
+          baseUrl: storybookUrl,
+          storyId: story.id,
+          viewMode: defaultStorybookOptions?.viewMode,
+          args: defaultStorybookOptions?.args,
+          globals: defaultStorybookOptions?.globals,
+          query: defaultStorybookOptions?.query,
+          fullscreen: defaultStorybookOptions?.fullscreen,
+          singleStory: defaultStorybookOptions?.singleStory,
+        }),
+        data: {
+          story,
+        },
+      }));
+    },
+
+    initPage: async () => {
+      return {
+        latchMap: new Map<
+          string,
+          {
+            p: Promise<ScreenshotOptionsStorybook>;
+            resolve: (v: ScreenshotOptionsStorybook) => void;
+          }
+        >(),
+      };
+    },
+
+    // Phase 2: Execute single story
+    execute: async (task, page, screenshotTool, context) => {
+      const { url, data } = task;
+      const { story } = data;
+      const logger = getLogger();
+
+      try {
+        // Setup exposed function for this page
+        const currentLatch = createLatch<ScreenshotOptionsStorybook>();
+        context.latchMap.set(story.id, currentLatch);
+
+        if (
+          await page.evaluate(() => {
+            return (window as any).__cappa_parameters === undefined;
+          })
+        ) {
+          await page.exposeFunction(
+            "__cappa_parameters",
+            async (id: string, payload: ScreenshotOptionsStorybook) => {
+              context.latchMap.get(id)?.resolve?.(payload);
+            },
           );
         }
 
-        if (excludeStories.length > 0) {
-          filteredStories = filteredStories.filter(
-            (story) =>
-              !excludeStories.some(
-                (pattern) =>
-                  story.title.includes(pattern) || story.name.includes(pattern),
-              ),
+        page.on("console", (message) => {
+          logger.debug("console", message.text());
+        });
+        page.on("pageerror", (error) => {
+          logger.debug("pageerror", error);
+        });
+
+        // Navigate to story
+        await page.goto(url);
+
+        // Get story parameters
+        const storyParameters = await context.latchMap.get(story.id)?.p;
+        context.latchMap.delete(story.id);
+
+        const variantParameters = storyParameters?.variants ?? [];
+
+        if (storyParameters?.skip) {
+          logger.warn(`Skipping story ${story.title} - ${story.name}`);
+          return {
+            storyId: story.id,
+            storyName: `${story.title} - ${story.name}`,
+            skipped: true,
+          };
+        }
+
+        if (storyParameters && Object.keys(storyParameters).length > 0) {
+          logger.debug("Taking screenshot with options", storyParameters);
+        }
+
+        const resolvedViewport =
+          storyParameters?.viewport ?? screenshotTool.viewport;
+
+        await page.setViewportSize(resolvedViewport);
+
+        await freezeUI(page);
+        await waitForVisualIdle(page);
+
+        const toLocatorMask = (mask?: string[]) =>
+          mask?.map((selector) => page.locator(selector));
+
+        const screenshotVariants: ScreenshotVariant[] = variantParameters.map(
+          (variant: ScreenshotVariantOptionsStorybook) => ({
+            id: variant.id,
+            label: variant.label,
+            filename: variant.filename,
+            options: variant.options
+              ? {
+                  ...variant.options,
+                  mask: toLocatorMask(variant.options.mask),
+                }
+              : undefined,
+          }),
+        );
+
+        const screenshotOptions: ScreenshotOptions = {
+          fullPage: storyParameters?.fullPage,
+          delay: storyParameters?.delay,
+          omitBackground: storyParameters?.omitBackground,
+          skip: storyParameters?.skip,
+          viewport: storyParameters?.viewport ?? screenshotTool.viewport,
+          mask: toLocatorMask(storyParameters?.mask),
+          variants: screenshotVariants.length ? screenshotVariants : undefined,
+        };
+
+        const filename = buildFilename(story);
+        const expectedExists =
+          screenshotTool.filesystem.hasExpectedFile(filename);
+        if (!expectedExists) {
+          logger.info(
+            `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
           );
         }
 
-        // Filter docs etc
-        filteredStories = filteredStories.filter(
-          (story) => story.type === "story",
-        );
+        const variantFilenameMap = new Map<string, string>();
+        for (const variant of screenshotVariants) {
+          const variantFilename = screenshotTool.getVariantFilename(
+            filename,
+            variant,
+          );
+          variantFilenameMap.set(variant.id, variantFilename);
 
-        logger.start(
-          `Found ${filteredStories.length} stories to screenshot...`,
-        );
-
-        const results: Array<{
-          storyId: string;
-          storyName: string;
-          filepath?: string;
-          success?: boolean;
-          error?: string;
-          skipped?: boolean;
-        }> = [];
-
-        await screenshotTool.init();
-
-        let currentLatch = createLatch<ScreenshotOptionsStorybook>();
-
-        await screenshotTool.page?.exposeFunction(
-          "__cappa_parameters",
-          async (payload: ScreenshotOptionsStorybook) => {
-            currentLatch.resolve(payload);
-          },
-        );
-
-        // Take screenshots of each story
-        for (const story of filteredStories) {
-          let storyParameters: ScreenshotOptionsStorybook | undefined;
-          try {
-            const storybookOverrides = storyParameters?.storybook;
-            const mergedArgs = {
-              ...(defaultStorybookOptions?.args ?? {}),
-              ...(storybookOverrides?.args ?? {}),
-            };
-            const mergedGlobals = {
-              ...(defaultStorybookOptions?.globals ?? {}),
-              ...(storybookOverrides?.globals ?? {}),
-            };
-            const mergedQuery = {
-              ...(defaultStorybookOptions?.query ?? {}),
-              ...(storybookOverrides?.query ?? {}),
-            };
-            const hasArgs = Object.keys(mergedArgs).length > 0;
-            const hasGlobals = Object.keys(mergedGlobals).length > 0;
-            const hasQuery = Object.keys(mergedQuery).length > 0;
-            const storyUrl = buildStorybookIframeUrl({
-              baseUrl: storybookUrl,
-              storyId: story.id,
-              viewMode:
-                storybookOverrides?.viewMode ??
-                defaultStorybookOptions?.viewMode,
-              args: hasArgs ? mergedArgs : undefined,
-              globals: hasGlobals ? mergedGlobals : undefined,
-              query: hasQuery ? mergedQuery : undefined,
-              fullscreen:
-                storybookOverrides?.fullscreen ??
-                defaultStorybookOptions?.fullscreen,
-              singleStory:
-                storybookOverrides?.singleStory ??
-                defaultStorybookOptions?.singleStory,
-            });
-
-            const page = screenshotTool.page;
-            if (!page) {
-              throw new Error("Page not initialized");
-            }
-
-            page.on("console", (message) => {
-              logger.debug("console", message.text());
-            });
-            page.on("pageerror", (error) => {
-              logger.debug("pageerror", error);
-            });
-
-            await page.goto(storyUrl);
-
-            storyParameters = await currentLatch.p;
-            currentLatch = createLatch<ScreenshotOptionsStorybook>();
-
-            const variantParameters = storyParameters?.variants ?? [];
-
-            if (storyParameters?.skip) {
-              logger.warn(`Skipping story ${story.title} - ${story.name}`);
-              results.push({
-                storyId: story.id,
-                storyName: `${story.title} - ${story.name}`,
-                skipped: true,
-              });
-              for (const variant of variantParameters) {
-                results.push({
-                  storyId: `${story.id}__${variant.id}`,
-                  storyName: `${story.title} - ${story.name} [${variant.label ?? variant.id}]`,
-                  skipped: true,
-                });
-              }
-              continue;
-            }
-
-            if (storyParameters && Object.keys(storyParameters).length > 0) {
-              logger.debug("Taking screenshot with options", storyParameters);
-            }
-
-            const resolvedViewport =
-              storyParameters?.viewport ??
-              defaultViewport ??
-              screenshotTool.viewport;
-
-            await page.setViewportSize(resolvedViewport);
-
-            await freezeUI(page);
-            await waitForVisualIdle(page);
-
-            const toLocatorMask = (mask?: string[]) =>
-              mask?.map((selector) => page.locator(selector));
-
-            const screenshotVariants: ScreenshotVariant[] =
-              variantParameters.map((variant) => ({
-                id: variant.id,
-                label: variant.label,
-                filename: variant.filename,
-                options: variant.options
-                  ? {
-                      ...variant.options,
-                      mask: toLocatorMask(variant.options.mask),
-                    }
-                  : undefined,
-              }));
-
-            const screenshotOptions: ScreenshotOptions = {
-              fullPage: storyParameters?.fullPage,
-              delay: storyParameters?.delay,
-              omitBackground: storyParameters?.omitBackground,
-              skip: storyParameters?.skip,
-              viewport: storyParameters?.viewport ?? defaultViewport,
-              mask: toLocatorMask(storyParameters?.mask),
-              variants: screenshotVariants.length
-                ? screenshotVariants
-                : undefined,
-            };
-
-            const filename = buildFilename(story);
-            const expectedExists =
-              screenshotTool.filesystem.hasExpectedFile(filename);
-            if (!expectedExists) {
-              logger.info(
-                `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
-              );
-            }
-
-            const variantFilenameMap = new Map<string, string>();
-            for (const variant of screenshotVariants) {
-              const variantFilename = screenshotTool.getVariantFilename(
-                filename,
-                variant,
-              );
-              variantFilenameMap.set(variant.id, variantFilename);
-
-              if (!screenshotTool.filesystem.hasExpectedFile(variantFilename)) {
-                logger.info(
-                  `Expected image not found for variant ${story.title} - ${story.name} [${variant.label ?? variant.id}], taking screenshot`,
-                );
-              }
-            }
-
-            const variantExtrasEntries = screenshotVariants.map(
-              (variant) =>
-                [
-                  variant.id,
-                  {
-                    saveDiffImage: true,
-                    diffImageFilename:
-                      variantFilenameMap.get(variant.id) ?? filename,
-                  },
-                ] as const,
+          if (!screenshotTool.filesystem.hasExpectedFile(variantFilename)) {
+            logger.info(
+              `Expected image not found for variant ${story.title} - ${story.name} [${variant.label ?? variant.id}], taking screenshot`,
             );
-
-            const captureExtras: ScreenshotCaptureExtras = {
-              saveDiffImage: true,
-              diffImageFilename: filename,
-              variants: variantExtrasEntries.length
-                ? Object.fromEntries(variantExtrasEntries)
-                : undefined,
-            };
-
-            const captureResult = await screenshotTool.capture(
-              page,
-              filename,
-              screenshotOptions,
-              captureExtras,
-            );
-
-            results.push({
-              storyId: story.id,
-              storyName: `${story.title} - ${story.name}`,
-              filepath: captureResult.base.filepath,
-              success: captureResult.base.skipped
-                ? undefined
-                : captureResult.base.comparisonResult
-                  ? captureResult.base.comparisonResult.passed
-                  : Boolean(captureResult.base.filepath),
-              skipped: captureResult.base.skipped,
-            });
-
-            for (const variantResult of captureResult.variants) {
-              results.push({
-                storyId: `${story.id}__${variantResult.id}`,
-                storyName: `${story.title} - ${story.name} [${variantResult.label ?? variantResult.id}]`,
-                filepath: variantResult.filepath,
-                success: variantResult.skipped
-                  ? undefined
-                  : variantResult.comparisonResult
-                    ? variantResult.comparisonResult.passed
-                    : Boolean(variantResult.filepath),
-                skipped: variantResult.skipped,
-              });
-            }
-          } catch (error) {
-            logger.error(
-              `Error taking screenshot of story ${story.title} - ${story.name}:`,
-              (error as Error).message,
-            );
-            results.push({
-              storyId: story.id,
-              storyName: `${story.title} - ${story.name}`,
-              error: (error as Error)?.message ?? "Unknown error",
-            });
-            for (const variant of storyParameters?.variants ?? []) {
-              results.push({
-                storyId: `${story.id}__${variant.id}`,
-                storyName: `${story.title} - ${story.name} [${variant.label ?? variant.id}]`,
-                error: (error as Error)?.message ?? "Unknown error",
-              });
-            }
           }
         }
 
-        // Print error report if there are any errors
-        if (results.some((r) => r.error)) {
-          logger.error(
-            `Error report: \n${results
-              .filter((r) => r.error)
-              .map((r) => `${r.storyName}: ${r.error}`)
-              .join("\n")}`,
-          );
-        }
-
-        // Print skipped stories if there are any
-        if (results.some((r) => r.skipped)) {
-          logger.warn(
-            `Skipped stories: \n${results
-              .filter((r) => r.skipped)
-              .map((r) => `${r.storyName}`)
-              .join("\n")}`,
-          );
-        }
-
-        const skipped = results.filter((r) => r.skipped);
-        const failed = results.filter(
-          (r) => r.error || (!r.skipped && !r.success),
+        const variantExtrasEntries = screenshotVariants.map(
+          (variant) =>
+            [
+              variant.id,
+              {
+                saveDiffImage: true,
+                diffImageFilename:
+                  variantFilenameMap.get(variant.id) ?? filename,
+              },
+            ] as const,
         );
-        const successful = results.filter((r) => r.success);
 
-        const output = [
-          `${chalk.yellow("Skipped stories:")} ${skipped.length}`,
-          `${chalk.red("Failed stories:")} ${failed.length}`,
-          `${chalk.green("Successful stories:")} ${successful.length}`,
-          `${chalk.blue("Total stories:")} ${results.length}`,
-        ];
+        const captureExtras: ScreenshotCaptureExtras = {
+          saveDiffImage: true,
+          diffImageFilename: filename,
+          variants: variantExtrasEntries.length
+            ? Object.fromEntries(variantExtrasEntries)
+            : undefined,
+        };
 
-        logger.box({
-          title: "Storybook Report",
-          message: output.join("\n"),
-        });
+        const captureResult = await screenshotTool.capture(
+          page,
+          filename,
+          screenshotOptions,
+          captureExtras,
+        );
 
-        return results;
+        return {
+          storyId: story.id,
+          storyName: `${story.title} - ${story.name}`,
+          filepath: captureResult.base.filepath,
+          success: captureResult.base.skipped
+            ? undefined
+            : captureResult.base.comparisonResult
+              ? captureResult.base.comparisonResult.passed
+              : Boolean(captureResult.base.filepath),
+          skipped: captureResult.base.skipped,
+        };
       } catch (error) {
-        logger.error("Error in Storybook plugin:", (error as Error).message);
-        throw error;
+        logger.error(
+          `Error taking screenshot of story ${story.title} - ${story.name}:`,
+          (error as Error).message,
+        );
+        return {
+          storyId: story.id,
+          storyName: `${story.title} - ${story.name}`,
+          error: (error as Error)?.message ?? "Unknown error",
+        };
       }
     },
   };

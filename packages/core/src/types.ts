@@ -71,6 +71,10 @@ export type UserConfig = {
    */
   retries?: number;
   /**
+   * The number of parallel browser contexts to use for taking screenshots
+   */
+  concurrency?: number;
+  /**
    * An array of Cappa plugins used for generation.
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */

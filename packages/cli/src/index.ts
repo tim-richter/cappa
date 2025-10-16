@@ -48,14 +48,72 @@ program
       outputDir: config.outputDir,
       diff: config.diff,
       retries: config.retries,
+      concurrency: config.concurrency,
     });
 
     try {
-      // Wait for all plugins to complete
+      await screenshotTool.init();
+
       for (const plugin of config.plugins) {
-        logger.debug(`Executing plugin: ${plugin.name || "unnamed"}`);
-        await plugin.execute(screenshotTool);
+        logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
+
+        // Phase 1: Discover all tasks
+        const tasks = await plugin.discover(screenshotTool);
+        logger.info(`Found ${tasks.length} tasks for ${plugin.name}`);
+
+        if (tasks.length === 0) {
+          continue;
+        }
+
+        // Phase 2: Execute tasks in parallel chunks
+        // Use the minimum of concurrency and actual number of tasks to avoid empty chunks
+        const effectiveConcurrency = Math.min(
+          tasks.length,
+          screenshotTool.concurrency,
+        );
+        const chunkSize = Math.ceil(tasks.length / effectiveConcurrency);
+        const chunks: (typeof tasks)[] = [];
+
+        for (let i = 0; i < tasks.length; i += chunkSize) {
+          chunks.push(tasks.slice(i, i + chunkSize));
+        }
+
+        logger.debug(
+          `Processing ${tasks.length} tasks with ${effectiveConcurrency} contexts in ${chunks.length} chunks`,
+        );
+
+        const allResults = await Promise.all(
+          chunks.map(async (chunk, chunkIndex) => {
+            const page = screenshotTool.getPageFromPool(chunkIndex);
+            const chunkResults = [];
+            let context: any;
+
+            // Initialize page if plugin has initPage method
+            if (plugin.initPage) {
+              context = await plugin.initPage(page, screenshotTool);
+            }
+
+            for (const task of chunk) {
+              logger.debug(`Executing task: ${task.id}`);
+              const result = await plugin.execute(
+                task,
+                page,
+                screenshotTool,
+                context,
+              );
+              chunkResults.push(result);
+            }
+
+            return chunkResults;
+          }),
+        );
+
+        const results = allResults.flat();
+        logger.success(
+          `Plugin ${plugin.name} completed: ${results.length} results`,
+        );
       }
+
       logger.success("All plugins completed successfully");
     } catch (error) {
       logger.error("Error during plugin execution:", error);
