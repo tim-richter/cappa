@@ -50,5 +50,6 @@ export function buildStorybookIframeUrl({
       u.searchParams.set(k, String(v));
     }
   }
+
   return u.toString();
 }

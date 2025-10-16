@@ -24,7 +24,7 @@ describe("buildStorybookIframeUrl", () => {
         query: { nav: false },
       }),
     ).toBe(
-      "https://storybook.example.com/iframe.html?id=button--primary&viewMode=story&args=label%3AClick%20Me;count:2&globals=locale%3Aen;darkMode:true&full=1&singleStory=true&nav=false",
+      "https://storybook.example.com/iframe.html?id=button--primary&viewMode=story&args=label%3AClick%2520Me%3Bcount%3A2&globals=locale%3Aen%3BdarkMode%3Atrue&full=1&singleStory=true&nav=false",
     );
   });
 
