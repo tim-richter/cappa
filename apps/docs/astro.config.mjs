@@ -30,7 +30,7 @@ export default defineConfig({
             { label: "Storybook", link: "/storybook" },
             { label: "Custom Plugins", link: "/custom-plugins" },
           ],
-        }
+        },
       ],
       social: {
         github: "https://github.com/tim-richter/cappa",
