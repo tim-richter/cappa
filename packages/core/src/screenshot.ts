@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 import { getLogger, type Logger } from "@cappa/logger";
 import {
@@ -15,6 +14,7 @@ import {
   compareImages,
   createDiffSizePngImage,
 } from "./compare";
+import { ScreenshotFileSystem } from "./filesystem";
 import type {
   DiffConfig,
   ScreenshotOptions,
@@ -66,15 +66,13 @@ class ScreenshotTool {
   headless: boolean;
   viewport: { width: number; height: number };
   outputDir: string;
-  actualDir: string;
-  diffDir: string;
-  expectedDir: string;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
   page: Page | null = null;
   diff: DiffConfig;
   logger: Logger;
   retries: number;
+  filesystem: ScreenshotFileSystem;
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -89,22 +87,16 @@ class ScreenshotTool {
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = { ...defaultDiffConfig, ...options.diff };
-    // Set up subdirectories
-    this.actualDir = path.join(this.outputDir, "actual");
-    this.diffDir = path.join(this.outputDir, "diff");
-    this.expectedDir = path.join(this.outputDir, "expected");
 
     this.logger = getLogger();
     this.retries = options.retries || 2;
+    this.filesystem = new ScreenshotFileSystem(this.outputDir);
   }
 
   /**
    * Initialize playwright and page
    */
   async init() {
-    // Create output directories if they don't exist
-    this.createDirectories();
-
     // Launch browser based on type
     const browserMap = {
       chromium,
@@ -159,44 +151,24 @@ class ScreenshotTool {
   }
 
   /**
-   * Creates directories for screenshots and other files
-   */
-  private createDirectories() {
-    // Create main output directory and subdirectories
-    const directories = [
-      this.outputDir,
-      this.actualDir,
-      this.diffDir,
-      this.expectedDir,
-    ];
-
-    for (const dir of directories) {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
-        this.logger.debug(`Initialized directory: ${dir}`);
-      }
-    }
-  }
-
-  /**
    * Gets the path to the actual screenshot file
    */
   getActualFilePath(filename: string): string {
-    return path.join(this.actualDir, filename);
+    return this.filesystem.getActualFilePath(filename);
   }
 
   /**
    * Gets the path to the diff screenshot file
    */
   getDiffFilePath(filename: string): string {
-    return path.join(this.diffDir, filename);
+    return this.filesystem.getDiffFilePath(filename);
   }
 
   /**
    * Gets the path to the expected screenshot file
    */
   getExpectedFilePath(filename: string): string {
-    return path.join(this.expectedDir, filename);
+    return this.filesystem.getExpectedFilePath(filename);
   }
 
   /**
@@ -341,7 +313,6 @@ class ScreenshotTool {
     try {
       // Generate filename and take screenshot - save to actual directory
       const filepath = this.getActualFilePath(filename);
-      fs.mkdirSync(path.dirname(filepath), { recursive: true });
 
       const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage,
@@ -362,7 +333,7 @@ class ScreenshotTool {
       }
 
       // Save screenshot to actual directory
-      fs.writeFileSync(filepath, retryScreenshot.screenshotPath);
+      this.filesystem.writeActualFile(filename, retryScreenshot.screenshotPath);
       this.logger.success(`Screenshot saved: ${filepath}`);
 
       if (retryScreenshot.passed) {
@@ -383,9 +354,8 @@ class ScreenshotTool {
         // Save to diff directory
         diffImagePath = this.getDiffFilePath(diffFilename);
 
-        fs.mkdirSync(path.dirname(diffImagePath), { recursive: true });
-        fs.writeFileSync(
-          diffImagePath,
+        this.filesystem.writeDiffFile(
+          diffFilename,
           retryScreenshot.comparisonResult.diffBuffer,
         );
 
@@ -400,8 +370,7 @@ class ScreenshotTool {
         diffImagePath = this.getDiffFilePath(diffFilename);
         const diffBuffer = createDiffSizePngImage(200, 200);
 
-        fs.mkdirSync(path.dirname(diffImagePath), { recursive: true });
-        fs.writeFileSync(diffImagePath, diffBuffer);
+        this.filesystem.writeDiffFile(diffFilename, diffBuffer);
 
         this.logger.debug(`Diff Size image saved: ${diffImagePath}`);
       }
@@ -627,17 +596,12 @@ class ScreenshotTool {
 
   // Utility method to check if expected image exists
   hasExpectedImage(filename: string): boolean {
-    const expectedPath = this.getExpectedFilePath(filename);
-    return fs.existsSync(expectedPath);
+    return this.filesystem.hasExpectedFile(filename);
   }
 
   // Utility method to get expected image as buffer (for future approval process)
   getExpectedImageBuffer(filename: string): Buffer {
-    const expectedPath = this.getExpectedFilePath(filename);
-    if (!fs.existsSync(expectedPath)) {
-      throw new Error(`Expected image not found: ${expectedPath}`);
-    }
-    return fs.readFileSync(expectedPath);
+    return this.filesystem.readExpectedFile(filename);
   }
 }
 

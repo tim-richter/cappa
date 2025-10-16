@@ -13,6 +13,10 @@ export class ScreenshotFileSystem {
     this.actualDir = path.resolve(outputDir, "actual");
     this.expectedDir = path.resolve(outputDir, "expected");
     this.diffDir = path.resolve(outputDir, "diff");
+
+    this.ensureParentDir(this.actualDir);
+    this.ensureParentDir(this.expectedDir);
+    this.ensureParentDir(this.diffDir);
   }
 
   clearActual() {
@@ -102,6 +106,85 @@ export class ScreenshotFileSystem {
     if (fs.existsSync(dir)) {
       fs.rmSync(dir, { recursive: true, force: true });
     }
+  }
+
+  /**
+   * Get the actual directory path
+   */
+  getActualDir(): string {
+    return this.actualDir;
+  }
+
+  /**
+   * Get the expected directory path
+   */
+  getExpectedDir(): string {
+    return this.expectedDir;
+  }
+
+  /**
+   * Get the diff directory path
+   */
+  getDiffDir(): string {
+    return this.diffDir;
+  }
+
+  /**
+   * Get the path to an actual screenshot file
+   */
+  getActualFilePath(filename: string): string {
+    return path.resolve(this.actualDir, filename);
+  }
+
+  /**
+   * Get the path to an expected screenshot file
+   */
+  getExpectedFilePath(filename: string): string {
+    return path.resolve(this.expectedDir, filename);
+  }
+
+  /**
+   * Get the path to a diff screenshot file
+   */
+  getDiffFilePath(filename: string): string {
+    return path.resolve(this.diffDir, filename);
+  }
+
+  /**
+   * Write a file to the actual directory
+   */
+  writeActualFile(filename: string, data: Buffer): void {
+    const filepath = this.getActualFilePath(filename);
+    this.ensureParentDir(filepath);
+    fs.writeFileSync(filepath, data);
+  }
+
+  /**
+   * Write a file to the diff directory
+   */
+  writeDiffFile(filename: string, data: Buffer): void {
+    const filepath = this.getDiffFilePath(filename);
+    this.ensureParentDir(filepath);
+    fs.writeFileSync(filepath, data);
+  }
+
+  /**
+   * Check if an expected file exists
+   */
+  hasExpectedFile(filename: string): boolean {
+    const expectedPath = this.getExpectedFilePath(filename);
+    return fs.existsSync(expectedPath);
+  }
+
+  /**
+   * Read an expected file
+   */
+  readExpectedFile(filename: string): Buffer {
+    const expectedPath = this.getExpectedFilePath(filename);
+    if (!fs.existsSync(expectedPath)) {
+      throw new Error(`Expected image not found: ${expectedPath}`);
+    }
+    return fs.readFileSync(expectedPath);
   }
 
   /**
