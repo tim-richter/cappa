@@ -8,6 +8,8 @@
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "module": "CommonJS",
+  "license": "MIT",
+  "author": "Tim Richter",
   "exports": {
     ".": {
       "import": "./dist/index.js",
@@ -30,8 +32,6 @@
     "storybook",
     "visual-testing"
   ],
-  "author": "Tim Richter",
-  "license": "MIT",
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",

@@ -2,6 +2,8 @@
   "name": "@cappa/logger",
   "version": "0.0.3",
   "type": "module",
+  "license": "MIT",
+  "author": "Tim Richter",
   "publishConfig": {
     "access": "public"
   },

@@ -2,6 +2,8 @@
   "name": "@cappa/example-storybook",
   "version": "0.0.29",
   "private": true,
+  "license": "MIT",
+  "author": "Tim Richter",
   "scripts": {
     "screenshot": "cappa capture -l 5",
     "screenshot:review": "cappa review -l 5",
