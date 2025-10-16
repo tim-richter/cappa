@@ -7,11 +7,19 @@
 Cappa
 </h1>
 <p align="center">
-Playwright-based screenshot tool
+Playwright-based screenshot tool that connects to the tools you already use.
 <p>
 
 <br>
-<br>
+
+## Core Features
+- Capture screenshots of your app
+- Review screenshots in an interactive UI
+- Approve screenshots and update baselines
+- Connect to the tools you already use
+- Extensible by design via plugins
+
+[Read the Docs to Learn More](https://tim-richter.github.io/cappa).
 
 ## License
 
