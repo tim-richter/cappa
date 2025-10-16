@@ -1,5 +1,8 @@
 # Cappa Project
 
+- always use pnpm
+- always use the latest version of packages and dependencies
+
 ## Testing instructions
 - Fix any test or type errors until the whole suite is green.
 - After moving files or changing imports, run `pnpm lint --filter <project_name>` to be sure ESLint and TypeScript rules still pass.
