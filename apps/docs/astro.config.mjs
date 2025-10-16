@@ -6,33 +6,34 @@ export default defineConfig({
   base: "/cappa",
   integrations: [
     starlight({
-      title: "Cappa Documentation",
+      title: "Cappa",
       description:
         "Learn how to capture, review, and approve visual regressions with Cappa.",
       sidebar: [
         {
           label: "Overview",
           items: [
-            { label: "Introduction", link: "/introduction" },
+            { label: "Introduction", link: "/" },
             { label: "Quickstart", link: "/quickstart" },
           ],
         },
         {
           label: "Guides",
           items: [
-            { label: "CLI Workflow", link: "/cli-workflow" },
+            { label: "CLI", link: "/cli" },
             { label: "Configuration", link: "/configuration" },
-            { label: "Plugins", link: "/plugins" },
-            { label: "Storybook integration", link: "/storybook" },
           ],
         },
         {
-          label: "Examples",
-          items: [{ label: "Examples", link: "/examples" }],
-        },
+          label: "Plugins",
+          items: [
+            { label: "Storybook", link: "/storybook" },
+            { label: "Custom Plugins", link: "/custom-plugins" },
+          ],
+        }
       ],
       social: {
-        github: "https://github.com/cappajs/cappa",
+        github: "https://github.com/tim-richter/cappa",
       },
     }),
   ],

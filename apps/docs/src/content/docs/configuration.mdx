@@ -20,17 +20,98 @@ export default defineConfig({
 });
 ```
 
-### Key options
+## outputDir
 
-- **`outputDir`** – Folder where screenshots and diffs are written.
-- **`plugins`** – Register additional plugins to expand how Cappa discovers pages or state. See the [Storybook integration](./storybook) guide for the official addon.
-- **`retries`** – Control how many attempts Cappa makes before treating a comparison as failed. Read the [Screenshot retries](./screenshot-retries) guide for timing details.
-- **`commands`** – Expose custom CLI commands for project-specific automation.
+- **type**: `string`
+- **default**: `'screenshots'`
 
-### Project structure
+Folder where screenshots and diffs are written.
+Cappa will create actual, expected, and diff directories within this folder.
 
-Store the config at the root of your repository so that Playwright can resolve relative imports and
-so CI jobs can run `cappa` without additional flags. When using workspaces, define workspace-level
-scripts that call the CLI from the directory containing the config file.
+## screenshot
 
-See the [Plugins](./plugins) guide to learn how to extend Cappa with custom integrations.
+Screenshot configuration might get overwritten by plugins or more specific settings, while taking
+the screenshot.
+
+### screenshot.viewport
+
+- **type**: `{ width: number; height: number }`
+- **default**: `{ width: 1920, height: 1080 }`
+
+The viewport to use for the screenshots.
+
+### screenshot.fullPage
+
+- **type**: `boolean`
+- **default**: `true`
+
+Whether to take a full page screenshot. If `false`, the viewport will be used.
+
+## diff
+
+Diff configuration sets different, global comparison settings for the images.
+
+### diff.threshold
+
+- **type**: `number`
+- **default**: `0.1`
+- **range**: `0-1`
+
+This affects how similar a pixel needs to be to the reference image to be considered the same.
+
+### diff.includeAA
+
+- **type**: `boolean`
+- **default**: `false`
+
+Whether to include anti-aliased pixels in the diff count.
+For most users this should be false, because it makes comparisons very sensitive to sub-pixel differences of
+fonts and other UI elements.
+
+### diff.fastBufferCheck
+
+- **type**: `boolean`
+- **default**: `true`
+
+Whether to use a fast buffer comparison for identical images. This is a performance optimization that
+skips the slower image comparison algorithm.
+
+### diff.maxDiffPixels
+
+- **type**: `number`
+- **default**: `0`
+
+The maximum number of different pixels before the comparison fails.
+
+### diff.maxDiffPercentage
+
+- **type**: `number`
+- **default**: `0`
+- **range**: `0-100`
+
+The maximum percentage of different pixels before the comparison fails. This is a relative value,
+so it is affected by the size of the images. A 100px image with a 10% difference is 10 pixels different,
+but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
+this can mean that small changes still slip through.
+
+## browser
+
+Browser configuration sets different browser settings for playwright.
+
+### browser.type
+
+- **type**: `'chromium' | 'firefox' | 'webkit'`
+- **default**: `'chromium'`
+
+The browser to use for the screenshots.
+
+### browser.headless
+
+- **type**: `boolean`
+- **default**: `true`
+
+Whether to run the browser in headless mode.
+
+## plugins
+
+See the [Plugins](./plugins) guide for more information on how to use plugins.

@@ -33,3 +33,5 @@ storybook-static
 *.tar.gz
 
 coverage
+
+.astro

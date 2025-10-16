@@ -11,7 +11,6 @@ export interface BrowserConfig {
 }
 
 export interface ScreenshotConfig {
-  outputDir?: string;
   viewport?: { width: number; height: number };
   fullPage?: boolean;
 }
@@ -65,6 +64,7 @@ export interface PluginConfig {
 }
 
 export interface CappaConfig {
+  outputDir?: string;
   browser?: BrowserConfig;
   screenshot?: ScreenshotConfig;
   diff?: DiffConfig;
@@ -84,13 +84,13 @@ export function defineConfig(config: CappaConfig): CappaConfig {
  * Default configuration
  */
 const defaultConfig: CappaConfig = {
+  outputDir: "./screenshots",
   plugins: [],
   browser: {
     type: "chromium",
     headless: true,
   },
   screenshot: {
-    outputDir: "./screenshots",
     viewport: { width: 1920, height: 1080 },
     fullPage: true,
   },
