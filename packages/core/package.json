@@ -29,17 +29,17 @@
     "tsc": "tsc"
   },
   "dependencies": {
-    "@blazediff/core": "^1.1.0",
-    "@blazediff/types": "^1.1.0",
+    "@blazediff/core": "^1.4.1",
+    "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
     "pixelmatch": "^6.0.0",
-    "playwright-core": "^1.55.0",
+    "playwright-core": "^1.56.0",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@types/node": "catalog:",
-    "@types/pixelmatch": "^5.2.4",
-    "@types/pngjs": "^6.0.4",
+    "@types/pixelmatch": "^5.2.6",
+    "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",

@@ -34,7 +34,7 @@
     "@types/node": "24.5.2",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "memfs": "^4.47.0",
+    "memfs": "^4.49.0",
     "tsup": "8.5.0",
     "tsx": "4.20.5",
     "typescript": "5.9.2",
