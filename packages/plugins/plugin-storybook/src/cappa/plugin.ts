@@ -260,7 +260,8 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             };
 
             const filename = buildFilename(story);
-            const expectedExists = screenshotTool.hasExpectedImage(filename);
+            const expectedExists =
+              screenshotTool.filesystem.hasExpectedFile(filename);
             if (!expectedExists) {
               logger.info(
                 `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
@@ -275,7 +276,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               );
               variantFilenameMap.set(variant.id, variantFilename);
 
-              if (!screenshotTool.hasExpectedImage(variantFilename)) {
+              if (!screenshotTool.filesystem.hasExpectedFile(variantFilename)) {
                 logger.info(
                   `Expected image not found for variant ${story.title} - ${story.name} [${variant.label ?? variant.id}], taking screenshot`,
                 );

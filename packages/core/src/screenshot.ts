@@ -151,27 +151,6 @@ class ScreenshotTool {
   }
 
   /**
-   * Gets the path to the actual screenshot file
-   */
-  getActualFilePath(filename: string): string {
-    return this.filesystem.getActualFilePath(filename);
-  }
-
-  /**
-   * Gets the path to the diff screenshot file
-   */
-  getDiffFilePath(filename: string): string {
-    return this.filesystem.getDiffFilePath(filename);
-  }
-
-  /**
-   * Gets the path to the expected screenshot file
-   */
-  getExpectedFilePath(filename: string): string {
-    return this.filesystem.getExpectedFilePath(filename);
-  }
-
-  /**
    * Takes a screenshot of the page
    */
   async takeScreenshot(
@@ -189,7 +168,7 @@ class ScreenshotTool {
 
     try {
       // Generate filename - save to actual directory
-      const filepath = this.getActualFilePath(filename);
+      const filepath = this.filesystem.getActualFilePath(filename);
 
       // Take screenshot
       const screenshotOptions = {
@@ -222,6 +201,10 @@ class ScreenshotTool {
     }
   }
 
+  /**
+   * Sets the viewport size and executes the action, ensuring the original viewport is restored
+   * even if the action throws an error.
+   */
   private async withViewport<T>(
     page: Page,
     viewport: ScreenshotSettings["viewport"],
@@ -232,11 +215,22 @@ class ScreenshotTool {
     }
 
     const previousViewport = page.viewportSize();
+
+    // Check if the new viewport is the same as the current one
+    if (
+      previousViewport &&
+      previousViewport.width === viewport.width &&
+      previousViewport.height === viewport.height
+    ) {
+      return action();
+    }
+
     await page.setViewportSize(viewport);
 
     try {
       return await action();
     } finally {
+      // Always restore the original viewport, even if the action throws an error
       if (previousViewport) {
         await page.setViewportSize(previousViewport);
       }
@@ -312,7 +306,7 @@ class ScreenshotTool {
 
     try {
       // Generate filename and take screenshot - save to actual directory
-      const filepath = this.getActualFilePath(filename);
+      const filepath = this.filesystem.getActualFilePath(filename);
 
       const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage,
@@ -352,7 +346,7 @@ class ScreenshotTool {
       ) {
         const diffFilename = options.diffImageFilename || filename;
         // Save to diff directory
-        diffImagePath = this.getDiffFilePath(diffFilename);
+        diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
 
         this.filesystem.writeDiffFile(
           diffFilename,
@@ -367,7 +361,7 @@ class ScreenshotTool {
         this.logger.warn(`Screenshot has different sizes than reference image`);
 
         const diffFilename = options.diffImageFilename || filename;
-        diffImagePath = this.getDiffFilePath(diffFilename);
+        diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
         const diffBuffer = createDiffSizePngImage(200, 200);
 
         this.filesystem.writeDiffFile(diffFilename, diffBuffer);
@@ -506,12 +500,12 @@ class ScreenshotTool {
       };
     }
 
-    if (this.hasExpectedImage(filename)) {
+    if (this.filesystem.hasExpectedFile(filename)) {
       const { screenshotPath, comparisonResult, diffImagePath } =
         await this.takeScreenshotWithComparison(
           page,
           filename,
-          this.getExpectedImageBuffer(filename),
+          this.filesystem.readExpectedFile(filename),
           {
             ...baseOptions,
             saveDiffImage: baseSaveDiff,
@@ -554,12 +548,12 @@ class ScreenshotTool {
       const variantDiffFilename =
         variantExtra?.diffImageFilename ?? variantFilename;
 
-      if (this.hasExpectedImage(variantFilename)) {
+      if (this.filesystem.hasExpectedFile(variantFilename)) {
         const { screenshotPath, comparisonResult, diffImagePath } =
           await this.takeScreenshotWithComparison(
             page,
             variantFilename,
-            this.getExpectedImageBuffer(variantFilename),
+            this.filesystem.readExpectedFile(variantFilename),
             {
               ...variantOptions,
               saveDiffImage: variantSaveDiff,
@@ -592,16 +586,6 @@ class ScreenshotTool {
    */
   getIncBackoffDelay(i: number, delay: number): number {
     return i > 0 ? 500 * 2 ** (i - 1) + (delay || 0) : 0;
-  }
-
-  // Utility method to check if expected image exists
-  hasExpectedImage(filename: string): boolean {
-    return this.filesystem.hasExpectedFile(filename);
-  }
-
-  // Utility method to get expected image as buffer (for future approval process)
-  getExpectedImageBuffer(filename: string): Buffer {
-    return this.filesystem.readExpectedFile(filename);
   }
 }
 
