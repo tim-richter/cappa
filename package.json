@@ -32,7 +32,6 @@
   "packageManager": "pnpm@10.16.1",
   "msw": {
     "workerDirectory": [
-      "public",
       "apps/web/public"
     ]
   }
