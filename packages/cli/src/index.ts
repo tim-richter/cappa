@@ -153,9 +153,9 @@ program
       ]);
 
     const groupedScreenshots = await groupScreenshots(
-      actualScreenshots,
-      expectedScreenshots,
-      diffScreenshots,
+      await Array.fromAsync(actualScreenshots),
+      await Array.fromAsync(expectedScreenshots),
+      await Array.fromAsync(diffScreenshots),
       config.outputDir,
     );
 
@@ -189,7 +189,8 @@ program
       path.resolve(config.outputDir, "actual", "**/*.png"),
     );
 
-    const [actualScreenshots] = await Promise.all([actualScreenshotsPromise]);
+    const globs = await actualScreenshotsPromise;
+    const actualScreenshots = await Array.fromAsync(globs);
 
     let screenshotsToApprove = actualScreenshots;
 
@@ -262,9 +263,9 @@ program
       ]);
 
     const groupedScreenshots = await groupScreenshots(
-      actualScreenshots,
-      expectedScreenshots,
-      diffScreenshots,
+      await Array.fromAsync(actualScreenshots),
+      await Array.fromAsync(expectedScreenshots),
+      await Array.fromAsync(diffScreenshots),
       config.outputDir,
     );
 

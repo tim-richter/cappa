@@ -41,10 +41,12 @@ vi.mock("@cappa/core", () => ({
   ScreenshotTool: class {
     options: unknown;
     close: ReturnType<typeof vi.fn>;
+    init: ReturnType<typeof vi.fn>;
 
     constructor(options: unknown) {
       this.options = options;
       this.close = vi.fn();
+      this.init = vi.fn();
       screenshotToolInstances.push(this);
     }
   },
