@@ -2,9 +2,9 @@ import { isCappa } from "@cappa/plugin-storybook/browser";
 import type { Preview } from "@storybook/react-vite";
 
 if (isCappa()) {
-  // capps is running
+  // cappa is running
 } else {
-  // capps is not running
+  // cappa is not running
 }
 
 const preview: Preview = {

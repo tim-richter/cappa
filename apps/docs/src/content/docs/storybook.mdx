@@ -85,6 +85,12 @@ Cappa will fetch the list of stories, load each one in Playwright, and write scr
 reports to the configured output directory. Pair it with `cappa review` and `cappa approve` to follow
 the normal approval workflow.
 
+> You can use `start-server-and-test` to start Storybook and Cappa in one command.
+> 
+> ```bash
+> pnpm start-server-and-test storybook "pnpm cappa capture"
+> ```
+
 ## Control per-story behaviour
 
 Story-specific parameters can override how Cappa captures each story. Define them in your story file
