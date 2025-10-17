@@ -129,6 +129,20 @@ export const Primary = {
 };
 ```
 
+> parameters are usually typed as any in storybook. To provide better types for cappa parameters, you can
+> overwrite storybook parameters like this:
+>
+> ```ts title="stories/types.d.ts"
+> import type { CappaStorybookOptions } from "@cappa/plugin-storybook";
+> import "@storybook/react-vite"; // replace with your framework
+>
+> declare module "@storybook/react-vite" { // replace with your framework
+>   interface Parameters {
+>     cappa?: CappaStorybookOptions;
+>   }
+> }
+> ```
+
 Each variant inherits the base configuration, so you only need to specify the properties that differ
 from the root story. Variant filenames follow the `<story>--<variant>` convention, and you can supply
 `filename` inside a variant to control the output name when necessary.

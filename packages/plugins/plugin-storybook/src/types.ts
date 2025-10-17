@@ -26,5 +26,4 @@ export interface ScreenshotVariantOptionsStorybook {
 export interface ScreenshotOptionsStorybook
   extends ScreenshotVariantOverrideStorybook {
   variants?: ScreenshotVariantOptionsStorybook[];
-  storybook?: StorybookRenderOptions;
 }
