@@ -26,11 +26,11 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.14",
     "@turbo/gen": "2.5.8",
-    "@types/node": "24.8.0",
-    "@types/react": "19.2.2",
-    "@types/react-dom": "19.2.2",
+    "@types/node": "catalog:",
+    "@types/react": "catalog:",
+    "@types/react-dom": "catalog:",
     "tailwindcss": "4.1.14",
-    "typescript": "5.9.3"
+    "typescript": "catalog:"
   },
   "exports": {
     "./globals.css": "./src/styles/globals.css",
