@@ -1,5 +1,13 @@
 # @cappa/core
 
+## 0.2.1
+
+### Patch Changes
+
+- 526857a: feat: add variant and play function support
+- Updated dependencies [526857a]
+  - @cappa/logger@0.0.4
+
 ## 0.2.0
 
 ### Minor Changes

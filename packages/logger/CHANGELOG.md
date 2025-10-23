@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.4
+
+### Patch Changes
+
+- 526857a: feat: add variant and play function support
+
 ## 0.0.3
 
 ### Patch Changes
