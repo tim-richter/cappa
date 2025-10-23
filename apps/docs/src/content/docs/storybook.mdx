@@ -194,3 +194,18 @@ export const Primary = {
 ```
 
 Args only work if your component also is supporting these props AND spreads the args to the component.
+
+## Play function
+
+If your story has a play function, cappa will wait for it to complete before capturing the screenshot.
+
+```ts title="Button.stories.tsx"
+export const Primary = {
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    await userEvent.click(canvas.getByRole("button"));
+  },
+};
+```
+
+This allows you to take interactive screenshots of your stories.

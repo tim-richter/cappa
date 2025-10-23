@@ -4,6 +4,7 @@ import type {
   ScreenshotVariantWithUrl,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
+import type { Page } from "playwright-core";
 import type {
   ScreenshotOptionsStorybook,
   ScreenshotVariantOptionsStorybook,
@@ -11,6 +12,47 @@ import type {
 } from "../types";
 import { buildStorybookIframeUrl } from "./storybook-url";
 import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
+
+/**
+ * Wait for the play function to complete by checking the playAfterEach flag
+ * Only waits if the story actually has a play function
+ */
+async function waitForPlayFunctionCompletion(page: Page, storyName: string) {
+  const logger = getLogger();
+
+  try {
+    // First check if this story has a play function
+    const hasPlayFunction = await page.evaluate(
+      () => (window as any).__cappa_has_play_function === true,
+    );
+
+    if (!hasPlayFunction) {
+      return;
+    }
+
+    logger.debug(
+      `Waiting for play function to complete for story: ${storyName}`,
+    );
+
+    await page.waitForFunction(() => (window as any).playAfterEach === true, {
+      timeout: 10000,
+    });
+
+    logger.debug(`Play function completed for story: ${storyName}`);
+
+    // Reset the flags for the next story
+    await page.evaluate(() => {
+      (window as any).playAfterEach = false;
+      (window as any).__cappa_has_play_function = false;
+    });
+  } catch {
+    // Reset flags even on timeout
+    await page.evaluate(() => {
+      (window as any).playAfterEach = false;
+      (window as any).__cappa_has_play_function = false;
+    });
+  }
+}
 
 export interface StorybookStory {
   id: string;
@@ -209,6 +251,12 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         await freezeUI(page);
         await waitForVisualIdle(page);
+
+        // Wait for play function to complete if it exists
+        await waitForPlayFunctionCompletion(
+          page,
+          `${story.title} - ${story.name}`,
+        );
 
         const toLocatorMask = (mask?: string[]) =>
           mask?.map((selector) => page.locator(selector));
