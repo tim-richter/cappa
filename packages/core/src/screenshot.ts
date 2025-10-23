@@ -20,6 +20,7 @@ import type {
   ScreenshotOptions,
   ScreenshotSettings,
   ScreenshotVariant,
+  ScreenshotVariantWithUrl,
 } from "./types";
 
 const defaultDiffConfig: DiffConfig = {
@@ -488,6 +489,51 @@ class ScreenshotTool {
     return parsed.dir ? path.join(parsed.dir, variantName) : variantName;
   }
 
+  /**
+   * Captures a single screenshot with the given options
+   */
+  private async captureSingleScreenshot(
+    page: Page,
+    filename: string,
+    options: ScreenshotSettings,
+    extras: {
+      saveDiffImage?: boolean;
+      diffImageFilename?: string;
+    } = {},
+  ): Promise<ScreenshotCaptureDetails> {
+    const result: ScreenshotCaptureDetails = { filename };
+
+    if (options.skip) {
+      result.skipped = true;
+      return result;
+    }
+
+    const saveDiff = extras.saveDiffImage ?? false;
+    const diffFilename = extras.diffImageFilename ?? filename;
+
+    if (this.filesystem.hasExpectedFile(filename)) {
+      const { screenshotPath, comparisonResult, diffImagePath } =
+        await this.takeScreenshotWithComparison(
+          page,
+          filename,
+          this.filesystem.readExpectedFile(filename),
+          {
+            ...options,
+            saveDiffImage: saveDiff,
+            diffImageFilename: diffFilename,
+          },
+        );
+
+      result.filepath = screenshotPath;
+      result.comparisonResult = comparisonResult;
+      result.diffImagePath = diffImagePath;
+    } else {
+      result.filepath = await this.takeScreenshot(page, filename, options);
+    }
+
+    return result;
+  }
+
   async capture(
     page: Page,
     filename: string,
@@ -517,29 +563,21 @@ class ScreenshotTool {
       };
     }
 
-    if (this.filesystem.hasExpectedFile(filename)) {
-      const { screenshotPath, comparisonResult, diffImagePath } =
-        await this.takeScreenshotWithComparison(
-          page,
-          filename,
-          this.filesystem.readExpectedFile(filename),
-          {
-            ...baseOptions,
-            saveDiffImage: baseSaveDiff,
-            diffImageFilename: baseDiffFilename,
-          },
-        );
+    // Capture base screenshot
+    const baseCaptureResult = await this.captureSingleScreenshot(
+      page,
+      filename,
+      baseOptions,
+      {
+        saveDiffImage: baseSaveDiff,
+        diffImageFilename: baseDiffFilename,
+      },
+    );
 
-      baseResult.filepath = screenshotPath;
-      baseResult.comparisonResult = comparisonResult;
-      baseResult.diffImagePath = diffImagePath;
-    } else {
-      baseResult.filepath = await this.takeScreenshot(
-        page,
-        filename,
-        baseOptions,
-      );
-    }
+    baseResult.filepath = baseCaptureResult.filepath;
+    baseResult.comparisonResult = baseCaptureResult.comparisonResult;
+    baseResult.diffImagePath = baseCaptureResult.diffImagePath;
+    baseResult.skipped = baseCaptureResult.skipped;
 
     for (const variant of variants) {
       const variantFilename = this.getVariantFilename(filename, variant);
@@ -565,29 +603,144 @@ class ScreenshotTool {
       const variantDiffFilename =
         variantExtra?.diffImageFilename ?? variantFilename;
 
-      if (this.filesystem.hasExpectedFile(variantFilename)) {
-        const { screenshotPath, comparisonResult, diffImagePath } =
-          await this.takeScreenshotWithComparison(
-            page,
-            variantFilename,
-            this.filesystem.readExpectedFile(variantFilename),
-            {
-              ...variantOptions,
-              saveDiffImage: variantSaveDiff,
-              diffImageFilename: variantDiffFilename,
-            },
-          );
+      const variantCaptureResult = await this.captureSingleScreenshot(
+        page,
+        variantFilename,
+        variantOptions,
+        {
+          saveDiffImage: variantSaveDiff,
+          diffImageFilename: variantDiffFilename,
+        },
+      );
 
-        variantResult.filepath = screenshotPath;
-        variantResult.comparisonResult = comparisonResult;
-        variantResult.diffImagePath = diffImagePath;
-      } else {
-        variantResult.filepath = await this.takeScreenshot(
-          page,
-          variantFilename,
-          variantOptions,
-        );
+      variantResult.filepath = variantCaptureResult.filepath;
+      variantResult.comparisonResult = variantCaptureResult.comparisonResult;
+      variantResult.diffImagePath = variantCaptureResult.diffImagePath;
+      variantResult.skipped = variantCaptureResult.skipped;
+
+      variantResults.push(variantResult);
+    }
+
+    return {
+      base: baseResult,
+      variants: variantResults,
+    };
+  }
+
+  /**
+   * Applies SVG and UI optimizations for screenshots
+   */
+  private async applyScreenshotOptimizations(page: Page) {
+    await page.addStyleTag({
+      content: `
+        *, *::before, *::after {
+          -moz-animation: none !important;
+          -moz-transition: none !important;
+          transition: none !important; 
+          animation: none !important;
+        }
+        *, input, textarea { caret-color: transparent !important }
+        *:focus { outline: none !important }
+        *:focus-visible { outline: none !important }
+        *:focus-within { outline: none !important }
+        * { text-rendering: optimizeLegibility !important }
+        ::-webkit-scrollbar { display: none !important }
+        html { scroll-behavior: auto !important }
+        svg, svg * {
+          shape-rendering: crispEdges !important;
+          text-rendering: geometricPrecision !important;
+          vector-effect: non-scaling-stroke !important;
+        }
+        img { image-rendering: crisp-edges !important }
+      `,
+    });
+  }
+
+  /**
+   * Captures screenshots for multiple variants, each with their own URL
+   */
+  async captureWithVariants(
+    page: Page,
+    baseFilename: string,
+    baseUrl: string,
+    baseOptions: ScreenshotSettings,
+    variants: ScreenshotVariantWithUrl[],
+    extras: ScreenshotCaptureExtras = {},
+  ): Promise<ScreenshotCaptureResult> {
+    if (!this.browser) {
+      throw new Error("Browser not initialized");
+    }
+
+    const baseResult: ScreenshotCaptureDetails = { filename: baseFilename };
+    const variantResults: ScreenshotVariantCaptureDetails[] = [];
+
+    const baseSaveDiff = extras.saveDiffImage ?? false;
+    const baseDiffFilename = extras.diffImageFilename ?? baseFilename;
+
+    // Capture base screenshot
+    getLogger().debug(`Going to base URL: ${baseUrl}`);
+    await page.goto(baseUrl);
+    await this.applyScreenshotOptimizations(page);
+    const baseCaptureResult = await this.captureSingleScreenshot(
+      page,
+      baseFilename,
+      baseOptions,
+      {
+        saveDiffImage: baseSaveDiff,
+        diffImageFilename: baseDiffFilename,
+      },
+    );
+
+    baseResult.filepath = baseCaptureResult.filepath;
+    baseResult.comparisonResult = baseCaptureResult.comparisonResult;
+    baseResult.diffImagePath = baseCaptureResult.diffImagePath;
+    baseResult.skipped = baseCaptureResult.skipped;
+
+    // Capture variant screenshots
+    for (const variant of variants) {
+      const variantFilename =
+        variant.filename || this.getVariantFilename(baseFilename, variant);
+      const variantOptions: ScreenshotSettings = {
+        ...baseOptions,
+        ...variant.options,
+      };
+
+      const variantResult: ScreenshotVariantCaptureDetails = {
+        id: variant.id,
+        label: variant.label,
+        filename: variantFilename,
+      };
+
+      if (variantOptions.skip) {
+        variantResult.skipped = true;
+        variantResults.push(variantResult);
+        continue;
       }
+
+      // Navigate to variant URL and apply optimizations
+      getLogger().debug(`Going to variant URL: ${variant.url}`);
+      await page.goto(variant.url);
+      await this.applyScreenshotOptimizations(page);
+
+      const variantExtra = extras.variants?.[variant.id];
+      const variantSaveDiff = variantExtra?.saveDiffImage ?? baseSaveDiff;
+      const variantDiffFilename =
+        variantExtra?.diffImageFilename ?? variantFilename;
+
+      const variantCaptureResult = await this.captureSingleScreenshot(
+        page,
+        variantFilename,
+        variantOptions,
+        {
+          saveDiffImage: variantSaveDiff,
+          diffImageFilename: variantDiffFilename,
+        },
+      );
+
+      variantResult.filepath = variantCaptureResult.filepath;
+      variantResult.comparisonResult = variantCaptureResult.comparisonResult;
+      variantResult.diffImagePath = variantCaptureResult.diffImagePath;
+      variantResult.skipped = variantCaptureResult.skipped;
 
       variantResults.push(variantResult);
     }

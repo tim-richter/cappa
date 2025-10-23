@@ -99,6 +99,14 @@ export type ScreenshotVariant = {
   options?: ScreenshotSettings;
 };
 
+export type ScreenshotVariantWithUrl = {
+  id: string;
+  label?: string;
+  filename?: string;
+  url: string;
+  options?: ScreenshotSettings;
+};
+
 export type ScreenshotOptions = ScreenshotSettings & {
   variants?: ScreenshotVariant[];
 };

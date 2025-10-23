@@ -1,8 +1,7 @@
 import type {
   Plugin,
   ScreenshotCaptureExtras,
-  ScreenshotOptions,
-  ScreenshotVariant,
+  ScreenshotVariantWithUrl,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import type {
@@ -154,6 +153,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const { url, data } = task;
       const { story } = data;
       const logger = getLogger();
+      const { storybook: defaultStorybookOptions } = options || {};
 
       try {
         // Setup exposed function for this page
@@ -213,30 +213,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         const toLocatorMask = (mask?: string[]) =>
           mask?.map((selector) => page.locator(selector));
 
-        const screenshotVariants: ScreenshotVariant[] = variantParameters.map(
-          (variant: ScreenshotVariantOptionsStorybook) => ({
-            id: variant.id,
-            label: variant.label,
-            filename: variant.filename,
-            options: variant.options
-              ? {
-                  ...variant.options,
-                  mask: toLocatorMask(variant.options.mask),
-                }
-              : undefined,
-          }),
-        );
-
-        const screenshotOptions: ScreenshotOptions = {
-          fullPage: storyParameters?.fullPage,
-          delay: storyParameters?.delay,
-          omitBackground: storyParameters?.omitBackground,
-          skip: storyParameters?.skip,
-          viewport: storyParameters?.viewport ?? screenshotTool.viewport,
-          mask: toLocatorMask(storyParameters?.mask),
-          variants: screenshotVariants.length ? screenshotVariants : undefined,
-        };
-
         const filename = buildFilename(story);
         const expectedExists =
           screenshotTool.filesystem.hasExpectedFile(filename);
@@ -246,12 +222,62 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           );
         }
 
-        const variantFilenameMap = new Map<string, string>();
-        for (const variant of screenshotVariants) {
-          const variantFilename = screenshotTool.getVariantFilename(
-            filename,
-            variant,
+        // Convert variants to the new format with URLs
+        const variantsWithUrls: ScreenshotVariantWithUrl[] =
+          variantParameters.map(
+            (variant: ScreenshotVariantOptionsStorybook) => {
+              const variantFilename =
+                variant.filename ||
+                screenshotTool.getVariantFilename(filename, {
+                  id: variant.id,
+                  label: variant.label,
+                  filename: variant.filename,
+                });
+
+              // Merge variant args with default storybook options
+              const mergedArgs = {
+                ...defaultStorybookOptions?.args,
+                ...variant.options?.args,
+              };
+
+              return {
+                id: variant.id,
+                label: variant.label,
+                filename: variantFilename,
+                url: buildStorybookIframeUrl({
+                  baseUrl: options?.storybookUrl || "",
+                  storyId: story.id,
+                  viewMode: defaultStorybookOptions?.viewMode,
+                  args: mergedArgs,
+                  globals: defaultStorybookOptions?.globals,
+                  query: defaultStorybookOptions?.query,
+                  fullscreen: defaultStorybookOptions?.fullscreen,
+                  singleStory: defaultStorybookOptions?.singleStory,
+                }),
+                options: variant.options
+                  ? {
+                      ...variant.options,
+                      mask: toLocatorMask(variant.options.mask),
+                    }
+                  : undefined,
+              };
+            },
           );
+
+        const baseOptions = {
+          fullPage: storyParameters?.fullPage,
+          delay: storyParameters?.delay,
+          omitBackground: storyParameters?.omitBackground,
+          skip: storyParameters?.skip,
+          viewport: storyParameters?.viewport ?? screenshotTool.viewport,
+          mask: toLocatorMask(storyParameters?.mask),
+        };
+
+        const variantFilenameMap = new Map<string, string>();
+        for (const variant of variantsWithUrls) {
+          const variantFilename = variant.filename;
+          if (!variantFilename) continue; // Skip if no filename
+
           variantFilenameMap.set(variant.id, variantFilename);
 
           if (!screenshotTool.filesystem.hasExpectedFile(variantFilename)) {
@@ -261,14 +287,13 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           }
         }
 
-        const variantExtrasEntries = screenshotVariants.map(
+        const variantExtrasEntries = variantsWithUrls.map(
           (variant) =>
             [
               variant.id,
               {
                 saveDiffImage: true,
-                diffImageFilename:
-                  variantFilenameMap.get(variant.id) ?? filename,
+                diffImageFilename: variant.filename,
               },
             ] as const,
         );
@@ -281,10 +306,12 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             : undefined,
         };
 
-        const captureResult = await screenshotTool.capture(
+        const captureResult = await screenshotTool.captureWithVariants(
           page,
           filename,
-          screenshotOptions,
+          url,
+          baseOptions,
+          variantsWithUrls,
           captureExtras,
         );
 

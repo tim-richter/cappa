@@ -14,6 +14,7 @@ export interface ScreenshotVariantOverrideStorybook {
   mask?: string[];
   omitBackground?: boolean;
   viewport?: { width: number; height: number };
+  args?: Record<string, unknown>;
 }
 
 export interface ScreenshotVariantOptionsStorybook {

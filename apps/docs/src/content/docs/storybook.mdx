@@ -143,12 +143,54 @@ export const Primary = {
 > }
 > ```
 
-Each variant inherits the base configuration, so you only need to specify the properties that differ
-from the root story. Variant filenames follow the `<story>--<variant>` convention, and you can supply
-`filename` inside a variant to control the output name when necessary.
+## Variants
 
-## Keep screenshots stable
+You can instruct cappa to capture multiple screenshots of a story, e.g. with different viewport:
 
-Cappa already pauses CSS animations and waits for the DOM to become idle, but certain components may
-require extra setup. Use the `isCappa` helper shown above to load stability-specific styles or disable
-third-party animation libraries when Cappa is present.
+```ts title="Button.stories.tsx"
+export const Primary = {
+  parameters: {
+    cappa: {
+      variants: [
+        {
+          id: 'mobile',
+          label: 'Mobile',
+          options: { viewport: { width: 375, height: 812 } },
+        },
+      ],
+    },
+  },
+};
+```
+
+The `id` is used to identify the variant, and the `label` is used to display the variant in the report.
+The `options` are mostly the same as the options for the story, but they are applied to the variant.
+
+The `filename` is the name of the file that will be created for the variant. If not provided, it will be
+generated from the story name and the variant id.
+
+### Args
+
+You can override the args for a variant by adding them to the `options.args` property.
+
+```ts title="Button.stories.tsx"
+export const Primary = {
+  parameters: {
+    cappa: {
+      variants: [
+        {
+          id: 'small',
+          label: 'Small',
+          options: {
+            args: {
+              size: 'small',
+            },
+          },
+        },
+      ],
+    },
+  },
+};
+```
+
+Args only work if your component also is supporting these props AND spreads the args to the component.

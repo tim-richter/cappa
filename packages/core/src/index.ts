@@ -12,6 +12,7 @@ import type {
   ScreenshotOptions,
   ScreenshotSettings,
   ScreenshotVariant,
+  ScreenshotVariantWithUrl,
   UserConfig,
   Viewport,
 } from "./types";
@@ -27,6 +28,7 @@ export {
   type ScreenshotOptions,
   type ScreenshotSettings,
   type ScreenshotVariant,
+  type ScreenshotVariantWithUrl,
   type Screenshot,
   type ScreenshotCaptureResult,
   type ScreenshotCaptureDetails,

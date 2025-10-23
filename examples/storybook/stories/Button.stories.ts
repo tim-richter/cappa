@@ -41,6 +41,17 @@ export const Primary: Story = {
         width: 200,
         height: 200,
       },
+      variants: [
+        {
+          id: "small",
+          label: "Small",
+          options: {
+            args: {
+              size: "small",
+            },
+          },
+        },
+      ],
     },
   },
 };
