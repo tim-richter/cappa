@@ -8,8 +8,8 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { version } from "../package.json";
 import { getConfig } from "./utils/getConfig";
-import { getCosmiConfig } from "./utils/getCosmiConfig";
 import { groupScreenshots } from "./utils/groupScreenshots";
+import { loadConfig } from "./utils/loadConfig";
 
 const program = new Command();
 
@@ -34,18 +34,20 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await getCosmiConfig("cappa");
+    const result = await loadConfig();
     const config = await getConfig(result);
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
     logger.debug(`Cleaning output directory: ${config.outputDir}`);
-    const fileSystem = new ScreenshotFileSystem(config.outputDir);
+    const fileSystem = new ScreenshotFileSystem(
+      config.outputDir || "./screenshots",
+    );
     fileSystem.clearActual();
     fileSystem.clearDiff();
 
     const screenshotTool = new ScreenshotTool({
-      outputDir: config.outputDir,
+      outputDir: config.outputDir || "./screenshots",
       diff: config.diff,
       retries: config.retries,
       concurrency: config.concurrency,
@@ -54,7 +56,7 @@ program
     try {
       await screenshotTool.init();
 
-      for (const plugin of config.plugins) {
+      for (const plugin of (config.plugins || []) as any[]) {
         logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
 
         // Phase 1: Discover all tasks
@@ -130,19 +132,19 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await getCosmiConfig("cappa");
+    const result = await loadConfig();
     const config = await getConfig(result);
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "actual", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
     );
     const expectedScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "expected", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "expected", "**/*.png"),
     );
     const diffScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "diff", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "diff", "**/*.png"),
     );
 
     const [actualScreenshots, expectedScreenshots, diffScreenshots] =
@@ -156,12 +158,12 @@ program
       await Array.fromAsync(actualScreenshots),
       await Array.fromAsync(expectedScreenshots),
       await Array.fromAsync(diffScreenshots),
-      config.outputDir,
+      config.outputDir || "./screenshots",
     );
 
     const server = await createServer({
       isProd: true,
-      outputDir: path.resolve(config.outputDir),
+      outputDir: path.resolve(config.outputDir || "./screenshots"),
       screenshots: groupedScreenshots,
       logger: getLogger().level >= 4,
     });
@@ -180,13 +182,13 @@ program
   .action(async (options) => {
     const logger = getLogger();
 
-    const result = await getCosmiConfig("cappa");
+    const result = await loadConfig();
     const config = await getConfig(result);
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "actual", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
     );
 
     const globs = await actualScreenshotsPromise;
@@ -218,7 +220,9 @@ program
       }
     }
 
-    const fileSystem = new ScreenshotFileSystem(config.outputDir);
+    const fileSystem = new ScreenshotFileSystem(
+      config.outputDir || "./screenshots",
+    );
 
     // copy actual screenshots to expected directory
     for (const screenshot of screenshotsToApprove) {
@@ -240,19 +244,19 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await getCosmiConfig("cappa");
+    const result = await loadConfig();
     const config = await getConfig(result);
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "actual", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
     );
     const expectedScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "expected", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "expected", "**/*.png"),
     );
     const diffScreenshotsPromise = glob(
-      path.resolve(config.outputDir, "diff", "**/*.png"),
+      path.resolve(config.outputDir || "./screenshots", "diff", "**/*.png"),
     );
 
     const [actualScreenshots, expectedScreenshots, diffScreenshots] =
@@ -266,7 +270,7 @@ program
       await Array.fromAsync(actualScreenshots),
       await Array.fromAsync(expectedScreenshots),
       await Array.fromAsync(diffScreenshots),
-      config.outputDir,
+      config.outputDir || "./screenshots",
     );
 
     logger.debug(

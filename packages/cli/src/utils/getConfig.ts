@@ -1,53 +1,46 @@
 import type { UserConfig } from "@cappa/core";
-import type { Config } from "cosmiconfig";
-import type { CosmiconfigResult } from "./getCosmiConfig.ts";
 import { getPlugins, isPromise } from "./getPlugins";
+import type { ConfigResult } from "./loadConfig";
 
 /**
  * Converting UserConfig to Config without a change in the object beside the JSON convert.
  */
-export async function getConfig(
-  result: CosmiconfigResult,
-): Promise<Array<Config> | Config> {
-  const config = result?.config;
-  let cappaUserConfig = Promise.resolve(config) as Promise<
-    UserConfig | Array<UserConfig>
-  >;
+export async function getConfig(result: ConfigResult): Promise<UserConfig> {
+  const configData = result?.config;
+  let cappaUserConfig: Promise<UserConfig> = Promise.resolve(
+    configData as UserConfig,
+  );
 
   // for ts or js files
-  if (typeof config === "function") {
-    const possiblePromise = config();
+  if (typeof configData === "function") {
+    const possiblePromise = (configData as () => any)();
     if (isPromise(possiblePromise)) {
-      cappaUserConfig = possiblePromise as Promise<
-        UserConfig | Array<UserConfig>
-      >;
+      cappaUserConfig = possiblePromise as Promise<UserConfig>;
+    } else {
+      cappaUserConfig = Promise.resolve(possiblePromise as UserConfig);
     }
-    cappaUserConfig = Promise.resolve(possiblePromise);
   }
 
-  let JSONConfig = await cappaUserConfig;
+  const userConfig = await cappaUserConfig;
 
-  if (Array.isArray(JSONConfig)) {
-    const results: Array<Config> = [];
-
-    for (const item of JSONConfig) {
-      const plugins = item.plugins ? await getPlugins(item.plugins) : undefined;
-
-      results.push({
-        ...item,
-        plugins,
-      } as Config);
-    }
-
-    return results;
+  if (!userConfig || typeof userConfig === "function") {
+    throw new Error("Invalid configuration: no valid config found");
   }
 
-  JSONConfig = {
-    ...JSONConfig,
-    plugins: JSONConfig.plugins
-      ? await getPlugins(JSONConfig.plugins)
+  return {
+    outputDir: "./screenshots",
+    retries: 2,
+    concurrency: 1,
+    diff: {
+      threshold: 0.1,
+      includeAA: false,
+      fastBufferCheck: true,
+      maxDiffPixels: 0,
+      maxDiffPercentage: 0,
+    },
+    ...userConfig,
+    plugins: userConfig.plugins
+      ? await getPlugins(userConfig.plugins)
       : undefined,
   };
-
-  return JSONConfig as Config;
 }
