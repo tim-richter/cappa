@@ -212,6 +212,8 @@ class ScreenshotTool {
         await page.screenshot(screenshotOptions);
       });
 
+      this.logger.success(`Screenshot saved: ${filepath}`);
+
       return filepath;
     } catch (error) {
       this.logger.error(
@@ -349,7 +351,7 @@ class ScreenshotTool {
 
       // Save screenshot to actual directory
       this.filesystem.writeActualFile(filename, retryScreenshot.screenshotPath);
-      this.logger.success(`Screenshot saved: ${filepath}`);
+      this.logger.debug(`Actual screenshot saved: ${filepath}`);
 
       if (retryScreenshot.passed) {
         this.logger.success(`Screenshot passed visual comparison`);
