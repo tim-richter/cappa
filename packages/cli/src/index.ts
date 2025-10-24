@@ -7,7 +7,7 @@ import { createServer } from "@cappa/server";
 import chalk from "chalk";
 import { Command } from "commander";
 import { version } from "../package.json";
-import { getConfig, loadConfig } from "./features/config";
+import { getConfig } from "./features/config";
 import { groupScreenshots } from "./utils/groupScreenshots";
 
 const program = new Command();
@@ -33,8 +33,7 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await loadConfig();
-    const config = await getConfig(result);
+    const config = await getConfig();
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
@@ -131,8 +130,7 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await loadConfig();
-    const config = await getConfig(result);
+    const config = await getConfig();
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
@@ -181,8 +179,7 @@ program
   .action(async (options) => {
     const logger = getLogger();
 
-    const result = await loadConfig();
-    const config = await getConfig(result);
+    const config = await getConfig();
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 
@@ -243,8 +240,7 @@ program
   .action(async () => {
     const logger = getLogger();
 
-    const result = await loadConfig();
-    const config = await getConfig(result);
+    const config = await getConfig();
 
     logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
 

@@ -1,11 +1,13 @@
 import type { UserConfig } from "@cappa/core";
 import { getPlugins, isPromise } from "./getPlugins";
-import type { ConfigResult } from "./loadConfig";
+import { loadConfig } from "./loadConfig";
 
 /**
  * Converting UserConfig to Config without a change in the object beside the JSON convert.
  */
-export async function getConfig(result: ConfigResult): Promise<UserConfig> {
+export async function getConfig(): Promise<UserConfig> {
+  const result = await loadConfig();
+
   const configData = result?.config;
   let cappaUserConfig: Promise<UserConfig> = Promise.resolve(
     configData as UserConfig,
