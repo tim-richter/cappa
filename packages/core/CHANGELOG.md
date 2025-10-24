@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.2.5
+
+### Patch Changes
+
+- faa5c05: fix: better logs
+
 ## 0.2.4
 
 ### Patch Changes
