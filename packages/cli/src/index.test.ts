@@ -105,13 +105,10 @@ vi.mock("node:fs/promises", () => ({
   glob: globMock,
 }));
 
-const getCosmiConfigMock = vi.fn();
-vi.mock("./utils/getCosmiConfig", () => ({
-  getCosmiConfig: getCosmiConfigMock,
-}));
-
+const loadConfigMock = vi.fn();
 const getConfigMock = vi.fn();
-vi.mock("./utils/getConfig", () => ({
+vi.mock("./features/config", () => ({
+  loadConfig: loadConfigMock,
   getConfig: getConfigMock,
 }));
 
@@ -151,7 +148,7 @@ beforeEach(() => {
   serverInstances.length = 0;
   globMock.mockReset();
   globMock.mockImplementation(() => Promise.resolve([]));
-  getCosmiConfigMock.mockReset();
+  loadConfigMock.mockReset();
   getConfigMock.mockReset();
   groupScreenshotsMock.mockReset();
 
@@ -171,7 +168,7 @@ describe("cappa CLI", () => {
     const pluginExecute = vi.fn().mockResolvedValue(undefined);
     const pluginDiscover = vi.fn().mockResolvedValue([]);
 
-    getCosmiConfigMock.mockResolvedValue({
+    loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
     });
@@ -188,7 +185,7 @@ describe("cappa CLI", () => {
     process.argv = ["node", "cappa", "capture"];
     await run();
 
-    expect(getCosmiConfigMock).toHaveBeenCalledWith("cappa");
+    expect(loadConfigMock).toHaveBeenCalled();
     expect(getConfigMock).toHaveBeenCalled();
     expect(screenshotFileSystemInstances).toHaveLength(1);
     expect(screenshotFileSystemInstances[0]).toMatchObject({
@@ -221,7 +218,7 @@ describe("cappa CLI", () => {
       },
     ];
 
-    getCosmiConfigMock.mockResolvedValue({
+    loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
     });
@@ -272,7 +269,7 @@ describe("cappa CLI", () => {
   });
 
   test("approve command copies filtered screenshots and cleans diffs", async () => {
-    getCosmiConfigMock.mockResolvedValue({
+    loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
     });
@@ -307,7 +304,7 @@ describe("cappa CLI", () => {
   });
 
   test("approve command warns when no screenshots match filter", async () => {
-    getCosmiConfigMock.mockResolvedValue({
+    loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
     });
@@ -334,7 +331,7 @@ describe("cappa CLI", () => {
   });
 
   test("status command summarizes grouped screenshots", async () => {
-    getCosmiConfigMock.mockResolvedValue({
+    loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
     });

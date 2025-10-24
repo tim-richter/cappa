@@ -7,9 +7,8 @@ import { createServer } from "@cappa/server";
 import chalk from "chalk";
 import { Command } from "commander";
 import { version } from "../package.json";
-import { getConfig } from "./utils/getConfig";
+import { getConfig, loadConfig } from "./features/config";
 import { groupScreenshots } from "./utils/groupScreenshots";
-import { loadConfig } from "./utils/loadConfig";
 
 const program = new Command();
 
