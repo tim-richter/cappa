@@ -1,5 +1,14 @@
 # @cappa/cli
 
+## 0.1.8
+
+### Patch Changes
+
+- 6afa8eb: fix: less redundant logs
+- Updated dependencies [6afa8eb]
+  - @cappa/core@0.2.4
+  - @cappa/server@0.1.8
+
 ## 0.1.7
 
 ### Patch Changes

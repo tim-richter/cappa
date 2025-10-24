@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.2.4
+
+### Patch Changes
+
+- 6afa8eb: fix: less redundant logs
+
 ## 0.2.3
 
 ### Patch Changes

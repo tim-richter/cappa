@@ -1,5 +1,13 @@
 # @cappa/plugin-storybook
 
+## 0.2.4
+
+### Patch Changes
+
+- 6afa8eb: fix: less redundant logs
+- Updated dependencies [6afa8eb]
+  - @cappa/core@0.2.4
+
 ## 0.2.3
 
 ### Patch Changes
