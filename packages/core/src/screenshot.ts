@@ -519,6 +519,8 @@ class ScreenshotTool {
         `Expected image not found for ${filename}, taking screenshot`,
       );
 
+      result.filepath = await this.takeScreenshot(page, filename, options);
+    } else {
       const { screenshotPath, comparisonResult, diffImagePath } =
         await this.takeScreenshotWithComparison(
           page,
@@ -534,8 +536,6 @@ class ScreenshotTool {
       result.filepath = screenshotPath;
       result.comparisonResult = comparisonResult;
       result.diffImagePath = diffImagePath;
-    } else {
-      result.filepath = await this.takeScreenshot(page, filename, options);
     }
 
     return result;
