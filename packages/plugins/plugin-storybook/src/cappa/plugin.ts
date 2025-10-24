@@ -320,12 +320,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           if (!variantFilename) continue; // Skip if no filename
 
           variantFilenameMap.set(variant.id, variantFilename);
-
-          if (!screenshotTool.filesystem.hasExpectedFile(variantFilename)) {
-            logger.info(
-              `Expected image not found for variant ${story.title} - ${story.name} [${variant.label ?? variant.id}], taking screenshot`,
-            );
-          }
         }
 
         const variantExtrasEntries = variantsWithUrls.map(
