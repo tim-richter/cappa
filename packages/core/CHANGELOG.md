@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.2.3
+
+### Patch Changes
+
+- 4068bca: fix: correct screenshot handling logic in ScreenshotTool
+
 ## 0.2.2
 
 ### Patch Changes
