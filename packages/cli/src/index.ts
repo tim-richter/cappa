@@ -8,6 +8,7 @@ import chalk from "chalk";
 import { Command } from "commander";
 import { version } from "../package.json";
 import { getConfig } from "./features/config";
+import { defaultConfig } from "./features/config/default";
 import { groupScreenshots } from "./utils/groupScreenshots";
 
 const program = new Command();
@@ -35,17 +36,13 @@ program
 
     const config = await getConfig();
 
-    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
-
     logger.debug(`Cleaning output directory: ${config.outputDir}`);
-    const fileSystem = new ScreenshotFileSystem(
-      config.outputDir || "./screenshots",
-    );
+    const fileSystem = new ScreenshotFileSystem(config.outputDir);
     fileSystem.clearActual();
     fileSystem.clearDiff();
 
     const screenshotTool = new ScreenshotTool({
-      outputDir: config.outputDir || "./screenshots",
+      outputDir: config.outputDir,
       diff: config.diff,
       retries: config.retries,
       concurrency: config.concurrency,
@@ -132,16 +129,14 @@ program
 
     const config = await getConfig();
 
-    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
-
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
+      path.resolve(config.outputDir, "actual", "**/*.png"),
     );
     const expectedScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "expected", "**/*.png"),
+      path.resolve(config.outputDir, "expected", "**/*.png"),
     );
     const diffScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "diff", "**/*.png"),
+      path.resolve(config.outputDir, "diff", "**/*.png"),
     );
 
     const [actualScreenshots, expectedScreenshots, diffScreenshots] =
@@ -155,12 +150,12 @@ program
       await Array.fromAsync(actualScreenshots),
       await Array.fromAsync(expectedScreenshots),
       await Array.fromAsync(diffScreenshots),
-      config.outputDir || "./screenshots",
+      config.outputDir,
     );
 
     const server = await createServer({
       isProd: true,
-      outputDir: path.resolve(config.outputDir || "./screenshots"),
+      outputDir: path.resolve(config.outputDir),
       screenshots: groupedScreenshots,
       logger: getLogger().level >= 4,
     });
@@ -181,10 +176,8 @@ program
 
     const config = await getConfig();
 
-    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
-
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
+      path.resolve(config.outputDir, "actual", "**/*.png"),
     );
 
     const globs = await actualScreenshotsPromise;
@@ -216,9 +209,7 @@ program
       }
     }
 
-    const fileSystem = new ScreenshotFileSystem(
-      config.outputDir || "./screenshots",
-    );
+    const fileSystem = new ScreenshotFileSystem(config.outputDir);
 
     // copy actual screenshots to expected directory
     for (const screenshot of screenshotsToApprove) {
@@ -242,16 +233,14 @@ program
 
     const config = await getConfig();
 
-    logger.debug("Configuration loaded:", JSON.stringify(config, null, 2));
-
     const actualScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "actual", "**/*.png"),
+      path.resolve(config.outputDir, "actual", "**/*.png"),
     );
     const expectedScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "expected", "**/*.png"),
+      path.resolve(config.outputDir, "expected", "**/*.png"),
     );
     const diffScreenshotsPromise = glob(
-      path.resolve(config.outputDir || "./screenshots", "diff", "**/*.png"),
+      path.resolve(config.outputDir, "diff", "**/*.png"),
     );
 
     const [actualScreenshots, expectedScreenshots, diffScreenshots] =
@@ -265,7 +254,7 @@ program
       await Array.fromAsync(actualScreenshots),
       await Array.fromAsync(expectedScreenshots),
       await Array.fromAsync(diffScreenshots),
-      config.outputDir || "./screenshots",
+      config.outputDir,
     );
 
     logger.debug(
@@ -292,23 +281,7 @@ program
     if (fs.existsSync(configPath)) {
       logger.warn("cappa.config.ts already exists, skipping...");
     } else {
-      const configContent = `import { defineConfig } from "@cappa/core";
-
-export default defineConfig({
-  outputDir: "./screenshots",
-  retries: 3,
-  diff: {
-    threshold: 0.1,
-    includeAA: false,
-    fastBufferCheck: true,
-    maxDiffPixels: 0,
-    maxDiffPercentage: 0,
-  },
-  plugins: [],
-});
-`;
-
-      fs.writeFileSync(configPath, configContent);
+      fs.writeFileSync(configPath, defaultConfig);
       logger.success("Created cappa.config.ts");
     }
 
