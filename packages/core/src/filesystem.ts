@@ -90,7 +90,7 @@ export class ScreenshotFileSystem {
    * Ensure the parent directory of a file exists. If not, it creates it.
    * @param filePath - The path to the file.
    */
-  private ensureParentDir(filePath: string) {
+  ensureParentDir(filePath: string) {
     const dir = path.dirname(filePath);
 
     if (!fs.existsSync(dir)) {

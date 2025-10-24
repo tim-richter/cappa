@@ -262,13 +262,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           mask?.map((selector) => page.locator(selector));
 
         const filename = buildFilename(story);
-        const expectedExists =
-          screenshotTool.filesystem.hasExpectedFile(filename);
-        if (!expectedExists) {
-          logger.info(
-            `Expected image not found for story ${story.title} - ${story.name}, taking screenshot`,
-          );
-        }
 
         // Convert variants to the new format with URLs
         const variantsWithUrls: ScreenshotVariantWithUrl[] =

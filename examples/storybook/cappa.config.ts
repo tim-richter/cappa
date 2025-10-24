@@ -2,9 +2,7 @@ import { defineConfig } from "@cappa/core";
 import { cappaPluginStorybook } from "@cappa/plugin-storybook";
 
 export default defineConfig({
-  outputDir: "./screenshots",
-  retries: 3,
-  concurrency: 2,
+  outputDir: ".screenshots",
   diff: {
     threshold: 0.1,
     includeAA: false,

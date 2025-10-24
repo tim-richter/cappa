@@ -12,9 +12,6 @@ dist
 .env.test
 .env.production
 
-# Screenshots
-screenshots
-
 # IDEs
 .vscode
 .idea

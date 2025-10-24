@@ -188,6 +188,9 @@ class ScreenshotTool {
       // Generate filename - save to actual directory
       const filepath = this.filesystem.getActualFilePath(filename);
 
+      // Ensure parent directories exist before taking screenshot
+      this.filesystem.ensureParentDir(filepath);
+
       // Take screenshot
       const screenshotOptions = {
         path: filepath,
@@ -511,7 +514,11 @@ class ScreenshotTool {
     const saveDiff = extras.saveDiffImage ?? false;
     const diffFilename = extras.diffImageFilename ?? filename;
 
-    if (this.filesystem.hasExpectedFile(filename)) {
+    if (!this.filesystem.hasExpectedFile(filename)) {
+      this.logger.debug(
+        `Expected image not found for ${filename}, taking screenshot`,
+      );
+
       const { screenshotPath, comparisonResult, diffImagePath } =
         await this.takeScreenshotWithComparison(
           page,
