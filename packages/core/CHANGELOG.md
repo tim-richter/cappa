@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.3.0
+
+### Minor Changes
+
+- e0f7f08: Add an `onFail` configuration callback for failed screenshots and forward environment details to configuration functions.
+
 ## 0.2.5
 
 ### Patch Changes
