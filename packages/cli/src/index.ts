@@ -1,7 +1,11 @@
 import fs from "node:fs";
 import { glob } from "node:fs/promises";
 import path from "node:path";
-import { ScreenshotFileSystem, ScreenshotTool } from "@cappa/core";
+import {
+  type FailedScreenshot,
+  ScreenshotFileSystem,
+  ScreenshotTool,
+} from "@cappa/core";
 import { getLogger, initLogger } from "@cappa/logger";
 import { createServer } from "@cappa/server";
 import chalk from "chalk";
@@ -47,6 +51,8 @@ program
       retries: config.retries,
       concurrency: config.concurrency,
     });
+
+    let captureError: unknown;
 
     try {
       await screenshotTool.init();
@@ -114,10 +120,64 @@ program
       logger.success("All plugins completed successfully");
     } catch (error) {
       logger.error("Error during plugin execution:", error);
+      captureError = error;
       throw error;
     } finally {
       // Always close the browser to ensure the process exits
       await screenshotTool.close();
+    }
+
+    if (!captureError && config.onFail) {
+      const actualScreenshotsPromise = glob(
+        path.resolve(config.outputDir, "actual", "**/*.png"),
+      );
+      const expectedScreenshotsPromise = glob(
+        path.resolve(config.outputDir, "expected", "**/*.png"),
+      );
+      const diffScreenshotsPromise = glob(
+        path.resolve(config.outputDir, "diff", "**/*.png"),
+      );
+
+      const [actualScreenshots, expectedScreenshots, diffScreenshots] =
+        await Promise.all([
+          actualScreenshotsPromise,
+          expectedScreenshotsPromise,
+          diffScreenshotsPromise,
+        ]);
+
+      const groupedScreenshots = await groupScreenshots(
+        await Array.fromAsync(actualScreenshots),
+        await Array.fromAsync(expectedScreenshots),
+        await Array.fromAsync(diffScreenshots),
+        config.outputDir,
+      );
+
+      const failingScreenshots: FailedScreenshot[] = groupedScreenshots
+        .filter((screenshot) => screenshot.category !== "passed")
+        .map((screenshot) => ({
+          ...screenshot,
+          absoluteActualPath: screenshot.actualPath
+            ? path.resolve(config.outputDir, screenshot.actualPath)
+            : undefined,
+          absoluteExpectedPath: screenshot.expectedPath
+            ? path.resolve(config.outputDir, screenshot.expectedPath)
+            : undefined,
+          absoluteDiffPath: screenshot.diffPath
+            ? path.resolve(config.outputDir, screenshot.diffPath)
+            : undefined,
+        }));
+
+      if (failingScreenshots.length > 0) {
+        logger.debug(
+          `Executing onFail callback with ${failingScreenshots.length} failing screenshot(s)`,
+        );
+
+        try {
+          await config.onFail(failingScreenshots);
+        } catch (error) {
+          logger.error("Error executing onFail callback:", error);
+        }
+      }
     }
   });
 

@@ -6,18 +6,30 @@ description: Discover the options available in cappa.config.ts and how to custom
 The `cappa.config.ts` file controls how screenshots are captured, stored, and reviewed. Config files
 export a configuration created with `defineConfig` from `@cappa/core`.
 
+`defineConfig` accepts either an object or a function that receives a `ConfigEnv` object with the
+current CLI command, mode, and environment variables. This is useful when you need to tailor the
+configuration in CI environments.
+
 ```ts
 import { defineConfig } from '@cappa/core';
 import { cappaPluginStorybook } from '@cappa/plugin-storybook';
 
-export default defineConfig({
-  outputDir: 'screenshots',
+export default defineConfig(({ env }) => ({
+  outputDir: env.CAPPA_SCREENSHOT_DIR ?? 'screenshots',
+  onFail: async (screenshots) => {
+    // Upload diff images to your storage provider
+    for (const screenshot of screenshots) {
+      if (screenshot.absoluteDiffPath) {
+        await uploadToS3(screenshot.absoluteDiffPath);
+      }
+    }
+  },
   plugins: [
     cappaPluginStorybook({
       storybookUrl: 'http://localhost:6006'
     })
   ]
-});
+}));
 ```
 
 ## outputDir
@@ -109,6 +121,15 @@ The maximum percentage of different pixels before the comparison fails. This is 
 so it is affected by the size of the images. A 100px image with a 10% difference is 10 pixels different,
 but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
 this can mean that small changes still slip through.
+
+## onFail
+
+- **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`
+- **default**: `undefined`
+
+Runs after a capture completes if there are screenshots that failed comparison. The callback receives
+an array of failing screenshots, including both relative and absolute paths to the actual, expected,
+and diff images. Use this hook to upload diff images to object storage or integrate with CI systems.
 
 ## browser
 
