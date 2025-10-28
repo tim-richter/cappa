@@ -185,7 +185,6 @@ describe("cappa CLI", () => {
     process.argv = ["node", "cappa", "capture"];
     await run();
 
-    expect(loadConfigMock).toHaveBeenCalled();
     expect(getConfigMock).toHaveBeenCalled();
     expect(screenshotFileSystemInstances).toHaveLength(1);
     expect(screenshotFileSystemInstances[0]).toMatchObject({
@@ -206,6 +205,101 @@ describe("cappa CLI", () => {
         retries: 5,
       },
     });
+  });
+
+  test("capture command triggers onFail callback with failing screenshots", async () => {
+    const onFail = vi.fn().mockResolvedValue(undefined);
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 2,
+      concurrency: 1,
+      plugins: [],
+      onFail,
+    });
+
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve([
+          "/tmp/screenshots/actual/button.png",
+          "/tmp/screenshots/actual/passed.png",
+        ]);
+      }
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([
+          "/tmp/screenshots/expected/button.png",
+          "/tmp/screenshots/expected/passed.png",
+        ]);
+      }
+      if (pattern.includes("/diff/")) {
+        return Promise.resolve(["/tmp/screenshots/diff/button.png"]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    groupScreenshotsMock.mockResolvedValue([
+      {
+        id: "1",
+        name: "button",
+        category: "changed",
+        actualPath: "actual/button.png",
+        expectedPath: "expected/button.png",
+        diffPath: "diff/button.png",
+        approved: false,
+      },
+      {
+        id: "2",
+        name: "passed",
+        category: "passed",
+        actualPath: "actual/passed.png",
+        expectedPath: "expected/passed.png",
+        approved: true,
+      },
+    ]);
+
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    expect(groupScreenshotsMock).toHaveBeenCalledWith(
+      [
+        "/tmp/screenshots/actual/button.png",
+        "/tmp/screenshots/actual/passed.png",
+      ],
+      [
+        "/tmp/screenshots/expected/button.png",
+        "/tmp/screenshots/expected/passed.png",
+      ],
+      ["/tmp/screenshots/diff/button.png"],
+      "/tmp/screenshots",
+    );
+
+    expect(onFail).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "1",
+        name: "button",
+        category: "changed",
+        actualPath: "actual/button.png",
+        expectedPath: "expected/button.png",
+        diffPath: "diff/button.png",
+        absoluteActualPath: path.resolve(
+          "/tmp/screenshots",
+          "actual/button.png",
+        ),
+        absoluteExpectedPath: path.resolve(
+          "/tmp/screenshots",
+          "expected/button.png",
+        ),
+        absoluteDiffPath: path.resolve("/tmp/screenshots", "diff/button.png"),
+      }),
+    ]);
   });
 
   test("review command groups screenshots and starts review server", async () => {

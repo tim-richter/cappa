@@ -3,6 +3,21 @@ import type { Plugin, PluginDef } from "./plugin";
 
 export type PossiblePromise<T> = Promise<T> | T;
 
+export interface ConfigEnv {
+  /**
+   * The CLI command being executed, for example `capture` or `review`.
+   */
+  command?: string;
+  /**
+   * The mode the CLI is running in, defaults to `process.env.NODE_ENV`.
+   */
+  mode: string;
+  /**
+   * The environment variables available when the configuration is loaded.
+   */
+  env: NodeJS.ProcessEnv;
+}
+
 /**
  * Configuration for the comparison of images
  */
@@ -79,6 +94,11 @@ export type UserConfig = {
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */
   plugins?: Array<Plugin | PluginDef>;
+  /**
+   * Callback executed when screenshots fail comparison.
+   * Receives the failing screenshots so they can be uploaded or processed.
+   */
+  onFail?: (screenshots: FailedScreenshot[]) => PossiblePromise<void>;
 };
 
 export type Viewport = { width: number; height: number };
@@ -120,3 +140,18 @@ export interface Screenshot {
   diffPath?: string;
   approved?: boolean;
 }
+
+export type FailedScreenshot = Screenshot & {
+  /**
+   * Absolute path to the actual screenshot on disk.
+   */
+  absoluteActualPath?: string;
+  /**
+   * Absolute path to the expected screenshot on disk.
+   */
+  absoluteExpectedPath?: string;
+  /**
+   * Absolute path to the diff screenshot on disk.
+   */
+  absoluteDiffPath?: string;
+};

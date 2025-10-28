@@ -8,6 +8,8 @@ import ScreenshotTool, {
   type ScreenshotVariantCaptureDetails,
 } from "./screenshot";
 import type {
+  ConfigEnv,
+  FailedScreenshot,
   Screenshot,
   ScreenshotOptions,
   ScreenshotSettings,
@@ -24,12 +26,14 @@ export {
   type PluginFunction,
   type Plugin,
   type PluginDef,
+  type ConfigEnv,
   type UserConfig,
   type ScreenshotOptions,
   type ScreenshotSettings,
   type ScreenshotVariant,
   type ScreenshotVariantWithUrl,
   type Screenshot,
+  type FailedScreenshot,
   type ScreenshotCaptureResult,
   type ScreenshotCaptureDetails,
   type ScreenshotVariantCaptureDetails,
