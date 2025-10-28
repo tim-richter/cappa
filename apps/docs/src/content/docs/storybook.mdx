@@ -35,9 +35,8 @@ export default defineConfig({
 
 You can add additional plugin options to filter the stories that are captured:
 
-- **`includeStories`** – Only capture stories whose title or name contains one of the provided
-  strings.
-- **`excludeStories`** – Skip stories whose title or name matches one of the provided strings.
+- **`includeStories`** – Array of glob patterns to include stories. Stories matching any of these patterns will be included. Patterns can match against story ID, title, name, or full story path (e.g., `["button--*"]`, `["*--primary"]`, `["Button/*"]`).
+- **`excludeStories`** – Array of glob patterns to exclude stories. Stories matching any of these patterns will be excluded. Uses the same pattern matching as `includeStories`.
 - **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
   own settings.
 

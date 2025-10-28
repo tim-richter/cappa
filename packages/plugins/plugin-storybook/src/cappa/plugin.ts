@@ -4,6 +4,7 @@ import type {
   ScreenshotVariantWithUrl,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
+import { minimatch } from "minimatch";
 import type { Page } from "playwright-core";
 import type {
   ScreenshotOptionsStorybook,
@@ -63,13 +64,76 @@ export interface StorybookStory {
   type: "story" | "docs";
 }
 
+/**
+ * Matches a story against glob patterns
+ * @param story - The story to match
+ * @param patterns - Array of glob patterns to match against
+ * @returns true if the story matches any of the patterns
+ */
+function matchesGlobPatterns(
+  story: StorybookStory,
+  patterns: string[],
+): boolean {
+  return patterns.some((pattern) => {
+    // Match against story id (e.g., "button--primary")
+    if (minimatch(story.id, pattern)) {
+      return true;
+    }
+
+    // Match against story title (e.g., "Button")
+    if (minimatch(story.title, pattern)) {
+      return true;
+    }
+
+    // Match against story name (e.g., "Primary")
+    if (minimatch(story.name, pattern)) {
+      return true;
+    }
+
+    // Match against full story path (e.g., "Button/Primary")
+    const fullPath = `${story.title}/${story.name}`;
+    if (minimatch(fullPath, pattern)) {
+      return true;
+    }
+
+    return false;
+  });
+}
+
 interface StorybookStoriesResponse {
   entries: Record<string, StorybookStory>;
 }
 
 interface StorybookPluginOptions {
   storybookUrl: string;
+  /**
+   * Array of glob patterns to include stories. Stories matching any of these patterns will be included.
+   * Patterns can match against:
+   * - Story ID (e.g., "button--primary")
+   * - Story title (e.g., "Button")
+   * - Story name (e.g., "Primary")
+   * - Full story path (e.g., "Button/Primary")
+   *
+   * Examples:
+   * - ["button--*"] - Include all button stories
+   * - ["*--primary"] - Include all primary stories
+   * - ["Button/*"] - Include all stories under Button title
+   * - ["*--*"] - Include all stories
+   */
   includeStories?: string[];
+  /**
+   * Array of glob patterns to exclude stories. Stories matching any of these patterns will be excluded.
+   * Patterns can match against:
+   * - Story ID (e.g., "button--primary")
+   * - Story title (e.g., "Button")
+   * - Story name (e.g., "Primary")
+   * - Full story path (e.g., "Button/Primary")
+   *
+   * Examples:
+   * - ["button--*"] - Exclude all button stories
+   * - ["*--secondary"] - Exclude all secondary stories
+   * - ["Input/*"] - Exclude all stories under Input title
+   */
   excludeStories?: string[];
   defaultViewport?: { width: number; height: number };
   waitForSelector?: string;
@@ -91,7 +155,8 @@ function createLatch<T>() {
 
 /**
  * Storybook Plugin for Cappa
- * Fetches stories from a running Storybook server and takes screenshots of each story
+ * Fetches stories from a running Storybook server and takes screenshots of each story.
+ * Supports glob pattern matching for includeStories and excludeStories options.
  */
 export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
   options,
@@ -131,25 +196,18 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const data = (await response.json()) as StorybookStoriesResponse;
       const stories = Object.values(data.entries);
 
-      // Filter stories based on include/exclude patterns
+      // Filter stories based on include/exclude glob patterns
       let filteredStories = stories;
 
       if (includeStories.length > 0) {
         filteredStories = filteredStories.filter((story) =>
-          includeStories.some(
-            (pattern) =>
-              story.title.includes(pattern) || story.name.includes(pattern),
-          ),
+          matchesGlobPatterns(story, includeStories),
         );
       }
 
       if (excludeStories.length > 0) {
         filteredStories = filteredStories.filter(
-          (story) =>
-            !excludeStories.some(
-              (pattern) =>
-                story.title.includes(pattern) || story.name.includes(pattern),
-            ),
+          (story) => !matchesGlobPatterns(story, excludeStories),
         );
       }
 
