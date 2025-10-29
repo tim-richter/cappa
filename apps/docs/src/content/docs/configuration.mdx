@@ -16,19 +16,6 @@ import { cappaPluginStorybook } from '@cappa/plugin-storybook';
 
 export default defineConfig(({ env }) => ({
   outputDir: env.CAPPA_SCREENSHOT_DIR ?? 'screenshots',
-  onFail: async (screenshots) => {
-    // Upload diff images to your storage provider
-    for (const screenshot of screenshots) {
-      if (screenshot.absoluteDiffPath) {
-        await uploadToS3(screenshot.absoluteDiffPath);
-      }
-    }
-  },
-  plugins: [
-    cappaPluginStorybook({
-      storybookUrl: 'http://localhost:6006'
-    })
-  ]
 }));
 ```
 
@@ -130,6 +117,18 @@ this can mean that small changes still slip through.
 Runs after a capture completes if there are screenshots that failed comparison. The callback receives
 an array of failing screenshots, including both relative and absolute paths to the actual, expected,
 and diff images. Use this hook to upload diff images to object storage or integrate with CI systems.
+
+```ts
+onFail: async (screenshots) => {
+  // Upload diff images to your storage provider
+  for (const screenshot of screenshots) {
+    if (screenshot.absoluteDiffPath) {
+      await uploadToS3(screenshot.absoluteDiffPath);
+      // etc
+    }
+  }
+}
+```
 
 ## browser
 
