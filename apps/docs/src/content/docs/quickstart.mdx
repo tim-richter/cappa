@@ -14,10 +14,12 @@ preferred package manager:
 pnpm add -D @cappa/cli @cappa/core
 ```
 
-Cappa delegates browser automation to [Playwright](https://playwright.dev/). Install the Playwright
-browsers if your project has not already done so:
+Cappa delegates browser automation to [Playwright](https://playwright.dev/). 
+Install the Playwright browsers if your project has not already done so:
 
 ```bash
+pnpm add -D playwright
+// or install only the needed browsers
 npx playwright install --with-deps
 ```
 
