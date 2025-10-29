@@ -3,19 +3,18 @@ title: Introduction
 description: Learn what Cappa is and how it helps teams keep visual regressions under control.
 ---
 
-Cappa is a Playwright-powered screenshot tool that helps teams spot visual regressions early. It
+Cappa is a Playwright-powered screenshot tool that helps to spot visual regressions early. It
 wraps browser automation from Playwright in a workflow tailored for visual reviews so that
-you can capture, compare, and approve screenshots with confidence.
+you can capture, compare, and approve screenshots for your project.
 
 ## Why Cappa?
 
-- **Automated coverage.** Capture screenshots across routes, viewports, and themes using the same
-  Playwright foundation your team already trusts.
 - **Deliberate review flow.** Run `cappa capture`, `cappa review`, and `cappa approve` to create a
   repeatable approval process that fits continuous delivery pipelines.
 - **Extensible by design.** Cappa ships with a plugin system so you can connect Storybook or other
   custom data sources without forking the core tool.
 - **Local** Cappa captures screenshots locally and relies on your vcs to track changes.
+- **Un-flakable (?)** Cappa takes extra care again flakiness and has multiple mechanisms to circumvent it.
 
 ## Core features
 
