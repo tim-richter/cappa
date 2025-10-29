@@ -1,5 +1,13 @@
 # @cappa/plugin-storybook
 
+## 0.2.6
+
+### Patch Changes
+
+- 80b44af: feat: add glob pattern for storybook include/exclude options
+- Updated dependencies [e0f7f08]
+  - @cappa/core@0.3.0
+
 ## 0.2.5
 
 ### Patch Changes

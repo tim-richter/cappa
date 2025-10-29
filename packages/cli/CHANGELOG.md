@@ -1,5 +1,17 @@
 # @cappa/cli
 
+## 0.2.0
+
+### Minor Changes
+
+- e0f7f08: Add an `onFail` configuration callback for failed screenshots and forward environment details to configuration functions.
+
+### Patch Changes
+
+- Updated dependencies [e0f7f08]
+  - @cappa/core@0.3.0
+  - @cappa/server@0.1.10
+
 ## 0.1.9
 
 ### Patch Changes
