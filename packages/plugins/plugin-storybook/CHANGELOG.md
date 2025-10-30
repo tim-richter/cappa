@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.3.0
+
+### Minor Changes
+
+- 78c4e4c: feat: support storybook 10
+
 ## 0.2.6
 
 ### Patch Changes
