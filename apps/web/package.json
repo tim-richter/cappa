@@ -24,7 +24,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "5.0.4",
+    "@vitejs/plugin-react": "5.1.0",
     "msw": "^2.11.5",
     "nuqs": "^2.7.2",
     "tailwindcss": "catalog:",
