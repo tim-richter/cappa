@@ -5,19 +5,20 @@
   "publishConfig": {
     "access": "public"
   },
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "module": "CommonJS",
   "license": "MIT",
   "author": "Tim Richter",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
-      "import": "./dist/index.js",
-      "require": "./dist/index.js"
+      "types": "./dist/index.d.ts",
+      "require": "./dist/index.cjs",
+      "import": "./dist/index.js"
     },
     "./browser": {
-      "import": "./dist/browser.mjs",
-      "require": "./dist/browser.mjs"
+      "default": "./dist/browser.js"
     },
     "./package.json": "./package.json"
   },
@@ -32,13 +33,20 @@
     "storybook",
     "visual-testing"
   ],
+  "peerDependencies": {
+    "storybook": "^9 || ^10"
+  },
+  "peerDependenciesMeta": {
+    "storybook": {
+      "optional": false
+    }
+  },
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
     "@swc/core": "^1.13.5",
     "chalk": "^5.6.2",
-    "minimatch": "^10.0.3",
-    "storybook": "^9.1.12"
+    "minimatch": "^10.0.3"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
@@ -46,6 +54,7 @@
     "playwright-core": "^1.56.0",
     "tsup": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "storybook": "^10.0.2"
   }
 }

@@ -2,11 +2,19 @@ import { defineConfig } from "tsup";
 
 export default defineConfig([
   {
-    entry: ["src/index.ts"],
-    format: ["cjs", "esm"],
-    dts: true,
+    entry: { index: "src/index.esm.ts" },
+    format: ["esm"],
+    dts: { entry: "src/index.esm.ts" },
     splitting: false,
-    external: ["./preview.mjs"],
+    external: ["./preview.js"],
+    sourcemap: false,
+    clean: true,
+  },
+  {
+    entry: { index: "src/index.cjs.ts" },
+    format: ["cjs"],
+    splitting: false,
+    external: ["./preview.js"],
     sourcemap: false,
     clean: true,
   },

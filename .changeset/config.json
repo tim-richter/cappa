@@ -11,6 +11,7 @@
     "web",
     "@workspace/ui",
     "@cappa/example-storybook",
+    "@cappa/example-storybook-10",
     "@cappa/config-ts",
     "@cappa/docs"
   ]

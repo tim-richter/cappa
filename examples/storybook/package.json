@@ -4,6 +4,7 @@
   "private": true,
   "license": "MIT",
   "author": "Tim Richter",
+  "type": "module",
   "scripts": {
     "screenshot": "cappa capture -l 5",
     "screenshot:review": "cappa review -l 5",
