@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.3.1
+
+### Patch Changes
+
+- fd97a08: fix: emitted types
+
 ## 0.3.0
 
 ### Minor Changes
