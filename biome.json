@@ -19,8 +19,7 @@
     "rules": {
       "recommended": true,
       "suspicious": {
-        "noExplicitAny": "off",
-        "noUnknownAtRules": "off"
+        "noExplicitAny": "off"
       },
       "correctness": {
         "noInvalidPositionAtImportRule": "off"
@@ -35,6 +34,11 @@
   "json": {
     "parser": {
       "allowComments": true
+    }
+  },
+  "css": {
+    "parser": {
+      "tailwindDirectives": true
     }
   }
 }

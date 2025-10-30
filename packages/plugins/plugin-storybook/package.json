@@ -44,14 +44,14 @@
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
-    "@swc/core": "^1.13.5",
+    "@swc/core": "^1.14.0",
     "chalk": "^5.6.2",
-    "minimatch": "^10.0.3"
+    "minimatch": "^10.1.1"
   },
   "devDependencies": {
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "playwright-core": "^1.56.0",
+    "playwright-core": "^1.56.1",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:",

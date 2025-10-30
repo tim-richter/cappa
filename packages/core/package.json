@@ -29,10 +29,10 @@
     "tsc": "tsc"
   },
   "dependencies": {
-    "@blazediff/core": "^1.4.1",
+    "@blazediff/core": "^1.6.0",
     "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
-    "playwright-core": "^1.56.0",
+    "playwright-core": "^1.56.1",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
