@@ -28,6 +28,9 @@ vi.mock("node:fs", () => ({
 const screenshotToolInstances: Array<{
   options: unknown;
   close: ReturnType<typeof vi.fn>;
+  init: ReturnType<typeof vi.fn>;
+  concurrency: number;
+  getPageFromPool: ReturnType<typeof vi.fn>;
 }> = [];
 
 const screenshotFileSystemInstances: Array<{
@@ -42,11 +45,15 @@ vi.mock("@cappa/core", () => ({
     options: unknown;
     close: ReturnType<typeof vi.fn>;
     init: ReturnType<typeof vi.fn>;
+    concurrency: number;
+    getPageFromPool: ReturnType<typeof vi.fn>;
 
     constructor(options: unknown) {
       this.options = options;
       this.close = vi.fn();
       this.init = vi.fn();
+      this.concurrency = 1;
+      this.getPageFromPool = vi.fn();
       screenshotToolInstances.push(this);
     }
   },
@@ -161,6 +168,7 @@ beforeEach(() => {
 
 afterEach(() => {
   process.argv = [...originalArgv];
+  process.exitCode = undefined;
 });
 
 describe("cappa CLI", () => {
@@ -300,6 +308,66 @@ describe("cappa CLI", () => {
         absoluteDiffPath: path.resolve("/tmp/screenshots", "diff/button.png"),
       }),
     ]);
+  });
+
+  test("capture command exits with code 1 when a screenshot comparison fails", async () => {
+    const pluginDiscover = vi
+      .fn()
+      .mockResolvedValue([{ id: "task-1", url: "http://localhost" }]);
+    const pluginExecute = vi
+      .fn()
+      .mockResolvedValue({ success: false, filepath: "actual/task-1.png" });
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 1,
+      concurrency: 1,
+      plugins: [
+        { name: "plugin", discover: pluginDiscover, execute: pluginExecute },
+      ],
+    });
+
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("capture command exits with code 1 when a screenshot task throws", async () => {
+    const pluginDiscover = vi
+      .fn()
+      .mockResolvedValue([{ id: "task-1", url: "http://localhost" }]);
+    const pluginExecute = vi
+      .fn()
+      .mockResolvedValue({ error: "Failed to capture" });
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 1,
+      concurrency: 1,
+      plugins: [
+        { name: "plugin", discover: pluginDiscover, execute: pluginExecute },
+      ],
+    });
+
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    expect(process.exitCode).toBe(1);
   });
 
   test("review command groups screenshots and starts review server", async () => {
