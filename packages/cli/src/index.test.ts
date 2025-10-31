@@ -215,7 +215,33 @@ describe("cappa CLI", () => {
     });
   });
 
-  test("capture command triggers onFail callback with failing screenshots", async () => {
+  test("capture command does not trigger onFail callback", async () => {
+    const onFail = vi.fn().mockResolvedValue(undefined);
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 2,
+      concurrency: 1,
+      plugins: [],
+      onFail,
+    });
+
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    // onFail should not be called by capture command
+    expect(onFail).not.toHaveBeenCalled();
+    expect(groupScreenshotsMock).not.toHaveBeenCalled();
+  });
+
+  test("ci command triggers onFail callback with failing screenshots", async () => {
     const onFail = vi.fn().mockResolvedValue(undefined);
 
     loadConfigMock.mockResolvedValue({
@@ -272,7 +298,7 @@ describe("cappa CLI", () => {
       },
     ]);
 
-    process.argv = ["node", "cappa", "capture"];
+    process.argv = ["node", "cappa", "ci"];
 
     await run();
 
@@ -308,6 +334,57 @@ describe("cappa CLI", () => {
         absoluteDiffPath: path.resolve("/tmp/screenshots", "diff/button.png"),
       }),
     ]);
+  });
+
+  test("ci command does not trigger onFail callback when there are no failing screenshots", async () => {
+    const onFail = vi.fn().mockResolvedValue(undefined);
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 2,
+      concurrency: 1,
+      plugins: [],
+      onFail,
+    });
+
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve(["/tmp/screenshots/actual/passed.png"]);
+      }
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve(["/tmp/screenshots/expected/passed.png"]);
+      }
+      if (pattern.includes("/diff/")) {
+        return Promise.resolve([]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    groupScreenshotsMock.mockResolvedValue([
+      {
+        id: "1",
+        name: "passed",
+        category: "passed",
+        actualPath: "actual/passed.png",
+        expectedPath: "expected/passed.png",
+        approved: true,
+      },
+    ]);
+
+    process.argv = ["node", "cappa", "ci"];
+
+    await run();
+
+    expect(groupScreenshotsMock).toHaveBeenCalled();
+    // onFail should not be called when all screenshots pass
+    expect(onFail).not.toHaveBeenCalled();
   });
 
   test("capture command exits with code 1 when a screenshot comparison fails", async () => {

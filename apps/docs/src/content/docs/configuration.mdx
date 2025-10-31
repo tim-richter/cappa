@@ -114,9 +114,10 @@ this can mean that small changes still slip through.
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`
 - **default**: `undefined`
 
-Runs after a capture completes if there are screenshots that failed comparison. The callback receives
-an array of failing screenshots, including both relative and absolute paths to the actual, expected,
-and diff images. Use this hook to upload diff images to object storage or integrate with CI systems.
+Runs after a capture completes when using the `cappa ci` command (not `cappa capture`) if there are
+screenshots that failed comparison. The callback receives an array of failing screenshots, including
+both relative and absolute paths to the actual, expected, and diff images. Use this hook to upload
+diff images to object storage or integrate with CI systems.
 
 ```ts
 onFail: async (screenshots) => {
