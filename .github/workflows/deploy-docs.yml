@@ -27,14 +27,14 @@ jobs:
 
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Deploy Astro docs site
-        uses: withastro/action@v2
+        uses: withastro/action@v5
         with:
           path: apps/docs
-          node-version: 20
-          package-manager: pnpm@10.18.3
+          node-version: 24.x
+          package-manager: pnpm@10.20.0
           github-token: ${{ secrets.GITHUB_TOKEN }}
 
   deploy:
