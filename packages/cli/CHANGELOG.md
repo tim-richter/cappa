@@ -1,5 +1,11 @@
 # @cappa/cli
 
+## 0.2.1
+
+### Patch Changes
+
+- d6fd7cc: Ensure the capture command exits with a non-zero status when any screenshot task fails or produces a comparison failure.
+
 ## 0.2.0
 
 ### Minor Changes
