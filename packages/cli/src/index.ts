@@ -15,6 +15,42 @@ import { getConfig } from "./features/config";
 import { defaultConfig } from "./features/config/default";
 import { groupScreenshots } from "./utils/groupScreenshots";
 
+type PluginCaptureResult = {
+  success?: boolean;
+  skipped?: boolean;
+  error?: unknown;
+  filepath?: string;
+};
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null;
+
+const didScreenshotFail = (result: unknown): boolean => {
+  if (!isObject(result)) {
+    return false;
+  }
+
+  if ("error" in result && result.error != null) {
+    return true;
+  }
+
+  if ("success" in result) {
+    const { success } = result as PluginCaptureResult;
+    if (success === false) {
+      return true;
+    }
+  }
+
+  if ("filepath" in result) {
+    const { filepath, skipped } = result as PluginCaptureResult;
+    if (!filepath && skipped !== true) {
+      return true;
+    }
+  }
+
+  return false;
+};
+
 const program = new Command();
 
 program
@@ -57,6 +93,8 @@ program
     try {
       await screenshotTool.init();
 
+      let hasScreenshotFailure = false;
+
       for (const plugin of (config.plugins || []) as any[]) {
         logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
 
@@ -68,6 +106,7 @@ program
           continue;
         }
 
+        let pluginHasFailure = false;
         // Phase 2: Execute tasks in parallel chunks
         // Use the minimum of concurrency and actual number of tasks to avoid empty chunks
         const effectiveConcurrency = Math.min(
@@ -105,6 +144,11 @@ program
                 context,
               );
               chunkResults.push(result);
+
+              if (didScreenshotFail(result)) {
+                pluginHasFailure = true;
+                hasScreenshotFailure = true;
+              }
             }
 
             return chunkResults;
@@ -112,12 +156,25 @@ program
         );
 
         const results = allResults.flat();
-        logger.success(
-          `Plugin ${plugin.name} completed: ${results.length} results`,
-        );
+        if (pluginHasFailure) {
+          logger.error(
+            `Plugin ${plugin.name} completed with failures: ${results.length} results`,
+          );
+        } else {
+          logger.success(
+            `Plugin ${plugin.name} completed: ${results.length} results`,
+          );
+        }
       }
 
-      logger.success("All plugins completed successfully");
+      if (hasScreenshotFailure) {
+        logger.error(
+          "One or more screenshots failed. See logs above for details.",
+        );
+        process.exitCode = 1;
+      } else {
+        logger.success("All plugins completed successfully");
+      }
     } catch (error) {
       logger.error("Error during plugin execution:", error);
       captureError = error;
