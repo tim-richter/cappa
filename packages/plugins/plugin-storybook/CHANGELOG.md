@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.3.2
+
+### Patch Changes
+
+- c2614bc: fix: only run storybook exposed code when in cappa
+
 ## 0.3.1
 
 ### Patch Changes
