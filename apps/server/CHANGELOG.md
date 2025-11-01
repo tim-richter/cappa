@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.2.0
+
+### Minor Changes
+
+- 1228323: feat: add approve functionality to the frontend
+
 ## 0.1.11
 
 ### Patch Changes
