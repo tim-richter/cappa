@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.1.11
+
+### Patch Changes
+
+- 360fa80: fix: simplify screenshotviewer components
+
 ## 0.1.10
 
 ### Patch Changes

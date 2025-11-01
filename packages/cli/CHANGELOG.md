@@ -1,5 +1,12 @@
 # @cappa/cli
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [360fa80]
+  - @cappa/server@0.1.11
+
 ## 0.2.1
 
 ### Patch Changes
