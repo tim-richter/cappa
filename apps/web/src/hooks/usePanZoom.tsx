@@ -58,13 +58,10 @@ function clampTranslate(
   const canCenterX = w + padding * 2 <= container.width;
   const canCenterY = h + padding * 2 <= container.height;
 
-  // For smaller content, allow movement within the container bounds
-  const minClampX = canCenterX
-    ? Math.min(minX, (container.width - w) / 2)
-    : minX;
-  const maxClampX = canCenterX
-    ? Math.max(maxX, (container.width - w) / 2)
-    : maxX;
+  // For content that fits horizontally, lock to center position to prevent panning
+  const centerX = (container.width - w) / 2;
+  const minClampX = canCenterX ? centerX : minX;
+  const maxClampX = canCenterX ? centerX : maxX;
 
   const minClampY = canCenterY
     ? Math.min(minY, (container.height - h) / 2)

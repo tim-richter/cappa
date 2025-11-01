@@ -12,7 +12,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "storybook": "storybook dev -p 6006",
+    "build-storybook": "storybook build"
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
@@ -23,6 +25,7 @@
     "react-router": "^7.9.5"
   },
   "devDependencies": {
+    "@storybook/react-vite": "^10.0.2",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "catalog:",
@@ -31,6 +34,7 @@
     "@vitejs/plugin-react": "5.1.0",
     "msw": "^2.11.6",
     "nuqs": "^2.7.2",
+    "storybook": "^10.0.2",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "tsx": "4.20.6",

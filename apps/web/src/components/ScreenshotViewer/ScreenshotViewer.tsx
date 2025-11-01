@@ -180,8 +180,8 @@ export function ScreenshotComparison({
             {viewMode === "overlay" && (
               <Overlay
                 screenshot={screenshot}
-                overlayOpacity={overlayOpacity}
-                setOverlayOpacity={setOverlayOpacity}
+                opacity={overlayOpacity}
+                onOpacityChange={setOverlayOpacity}
               />
             )}
 

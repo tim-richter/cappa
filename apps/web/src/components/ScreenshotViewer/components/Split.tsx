@@ -59,45 +59,45 @@ export const Split = ({ screenshot }: SplitProps) => {
         <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
           Split View
         </h3>
-        <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
+        <div className="bg-muted rounded-lg p-4 min-h-[400px] flex items-center justify-center overflow-auto">
           {screenshot.expectedPath && screenshot.actualPath ? (
             <div
               ref={containerRef}
-              className="relative w-full h-full overflow-hidden rounded border border-border"
+              className="relative inline-block max-w-full max-h-full rounded border border-border"
             >
               {/* Before image (left side) */}
-              <div className="absolute inset-0">
+              <div className="relative">
                 <img
                   src={screenshot.expectedPath}
                   alt="Before"
-                  className="w-full h-full object-contain"
+                  className="block max-w-full h-full"
                   draggable={false}
-                  style={{ maxWidth: "none", maxHeight: "none" }}
                 />
               </div>
 
               {/* After image (right side) */}
               <div
-                className="absolute inset-0 overflow-hidden"
+                className="absolute top-0 left-0 overflow-hidden"
                 style={{ clipPath: `inset(0 ${100 - splitPosition}% 0 0)` }}
               >
                 <img
                   src={screenshot.actualPath}
                   alt="After"
-                  className="w-full h-full object-contain"
+                  className="block max-w-full h-full"
                   draggable={false}
-                  style={{ maxWidth: "none", maxHeight: "none" }}
                 />
               </div>
 
               {/* Divider line */}
               <button
-                className="absolute top-0 bottom-0 w-0.5 bg-primary cursor-col-resize z-10 border-0 p-0"
+                className="absolute top-0 bottom-0 w-8 cursor-col-resize z-10 border-0 p-0 -translate-x-1/2"
                 style={{ left: `${splitPosition}%` }}
                 onMouseDown={handleMouseDown}
                 aria-label="Drag to adjust split position"
                 type="button"
               >
+                {/* Visual line */}
+                <div className="absolute top-0 bottom-0 left-1/2 w-1 bg-primary -translate-x-1/2"></div>
                 {/* Drag handle */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-lg"></div>
               </button>

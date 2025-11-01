@@ -11,6 +11,7 @@
   },
   "scripts": {},
   "dependencies": {
+    "@mantine/hooks": "^8.3.6",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-separator": "^1.1.7",
