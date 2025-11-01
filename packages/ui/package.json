@@ -5,6 +5,10 @@
   "private": true,
   "license": "MIT",
   "author": "Tim Richter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-richter/cappa.git"
+  },
   "scripts": {},
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",

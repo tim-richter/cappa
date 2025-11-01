@@ -11,6 +11,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-richter/cappa.git"
+  },
   "main": "dist/server.js",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/server.ts",

@@ -5,6 +5,10 @@
   "publishConfig": {
     "access": "public"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-richter/cappa.git"
+  },
   "license": "MIT",
   "author": "Tim Richter",
   "type": "module",
