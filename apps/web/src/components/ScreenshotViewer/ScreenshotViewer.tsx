@@ -45,13 +45,16 @@ export function ScreenshotComparison({
   onBack,
 }: ScreenshotComparisonProps) {
   const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
-  const [overlayOpacity, setOverlayOpacity] = useState(50);
   const queryClient = useQueryClient();
+
   const { mutate: approveScreenshot } = useMutation({
     mutationFn: (approved: boolean) => {
       return fetch(`/api/screenshots/${screenshot.id}`, {
-        method: "POST",
+        method: "PATCH",
         body: JSON.stringify({ approved }),
+        headers: {
+          "Content-Type": "application/json",
+        },
       });
     },
     onSuccess: () => {
@@ -60,10 +63,6 @@ export function ScreenshotComparison({
       });
     },
   });
-
-  const handleApprove = () => {
-    approveScreenshot(true);
-  };
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -80,23 +79,26 @@ export function ScreenshotComparison({
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div className="min-w-0">
-            <h1 className="text-lg font-semibold text-foreground truncate">
+            <h1 className="text-lg font-semibold text-foreground truncate mt-1">
               {screenshot.name}
             </h1>
-            <CategoryBadge
-              category={screenshot.category}
-              className="uppercase text-xs"
-            />
-          </div>
 
-          {screenshot.approved && (
-            <Badge
-              variant="default"
-              className="text-green-100 bg-green-800 cursor-default self-end"
-            >
-              <BadgeCheckIcon /> Approved
-            </Badge>
-          )}
+            <div className="flex items-center gap-2">
+              <CategoryBadge
+                category={screenshot.category}
+                className="uppercase text-xs"
+              />
+
+              {screenshot.approved && (
+                <Badge
+                  variant="default"
+                  className="text-green-100 bg-green-800 cursor-default self-end"
+                >
+                  <BadgeCheckIcon /> Approved
+                </Badge>
+              )}
+            </div>
+          </div>
         </div>
 
         {/* Center - Next/Prev buttons */}
@@ -126,7 +128,7 @@ export function ScreenshotComparison({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  onClick={handleApprove}
+                  onClick={() => approveScreenshot(true)}
                   size="icon"
                   className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
                 >
@@ -177,13 +179,7 @@ export function ScreenshotComparison({
               <SideBySide screenshot={screenshot} />
             )}
 
-            {viewMode === "overlay" && (
-              <Overlay
-                screenshot={screenshot}
-                opacity={overlayOpacity}
-                onOpacityChange={setOverlayOpacity}
-              />
-            )}
+            {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
 
             {viewMode === "split" && <Split screenshot={screenshot} />}
 

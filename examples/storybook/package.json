@@ -10,9 +10,10 @@
     "screenshot:review": "cappa review -l 5",
     "screenshot:approve": "cappa approve -l 5",
     "screenshot:status": "cappa status",
+    "screenshot:test": "pnpm build-storybook && start-server-and-test 'serve-storybook' 8080 'screenshot'",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
-    "serve-storybook": "pnpx http-server -c-1 ./storybook-static"
+    "serve-storybook": "pnpx http-server -p 8080 storybook-static -s"
   },
   "dependencies": {
     "@cappa/cli": "workspace:*",
@@ -28,6 +29,7 @@
     "@types/react-dom": "catalog:",
     "@vitest/browser": "^3.2.4",
     "@vitest/coverage-v8": "catalog:",
+    "start-server-and-test": "^2.1.2",
     "storybook": "^9.1.12"
   }
 }
