@@ -2,6 +2,7 @@
 
 - always use pnpm
 - always use the latest version of packages and dependencies
+- always update the docs in apps/docs when making changes/adding new features to public packages
 
 ## Testing instructions
 - Fix any test or type errors until the whole suite is green.
