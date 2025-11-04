@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.3.1
+
+### Patch Changes
+
+- 772d0f6: Ensure approving screenshots only updates baselines when actual and expected images differ.
+
 ## 0.3.0
 
 ### Minor Changes
