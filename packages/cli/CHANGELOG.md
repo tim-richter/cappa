@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.2.4
+
+### Patch Changes
+
+- 0203154: Sort review screenshots by status so new, deleted, changed, and passed items appear in a predictable order within the review server.
+- 772d0f6: Ensure approving screenshots only updates baselines when actual and expected images differ.
+- Updated dependencies [772d0f6]
+  - @cappa/core@0.3.1
+  - @cappa/server@0.2.1
+
 ## 0.2.3
 
 ### Patch Changes
