@@ -591,7 +591,9 @@ describe("cappa CLI", () => {
       screenshotFileSystemInstances[0]?.approveFromActualPath,
     ).not.toHaveBeenCalled();
     expect(fsMock.unlinkSync).toHaveBeenCalledWith(diffPath);
-    expect(loggerInstance.success).toHaveBeenCalledWith("All screenshots approved");
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "All screenshots approved",
+    );
   });
 
   test("approve command warns when no screenshots match filter", async () => {

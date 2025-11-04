@@ -78,7 +78,9 @@ export const groupScreenshots = (
     });
   });
 
-  return screenshotRepresentations;
+  return screenshotRepresentations.sort((a, b) => {
+    return CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
+  });
 };
 
 const buildCategory = (
@@ -93,4 +95,11 @@ const buildCategory = (
   }
 
   return "new";
+};
+
+const CATEGORY_ORDER: Record<Screenshot["category"], number> = {
+  new: 0,
+  deleted: 1,
+  changed: 2,
+  passed: 3,
 };

@@ -113,3 +113,35 @@ it("should find deleted screenshots", () => {
     },
   ]);
 });
+
+it("should sort screenshots by category", () => {
+  const outputDir = "/home/user/output";
+  const screenshots = {
+    new: "New/Story.png",
+    deleted: "Deleted/Story.png",
+    changed: "Changed/Story.png",
+    passed: "Passed/Story.png",
+  } as const;
+
+  const result = groupScreenshots(
+    [
+      `${outputDir}/actual/${screenshots.new}`,
+      `${outputDir}/actual/${screenshots.changed}`,
+      `${outputDir}/actual/${screenshots.passed}`,
+    ],
+    [
+      `${outputDir}/expected/${screenshots.deleted}`,
+      `${outputDir}/expected/${screenshots.changed}`,
+      `${outputDir}/expected/${screenshots.passed}`,
+    ],
+    [`${outputDir}/diff/${screenshots.changed}`],
+    outputDir,
+  );
+
+  expect(result.map((screenshot) => screenshot.category)).toEqual([
+    "new",
+    "deleted",
+    "changed",
+    "passed",
+  ]);
+});
