@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/core";
-import { ImagePanZoom } from "./PanZoom";
 
 interface DiffProps {
   screenshot: Screenshot;
