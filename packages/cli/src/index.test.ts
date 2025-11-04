@@ -40,6 +40,8 @@ const screenshotFileSystemInstances: Array<{
   approveFromActualPath: ReturnType<typeof vi.fn>;
 }> = [];
 
+const imagesMatchMock = vi.fn();
+
 vi.mock("@cappa/core", () => ({
   ScreenshotTool: class {
     options: unknown;
@@ -71,6 +73,7 @@ vi.mock("@cappa/core", () => ({
       screenshotFileSystemInstances.push(this);
     }
   },
+  imagesMatch: imagesMatchMock,
 }));
 
 const createLoggerInstance = () => ({
@@ -150,6 +153,7 @@ beforeEach(() => {
   Object.values(fsMock).forEach((mockFn) => {
     mockFn.mockReset();
   });
+  imagesMatchMock.mockReset();
   screenshotToolInstances.length = 0;
   screenshotFileSystemInstances.length = 0;
   serverInstances.length = 0;
@@ -158,6 +162,8 @@ beforeEach(() => {
   loadConfigMock.mockReset();
   getConfigMock.mockReset();
   groupScreenshotsMock.mockReset();
+
+  fsMock.existsSync.mockReturnValue(false);
 
   loggerInstance = createLoggerInstance();
   getLoggerMock.mockReset();
@@ -540,6 +546,52 @@ describe("cappa CLI", () => {
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );
+  });
+
+  test("approve command skips copying when screenshots already match", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+    });
+
+    const actualScreenshots = ["/tmp/screens/actual/foo.png"];
+
+    globMock.mockResolvedValue(actualScreenshots);
+
+    const expectedPath = "/tmp/screens/expected/foo.png";
+    const diffPath = "/tmp/screens/diff/foo.png";
+
+    fsMock.existsSync.mockImplementation((filepath: string) => {
+      if (filepath === expectedPath || filepath === diffPath) {
+        return true;
+      }
+
+      return false;
+    });
+
+    imagesMatchMock.mockResolvedValue(true);
+
+    process.argv = ["node", "cappa", "approve", "--filter", "foo"];
+
+    await run();
+
+    expect(screenshotFileSystemInstances).toHaveLength(1);
+    expect(imagesMatchMock).toHaveBeenCalledWith(
+      "/tmp/screens/actual/foo.png",
+      expectedPath,
+      {},
+    );
+    expect(
+      screenshotFileSystemInstances[0]?.approveFromActualPath,
+    ).not.toHaveBeenCalled();
+    expect(fsMock.unlinkSync).toHaveBeenCalledWith(diffPath);
+    expect(loggerInstance.success).toHaveBeenCalledWith("All screenshots approved");
   });
 
   test("approve command warns when no screenshots match filter", async () => {

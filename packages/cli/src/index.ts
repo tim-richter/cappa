@@ -3,6 +3,7 @@ import { glob } from "node:fs/promises";
 import path from "node:path";
 import {
   type FailedScreenshot,
+  imagesMatch,
   ScreenshotFileSystem,
   ScreenshotTool,
 } from "@cappa/core";
@@ -352,10 +353,53 @@ program
     }
 
     const fileSystem = new ScreenshotFileSystem(config.outputDir);
+    const actualDir = path.resolve(config.outputDir, "actual");
+    const expectedDir = path.resolve(config.outputDir, "expected");
+    const diffDir = path.resolve(config.outputDir, "diff");
 
-    // copy actual screenshots to expected directory
+    // copy actual screenshots to expected directory when they differ
     for (const screenshot of screenshotsToApprove) {
-      fileSystem.approveFromActualPath(screenshot);
+      const actualAbsolute = path.isAbsolute(screenshot)
+        ? screenshot
+        : path.resolve(actualDir, screenshot);
+      const relativePath = path.relative(actualDir, actualAbsolute);
+
+      if (relativePath.startsWith("..")) {
+        throw new Error(
+          `Cannot approve screenshot outside of actual directory: ${screenshot}`,
+        );
+      }
+
+      const expectedPath = path.resolve(expectedDir, relativePath);
+      const diffPath = path.resolve(diffDir, relativePath);
+
+      let shouldCopy = true;
+
+      if (fs.existsSync(expectedPath)) {
+        try {
+          const matches = await imagesMatch(
+            actualAbsolute,
+            expectedPath,
+            config.diff,
+          );
+
+          if (matches) {
+            shouldCopy = false;
+
+            if (fs.existsSync(diffPath)) {
+              fs.unlinkSync(diffPath);
+            }
+          }
+        } catch (error) {
+          logger.warn(
+            `Failed to compare screenshot ${relativePath}: ${(error as Error).message}`,
+          );
+        }
+      }
+
+      if (shouldCopy) {
+        fileSystem.approveFromActualPath(actualAbsolute);
+      }
     }
 
     if (screenshotsToApprove.length === actualScreenshots.length) {

@@ -1,3 +1,4 @@
+import { compareImages, imagesMatch } from "./compare";
 import { defineConfig } from "./config";
 import { ScreenshotFileSystem } from "./filesystem";
 import type { Plugin, PluginDef, PluginFunction } from "./plugin";
@@ -23,6 +24,8 @@ export {
   ScreenshotTool,
   ScreenshotFileSystem,
   defineConfig,
+  compareImages,
+  imagesMatch,
   type PluginFunction,
   type Plugin,
   type PluginDef,

@@ -34,6 +34,10 @@ branching strategy to share reviews with teammates.
 Promotes the currently reviewed screenshots to the baseline. This command is typically run after a
 manual review or as a final step in an automated pipeline when the diffs are accepted.
 
+During approval Cappa re-compares the latest actual image against the existing baseline and only
+updates the expected file when they truly differ. This prevents identical images with minor binary
+differences from needlessly churning in version control and keeps your baseline commits tidy.
+
 ## `cappa status`
 
 Summarizes the state of your screenshot directory, showing how many files are pending approval and
