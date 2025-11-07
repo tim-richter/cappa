@@ -6,6 +6,14 @@ It is based on the [Consola](https://github.com/unjs/consola) library.
 
 It behaves like a singleton and is initialized with a log level.
 
+## Why the logger is cached globally
+
+Both the Cappa CLI and the Storybook plugin are dual-published as CommonJS and
+ES modules. Node will therefore evaluate `@cappa/logger` twice—once per module
+graph—unless we explicitly cache the instance on `globalThis`. This package does
+that automatically so calls to `getLogger()` in either environment share the
+same underlying Consola instance.
+
 ## Example
 
 ```ts

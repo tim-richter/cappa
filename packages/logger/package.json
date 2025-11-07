@@ -20,10 +20,12 @@
   },
   "scripts": {
     "build": "tsdown",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "test": "vitest"
   },
   "devDependencies": {
-    "tsdown": "catalog:"
+    "tsdown": "catalog:",
+    "vitest": "catalog:"
   },
   "dependencies": {
     "consola": "3.4.2"
