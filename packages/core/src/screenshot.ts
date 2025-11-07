@@ -77,6 +77,7 @@ class ScreenshotTool {
   logger: Logger;
   retries: number;
   filesystem: ScreenshotFileSystem;
+  logConsoleEvents: boolean;
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -86,6 +87,7 @@ class ScreenshotTool {
     diff?: DiffConfig;
     retries?: number;
     concurrency?: number;
+    logConsoleEvents?: boolean;
   }) {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
@@ -93,6 +95,7 @@ class ScreenshotTool {
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = { ...defaultDiffConfig, ...options.diff };
     this.concurrency = Math.max(1, options.concurrency || 1);
+    this.logConsoleEvents = options.logConsoleEvents ?? true;
 
     this.logger = getLogger();
     this.retries = options.retries || 2;

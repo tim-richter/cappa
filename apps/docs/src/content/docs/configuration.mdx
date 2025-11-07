@@ -43,6 +43,14 @@ The number of parallel browser contexts to use when taking screenshots. Each con
 
 Higher values will consume more system resources (CPU and memory).
 
+## logConsoleEvents
+
+- **type**: `boolean`
+- **default**: `true`
+
+Controls whether Playwright console events are logged while captures run. Disable this when your
+stories emit frequent console output and you prefer quieter CLI logs.
+
 ## screenshot
 
 Screenshot configuration might get overwritten by plugins or more specific settings, while taking

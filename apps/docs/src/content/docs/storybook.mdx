@@ -40,6 +40,20 @@ You can add additional plugin options to filter the stories that are captured:
 - **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
   own settings.
 
+To quiet noisy console output while the plugin runs, toggle the global
+`logConsoleEvents` option inside `cappa.config.ts`:
+
+```ts
+export default defineConfig({
+  logConsoleEvents: false,
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006',
+    }),
+  ],
+});
+```
+
 ## Wire up the Storybook addon
 
 The plugin ships with a Storybook addon that exposes story-level configuration to Cappa. Enable it by

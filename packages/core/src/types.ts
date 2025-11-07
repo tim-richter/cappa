@@ -90,6 +90,13 @@ export type UserConfig = {
    */
   concurrency?: number;
   /**
+   * Whether to log Playwright console events while executing capture tasks.
+   *
+   * Enabled by default to aid in debugging. Disable to reduce noise in the
+   * console output when you do not need the additional details.
+   */
+  logConsoleEvents?: boolean;
+  /**
    * An array of Cappa plugins used for generation.
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */

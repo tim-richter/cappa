@@ -46,6 +46,7 @@ export async function getConfig(
     outputDir: userConfig.outputDir || "./screenshots",
     retries: userConfig.retries || 2,
     concurrency: userConfig.concurrency || 1,
+    logConsoleEvents: userConfig.logConsoleEvents ?? true,
     diff: {
       threshold: userConfig.diff?.threshold || 0.1,
       includeAA: userConfig.diff?.includeAA || false,

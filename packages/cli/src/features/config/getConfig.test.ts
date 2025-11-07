@@ -28,6 +28,7 @@ test("return Config when config is set with defineConfig", async () => {
     outputDir: "./screenshots",
     retries: 3,
     concurrency: 2,
+    logConsoleEvents: true,
     diff: {
       threshold: 0.1,
       includeAA: false,
@@ -38,6 +39,23 @@ test("return Config when config is set with defineConfig", async () => {
     plugins: [],
     onFail: undefined,
   });
+});
+
+test("respects logConsoleEvents override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    retries: 3,
+    concurrency: 2,
+    logConsoleEvents: false,
+    plugins: [],
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.logConsoleEvents).toBe(false);
 });
 
 test("return Config when config is a function", async () => {
@@ -59,6 +77,7 @@ test("return Config when config is a function", async () => {
     outputDir: "./custom-screenshots",
     retries: 5,
     concurrency: 1,
+    logConsoleEvents: true,
     diff: {
       threshold: 0.1,
       includeAA: false,
@@ -88,6 +107,7 @@ test("return Config when config is a promise", async () => {
     outputDir: "./async-screenshots",
     retries: 2,
     concurrency: 4,
+    logConsoleEvents: true,
     diff: {
       threshold: 0.1,
       includeAA: false,
@@ -129,6 +149,7 @@ test("passes environment variables to config functions", async () => {
     outputDir: "./env-screenshots",
     retries: 1,
     concurrency: 1,
+    logConsoleEvents: true,
     diff: {
       threshold: 0.1,
       includeAA: false,
