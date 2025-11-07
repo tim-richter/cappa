@@ -104,7 +104,7 @@ interface StorybookStoriesResponse {
   entries: Record<string, StorybookStory>;
 }
 
-interface StorybookPluginOptions {
+export interface StorybookPluginOptions {
   storybookUrl: string;
   /**
    * Array of glob patterns to include stories. Stories matching any of these patterns will be included.
@@ -254,6 +254,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const { story } = data;
       const logger = getLogger();
       const { storybook: defaultStorybookOptions } = options || {};
+      const { logConsoleEvents = true } = screenshotTool;
 
       try {
         // Setup exposed function for this page
@@ -273,9 +274,11 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           );
         }
 
-        page.on("console", (message) => {
-          logger.debug("console", message.text());
-        });
+        if (logConsoleEvents) {
+          page.on("console", (message) => {
+            logger.debug("console", message.text());
+          });
+        }
         page.on("pageerror", (error) => {
           logger.debug("pageerror", error);
         });

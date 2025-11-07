@@ -11,6 +11,18 @@ vi.mock("@cappa/logger", () => ({
   }),
 }));
 
+vi.mock("./util", () => ({
+  buildFilename: vi.fn(() => "button--primary.png"),
+  freezeUI: vi.fn(async () => {}),
+  waitForVisualIdle: vi.fn(async () => {}),
+}));
+
+vi.mock("./storybook-url", () => ({
+  buildStorybookIframeUrl: vi.fn(
+    () => "http://localhost:6006/iframe.html?id=story",
+  ),
+}));
+
 // Mock fetch
 global.fetch = vi.fn();
 
@@ -78,6 +90,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    (global.fetch as any).mockReset();
     (global.fetch as any).mockResolvedValue({
       ok: true,
       json: () => Promise.resolve(mockStorybookResponse),
@@ -376,5 +389,136 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         "special--with-dots.and-brackets[test]",
       );
     });
+  });
+});
+
+describe("console logging configuration", () => {
+  const story: StorybookStory = {
+    id: "button--primary",
+    name: "Primary",
+    title: "Button",
+    kind: "Button",
+    story: "Primary",
+    type: "story",
+  };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  const createPage = () => {
+    const exposedFunctions: Record<
+      string,
+      (id: string, payload: unknown) => unknown
+    > = {};
+
+    return {
+      on: vi.fn(),
+      evaluate: vi.fn(async (fn: any) => {
+        if (typeof fn === "function") {
+          const source = fn.toString();
+          if (source.includes("__cappa_parameters")) {
+            return true;
+          }
+          if (source.includes("__cappa_has_play_function")) {
+            return false;
+          }
+        }
+
+        return undefined;
+      }),
+      exposeFunction: vi.fn(
+        async (name: string, fn: (id: string, payload: unknown) => unknown) => {
+          exposedFunctions[name] = fn;
+        },
+      ),
+      goto: vi.fn(async () => {
+        await exposedFunctions.__cappa_parameters?.(story.id, {
+          viewport: { width: 800, height: 600 },
+        });
+      }),
+      setViewportSize: vi.fn(async () => {}),
+      viewportSize: vi.fn(() => ({ width: 1024, height: 768 })),
+      waitForTimeout: vi.fn(async () => {}),
+      locator: vi.fn(() => ({ locator: true })),
+      waitForFunction: vi.fn(async () => {}),
+    };
+  };
+
+  const createScreenshotTool = () => ({
+    viewport: { width: 1024, height: 768 },
+    logConsoleEvents: true,
+    getVariantFilename: vi.fn(
+      (filename: string, variant: { id: string }) =>
+        `${filename}-${variant.id}.png`,
+    ),
+    captureWithVariants: vi.fn(async () => ({
+      base: {
+        filename: "button--primary.png",
+        filepath: "button--primary.png",
+        skipped: false,
+        comparisonResult: { passed: true },
+      },
+      variants: [],
+    })),
+  });
+
+  const createTask = () => ({
+    id: story.id,
+    url: "http://localhost:6006/iframe.html?id=button--primary",
+    data: { story },
+  });
+
+  it("logs console events by default", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    const page = createPage();
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.()) ?? { latchMap: new Map() };
+
+    await plugin.execute(
+      createTask(),
+      page as any,
+      screenshotTool as any,
+      context,
+    );
+
+    expect(
+      (page.on as any).mock.calls.some(
+        ([event]: [string]) => event === "console",
+      ),
+    ).toBe(true);
+  });
+
+  it("skips console logging when disabled", async () => {
+    const page = createPage();
+    const screenshotTool = {
+      ...createScreenshotTool(),
+      logConsoleEvents: false,
+    };
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+    const context = (await plugin.initPage?.()) ?? { latchMap: new Map() };
+
+    await plugin.execute(
+      createTask(),
+      page as any,
+      screenshotTool as any,
+      context,
+    );
+
+    expect(
+      (page.on as any).mock.calls.some(
+        ([event]: [string]) => event === "console",
+      ),
+    ).toBe(false);
+    expect(
+      (page.on as any).mock.calls.some(
+        ([event]: [string]) => event === "pageerror",
+      ),
+    ).toBe(true);
   });
 });

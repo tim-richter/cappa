@@ -128,6 +128,7 @@ async function runCapture(runOnFail: boolean): Promise<void> {
     diff: config.diff,
     retries: config.retries,
     concurrency: config.concurrency,
+    logConsoleEvents: config.logConsoleEvents,
   });
 
   let captureError: unknown;
