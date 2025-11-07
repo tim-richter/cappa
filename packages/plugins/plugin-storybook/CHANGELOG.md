@@ -1,5 +1,19 @@
 # @cappa/plugin-storybook
 
+## 0.4.0
+
+### Minor Changes
+
+- 915be10: Add a `logConsoleEvents` base configuration option that controls whether Playwright console
+  messages are logged during captures, and have the Storybook plugin respect the global setting.
+
+### Patch Changes
+
+- Updated dependencies [915be10]
+- Updated dependencies [1e8f301]
+  - @cappa/core@0.4.0
+  - @cappa/logger@0.0.5
+
 ## 0.3.3
 
 ### Patch Changes

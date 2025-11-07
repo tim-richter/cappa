@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.5
+
+### Patch Changes
+
+- 1e8f301: Store the logger instance on the global scope so it can be reused across packages, preventing "Logger not initialized" errors when plugins use the logger.
+
 ## 0.0.4
 
 ### Patch Changes
