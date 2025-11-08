@@ -1,3 +1,5 @@
+import type { Screenshot } from "@cappa/core";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import {
@@ -10,13 +12,7 @@ import { debounce, parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useLocation } from "react-router";
 import { View } from "@/types";
-
 export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
-
-interface HeaderProps {
-  category: ScreenshotCategory;
-  count: number;
-}
 
 const categoryLabels = {
   changed: "Changed Screenshots",
@@ -25,10 +21,18 @@ const categoryLabels = {
   passed: "Passed Screenshots",
 };
 
-export const Header: FC<HeaderProps> = () => {
+export const Header: FC = () => {
   const { pathname } = useLocation();
   const category = pathname.split("/")[1] as ScreenshotCategory;
-  const count = 10;
+  const { data: count } = useQuery({
+    queryKey: ["screenshots", category],
+    queryFn: () => {
+      return fetch(`/api/screenshots?category=${category}`).then(
+        (res) => res.json() as unknown as Promise<Screenshot[]>,
+      );
+    },
+    select: (data) => data?.length || 0,
+  });
   const [search, setSearch] = useQueryState("search");
   const [view, setView] = useQueryState(
     "view",
