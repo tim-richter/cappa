@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -10,6 +11,13 @@ import { Link, useLocation } from "react-router";
 
 export const AppSidebar = () => {
   const pathname = useLocation().pathname;
+  const { data: count } = useQuery({
+    queryKey: ["screenshots"],
+    queryFn: () => {
+      return fetch("/api/screenshots").then((res) => res.json());
+    },
+    select: (data) => data?.length || 0,
+  });
 
   return (
     <Sidebar>
@@ -49,11 +57,7 @@ export const AppSidebar = () => {
         <div className="text-xs text-muted-foreground">
           <div className="flex justify-between mb-1">
             <span>Total Screenshots</span>
-            <span>100</span>
-          </div>
-          <div className="flex justify-between">
-            <span>Last Updated</span>
-            <span>2 min ago</span>
+            <span>{count}</span>
           </div>
         </div>
       </SidebarFooter>
