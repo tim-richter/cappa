@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.2.3
+
+### Patch Changes
+
+- 1304724: fix: ui screenshot count
+
 ## 0.2.2
 
 ### Patch Changes
