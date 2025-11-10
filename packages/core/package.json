@@ -30,7 +30,8 @@
     "example:responsive": "node examples/responsive-screenshots.js",
     "example:element": "node examples/element-screenshots.js",
     "build": "tsdown",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
     "@blazediff/core": "^1.6.0",
@@ -46,7 +47,8 @@
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:"
   },
   "keywords": [
     "screenshot",

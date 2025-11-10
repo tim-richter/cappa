@@ -19,6 +19,7 @@ catalog:
   tsup: 8.5.0
   typescript: 5.9.3
   vitest: 4.0.6
+  '@arethetypeswrong/cli': 0.18.2
 
 onlyBuiltDependencies:
   - '@swc/core'
