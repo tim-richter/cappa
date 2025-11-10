@@ -41,7 +41,8 @@
     "test:coverage": "vitest --coverage",
     "screenshot": "node src/index.ts",
     "build": "tsdown",
-    "tsc": "tsc"
+    "tsc": "tsc",
+    "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
@@ -59,6 +60,7 @@
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:"
+    "vitest": "catalog:",
+    "@arethetypeswrong/cli": "catalog:"
   }
 }

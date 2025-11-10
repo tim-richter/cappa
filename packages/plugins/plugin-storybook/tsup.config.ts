@@ -4,7 +4,7 @@ export default defineConfig([
   {
     entry: { index: "src/index.esm.ts" },
     format: ["esm"],
-    dts: true,
+    dts: { entry: "src/index.esm.ts" },
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
@@ -13,6 +13,7 @@ export default defineConfig([
   {
     entry: { index: "src/index.cjs.ts" },
     format: ["cjs"],
+    dts: { entry: "src/index.cjs.ts" },
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
@@ -29,7 +30,8 @@ export default defineConfig([
   {
     entry: ["src/storybook/addon/browser.ts"],
     target: "es2015",
-    format: ["esm"],
+    format: ["esm", "cjs"],
+    dts: true,
     splitting: false,
     sourcemap: false,
     clean: true,
