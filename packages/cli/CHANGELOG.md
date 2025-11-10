@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.3.2
+
+### Patch Changes
+
+- 298486b: fix: package export types
+- Updated dependencies [298486b]
+  - @cappa/logger@0.0.6
+  - @cappa/core@0.4.1
+  - @cappa/server@0.2.4
+
 ## 0.3.1
 
 ### Patch Changes

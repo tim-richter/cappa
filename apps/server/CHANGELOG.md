@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.2.4
+
+### Patch Changes
+
+- 298486b: fix: package export types
+- Updated dependencies [298486b]
+  - @cappa/core@0.4.1
+
 ## 0.2.3
 
 ### Patch Changes
