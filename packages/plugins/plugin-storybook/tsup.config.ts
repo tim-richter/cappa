@@ -4,7 +4,7 @@ export default defineConfig([
   {
     entry: { index: "src/index.esm.ts" },
     format: ["esm"],
-    dts: { entry: 'src/index.esm.ts' },
+    dts: { entry: "src/index.esm.ts" },
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
@@ -13,7 +13,7 @@ export default defineConfig([
   {
     entry: { index: "src/index.cjs.ts" },
     format: ["cjs"],
-    dts: { entry: 'src/index.cjs.ts' },
+    dts: { entry: "src/index.cjs.ts" },
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
