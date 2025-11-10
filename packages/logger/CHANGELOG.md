@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.6
+
+### Patch Changes
+
+- 298486b: fix: package export types
+
 ## 0.0.5
 
 ### Patch Changes
