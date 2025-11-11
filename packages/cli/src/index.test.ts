@@ -619,6 +619,65 @@ describe("cappa CLI", () => {
     );
   });
 
+  test("approve command replaces expected screenshots when they change", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+    });
+
+    const actualPath = "/tmp/screens/actual/foo.png";
+    const otherActualPath = "/tmp/screens/actual/bar.png";
+    const expectedPath = "/tmp/screens/expected/foo.png";
+
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve([actualPath, otherActualPath]);
+      }
+
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([expectedPath]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    fsMock.existsSync.mockImplementation((filepath: string) => {
+      if (
+        filepath === expectedPath ||
+        filepath === actualPath ||
+        filepath === otherActualPath
+      ) {
+        return true;
+      }
+
+      return false;
+    });
+
+    imagesMatchMock.mockResolvedValue(false);
+
+    process.argv = ["node", "cappa", "approve", "--filter", "foo"];
+
+    await run();
+
+    expect(imagesMatchMock).toHaveBeenCalledTimes(1);
+    expect(imagesMatchMock).toHaveBeenCalledWith(actualPath, expectedPath, {});
+    expect(
+      screenshotFileSystemInstances[0]?.approveFromActualPath,
+    ).toHaveBeenCalledTimes(1);
+    expect(
+      screenshotFileSystemInstances[0]?.approveFromActualPath,
+    ).toHaveBeenCalledWith(actualPath);
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "1 screenshot(s) approved (filtered)",
+    );
+  });
+
   test("approve command warns when no screenshots match filter", async () => {
     loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
