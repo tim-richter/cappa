@@ -323,16 +323,26 @@ program
     const actualScreenshotsPromise = glob(
       path.resolve(config.outputDir, "actual", "**/*.png"),
     );
+    const expectedScreenshotsPromise = glob(
+      path.resolve(config.outputDir, "expected", "**/*.png"),
+    );
 
-    const globs = await actualScreenshotsPromise;
-    const actualScreenshots = await Array.fromAsync(globs);
+    const [actualGlobs, expectedGlobs] = await Promise.all([
+      actualScreenshotsPromise,
+      expectedScreenshotsPromise,
+    ]);
+
+    const [actualScreenshots, expectedScreenshots] = await Promise.all([
+      Array.fromAsync(actualGlobs),
+      Array.fromAsync(expectedGlobs),
+    ]);
 
     let screenshotsToApprove = actualScreenshots;
 
-    if (options.filter?.length) {
-      const filters = options.filter.map((filter: string) =>
-        filter.toLowerCase(),
-      );
+    const filters =
+      options.filter?.map((filter: string) => filter.toLowerCase()) ?? [];
+
+    if (filters.length > 0) {
       logger.debug(
         `Filtering actual screenshots by filter: ${filters.join(", ")}`,
       );
@@ -400,6 +410,46 @@ program
 
       if (shouldCopy) {
         fileSystem.approveFromActualPath(actualAbsolute);
+      }
+    }
+
+    const lonelyExpectedScreenshots = expectedScreenshots.filter(
+      (expectedScreenshot) => {
+        const relativePath = path.relative(expectedDir, expectedScreenshot);
+
+        if (relativePath.startsWith("..")) {
+          return false;
+        }
+
+        const actualPath = path.resolve(actualDir, relativePath);
+
+        if (fs.existsSync(actualPath)) {
+          return false;
+        }
+
+        if (filters.length === 0) {
+          return true;
+        }
+
+        const screenshotName = path.basename(relativePath).toLowerCase();
+        const screenshotPath = relativePath.toLowerCase();
+
+        return filters.some(
+          (filter: string) =>
+            screenshotName.includes(filter) || screenshotPath.includes(filter),
+        );
+      },
+    );
+
+    for (const expectedScreenshot of lonelyExpectedScreenshots) {
+      const relativePath = path.relative(expectedDir, expectedScreenshot);
+
+      fs.unlinkSync(expectedScreenshot);
+
+      const diffPath = path.resolve(diffDir, relativePath);
+
+      if (fs.existsSync(diffPath)) {
+        fs.unlinkSync(diffPath);
       }
     }
 
