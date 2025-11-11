@@ -530,7 +530,17 @@ describe("cappa CLI", () => {
       "/tmp/screens/actual/bar.png",
     ];
 
-    globMock.mockResolvedValue(actualScreenshots);
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve(actualScreenshots);
+      }
+
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([]);
+      }
+
+      return Promise.resolve([]);
+    });
 
     process.argv = ["node", "cappa", "approve", "--filter", "foo"];
 
@@ -561,14 +571,27 @@ describe("cappa CLI", () => {
     });
 
     const actualScreenshots = ["/tmp/screens/actual/foo.png"];
-
-    globMock.mockResolvedValue(actualScreenshots);
-
     const expectedPath = "/tmp/screens/expected/foo.png";
     const diffPath = "/tmp/screens/diff/foo.png";
 
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve(actualScreenshots);
+      }
+
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([expectedPath]);
+      }
+
+      return Promise.resolve([]);
+    });
+
     fsMock.existsSync.mockImplementation((filepath: string) => {
-      if (filepath === expectedPath || filepath === diffPath) {
+      if (
+        filepath === expectedPath ||
+        filepath === diffPath ||
+        filepath === "/tmp/screens/actual/foo.png"
+      ) {
         return true;
       }
 
@@ -608,7 +631,17 @@ describe("cappa CLI", () => {
       diff: {},
     });
 
-    globMock.mockResolvedValue(["/tmp/screens/actual/foo.png"]);
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve(["/tmp/screens/actual/foo.png"]);
+      }
+
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([]);
+      }
+
+      return Promise.resolve([]);
+    });
 
     process.argv = ["node", "cappa", "approve", "--filter", "bar"];
 
@@ -620,6 +653,52 @@ describe("cappa CLI", () => {
     expect(screenshotFileSystemInstances).toHaveLength(0);
     expect(loggerInstance.success).not.toHaveBeenCalledWith(
       expect.stringContaining("approved"),
+    );
+  });
+
+  test("approve command removes expected screenshots without matching actual", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+    });
+
+    const lonelyExpectedPath = "/tmp/screens/expected/foo.png";
+    const lonelyDiffPath = "/tmp/screens/diff/foo.png";
+
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve([]);
+      }
+
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve([lonelyExpectedPath]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    fsMock.existsSync.mockImplementation((filepath: string) => {
+      if (filepath === lonelyDiffPath) {
+        return true;
+      }
+
+      return false;
+    });
+
+    process.argv = ["node", "cappa", "approve"];
+
+    await run();
+
+    expect(fsMock.unlinkSync).toHaveBeenCalledWith(lonelyExpectedPath);
+    expect(fsMock.unlinkSync).toHaveBeenCalledWith(lonelyDiffPath);
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "All screenshots approved",
     );
   });
 
