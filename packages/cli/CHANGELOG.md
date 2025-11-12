@@ -1,5 +1,11 @@
 # @cappa/cli
 
+## 0.4.0
+
+### Minor Changes
+
+- 188da53: Ensure `cappa approve` removes expected screenshots that no longer have a matching capture so stale baselines are cleaned up automatically.
+
 ## 0.3.2
 
 ### Patch Changes
