@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.4.1
+
+### Patch Changes
+
+- 1fad7cc: fix: deleted screenshot handling in approve command
+- Updated dependencies [1fad7cc]
+  - @cappa/logger@0.0.7
+  - @cappa/core@0.4.2
+  - @cappa/server@0.2.5
+
 ## 0.4.0
 
 ### Minor Changes
