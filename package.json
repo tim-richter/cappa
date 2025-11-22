@@ -24,8 +24,7 @@
     "lint:fix": "biome check . --write",
     "tsc": "pnpm -r tsc",
     "attw": "pnpm -r attw",
-    "release": "turbo build && pnpm --filter server build && changeset publish",
-    "example:storybook": "pnpm --filter @cappa/example-storybook screenshot"
+    "release": "turbo build && pnpm --filter server build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.3.2",

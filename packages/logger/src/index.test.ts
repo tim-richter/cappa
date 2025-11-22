@@ -39,7 +39,7 @@ describe("logger", () => {
         level: 3,
       }),
     );
-    expect(logger.wrapConsole).toHaveBeenCalledTimes(1);
+    expect(logger?.wrapConsole).toHaveBeenCalledTimes(1);
     expect((globalThis as any)[GLOBAL_LOGGER_KEY]).toBe(logger);
   });
 

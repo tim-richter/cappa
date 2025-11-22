@@ -104,9 +104,9 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["button--primary"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(1);
-      expect(result[0].data.story.id).toBe("button--primary");
+      expect(result[0]?.data.story.id).toBe("button--primary");
     });
 
     it("should include stories matching wildcard patterns", async () => {
@@ -115,7 +115,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["button--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -129,7 +129,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["Button"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -143,9 +143,9 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["Primary"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(1);
-      expect(result[0].data.story.id).toBe("button--primary");
+      expect(result[0]?.data.story.id).toBe("button--primary");
     });
 
     it("should include stories matching full path patterns", async () => {
@@ -154,7 +154,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["Button/*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -168,7 +168,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["button--*", "input--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -184,7 +184,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["*--primary", "*--default"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -200,7 +200,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["button--primary"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(5);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -213,7 +213,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["button--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -229,7 +229,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["Button"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -245,7 +245,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["Primary"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(5);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -258,7 +258,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["Button/*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -274,7 +274,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["button--*", "input--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "card--basic",
@@ -291,7 +291,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["button--*"], // Then exclude button stories
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -308,9 +308,9 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: ["button--*"], // Exclude all button stories
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(1);
-      expect(result[0].data.story.id).toBe("input--default");
+      expect(result[0]?.data.story.id).toBe("input--default");
     });
   });
 
@@ -321,7 +321,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: [],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(6); // All stories included
     });
 
@@ -331,8 +331,8 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         excludeStories: [],
       });
 
-      const result = await plugin.discover();
-      expect(result).toHaveLength(6); // All stories included
+      const result = await plugin.discover({} as any);
+      expect(result).toHaveLength(6);
     });
 
     it("should handle patterns that match no stories", async () => {
@@ -341,7 +341,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["nonexistent--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(0);
     });
 
@@ -351,7 +351,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["button"], // lowercase
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(0); // No matches because "Button" is capitalized
     });
 
@@ -383,9 +383,9 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
         includeStories: ["special--*"],
       });
 
-      const result = await plugin.discover();
+      const result = await plugin.discover({} as any);
       expect(result).toHaveLength(1);
-      expect(result[0].data.story.id).toBe(
+      expect(result[0]?.data.story.id).toBe(
         "special--with-dots.and-brackets[test]",
       );
     });
@@ -476,7 +476,10 @@ describe("console logging configuration", () => {
 
     const page = createPage();
     const screenshotTool = createScreenshotTool();
-    const context = (await plugin.initPage?.()) ?? { latchMap: new Map() };
+    const context = (await plugin.initPage?.(
+      page as any,
+      screenshotTool as any,
+    )) ?? { latchMap: new Map() };
 
     await plugin.execute(
       createTask(),
@@ -501,7 +504,10 @@ describe("console logging configuration", () => {
     const plugin = cappaPluginStorybook({
       storybookUrl: "http://localhost:6006",
     });
-    const context = (await plugin.initPage?.()) ?? { latchMap: new Map() };
+    const context = (await plugin.initPage?.(
+      page as any,
+      screenshotTool as any,
+    )) ?? { latchMap: new Map() };
 
     await plugin.execute(
       createTask(),

@@ -9,8 +9,12 @@ import ScreenshotTool, {
   type ScreenshotVariantCaptureDetails,
 } from "./screenshot";
 import type {
+  ChangedScreenshot,
   ConfigEnv,
+  DeletedScreenshot,
   FailedScreenshot,
+  NewScreenshot,
+  PassedScreenshot,
   Screenshot,
   ScreenshotOptions,
   ScreenshotSettings,
@@ -36,6 +40,10 @@ export {
   type ScreenshotVariant,
   type ScreenshotVariantWithUrl,
   type Screenshot,
+  type NewScreenshot,
+  type DeletedScreenshot,
+  type ChangedScreenshot,
+  type PassedScreenshot,
   type FailedScreenshot,
   type ScreenshotCaptureResult,
   type ScreenshotCaptureDetails,
