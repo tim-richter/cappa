@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.7
+
+### Patch Changes
+
+- 1fad7cc: fix: deleted screenshot handling in approve command
+
 ## 0.0.6
 
 ### Patch Changes

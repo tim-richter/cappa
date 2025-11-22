@@ -1,5 +1,14 @@
 # @cappa/plugin-storybook
 
+## 0.4.2
+
+### Patch Changes
+
+- 1fad7cc: fix: deleted screenshot handling in approve command
+- Updated dependencies [1fad7cc]
+  - @cappa/logger@0.0.7
+  - @cappa/core@0.4.2
+
 ## 0.4.1
 
 ### Patch Changes
