@@ -25,7 +25,6 @@ it("should find changed screenshots", () => {
       actualPath: `actual/${name}`,
       expectedPath: `expected/${name}`,
       diffPath: `diff/${name}`,
-      approved: false,
     },
   ]);
 });
@@ -51,9 +50,6 @@ it("should find new screenshots", () => {
       name: "Test/Story",
       category: "new",
       actualPath: `actual/${name}`,
-      approved: false,
-      expectedPath: undefined,
-      diffPath: undefined,
     },
   ]);
 });
@@ -81,7 +77,6 @@ it("should find passed screenshots", () => {
       actualPath: `actual/${name}`,
       expectedPath: `expected/${name}`,
       diffPath: undefined,
-      approved: false,
     },
   ]);
 });
@@ -109,7 +104,6 @@ it("should find deleted screenshots", () => {
       actualPath: undefined,
       expectedPath: `expected/${name}`,
       diffPath: undefined,
-      approved: false,
     },
   ]);
 });

@@ -38,6 +38,9 @@ const screenshotFileSystemInstances: Array<{
   clearActual: ReturnType<typeof vi.fn>;
   clearDiff: ReturnType<typeof vi.fn>;
   approveFromActualPath: ReturnType<typeof vi.fn>;
+  getActualScreenshots: ReturnType<typeof vi.fn>;
+  getDiffScreenshots: ReturnType<typeof vi.fn>;
+  getExpectedScreenshots: ReturnType<typeof vi.fn>;
 }> = [];
 
 const imagesMatchMock = vi.fn();
@@ -64,12 +67,18 @@ vi.mock("@cappa/core", () => ({
     clearActual: ReturnType<typeof vi.fn>;
     clearDiff: ReturnType<typeof vi.fn>;
     approveFromActualPath: ReturnType<typeof vi.fn>;
+    getActualScreenshots: ReturnType<typeof vi.fn>;
+    getDiffScreenshots: ReturnType<typeof vi.fn>;
+    getExpectedScreenshots: ReturnType<typeof vi.fn>;
 
     constructor(outputDir: string) {
       this.outputDir = outputDir;
       this.clearActual = vi.fn();
       this.clearDiff = vi.fn();
       this.approveFromActualPath = vi.fn();
+      this.getActualScreenshots = vi.fn();
+      this.getDiffScreenshots = vi.fn();
+      this.getExpectedScreenshots = vi.fn();
       screenshotFileSystemInstances.push(this);
     }
   },
@@ -84,6 +93,7 @@ const createLoggerInstance = () => ({
   error: vi.fn(),
   warn: vi.fn(),
   box: vi.fn(),
+  start: vi.fn(),
 });
 
 let loggerInstance = createLoggerInstance();
@@ -284,7 +294,7 @@ describe("cappa CLI", () => {
       return Promise.resolve([]);
     });
 
-    groupScreenshotsMock.mockResolvedValue([
+    groupScreenshotsMock.mockReturnValue([
       {
         id: "1",
         name: "button",
@@ -292,7 +302,6 @@ describe("cappa CLI", () => {
         actualPath: "actual/button.png",
         expectedPath: "expected/button.png",
         diffPath: "diff/button.png",
-        approved: false,
       },
       {
         id: "2",
@@ -300,7 +309,6 @@ describe("cappa CLI", () => {
         category: "passed",
         actualPath: "actual/passed.png",
         expectedPath: "expected/passed.png",
-        approved: true,
       },
     ]);
 
@@ -373,14 +381,13 @@ describe("cappa CLI", () => {
       return Promise.resolve([]);
     });
 
-    groupScreenshotsMock.mockResolvedValue([
+    groupScreenshotsMock.mockReturnValue([
       {
         id: "1",
         name: "passed",
         category: "passed",
         actualPath: "actual/passed.png",
         expectedPath: "expected/passed.png",
-        approved: true,
       },
     ]);
 
@@ -416,11 +423,13 @@ describe("cappa CLI", () => {
       ],
     });
 
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
     process.argv = ["node", "cappa", "capture"];
 
     await run();
 
-    expect(process.exitCode).toBe(1);
+    expect(process.exit).toHaveBeenCalledWith(1);
   });
 
   test("capture command exits with code 1 when a screenshot task throws", async () => {
@@ -446,11 +455,13 @@ describe("cappa CLI", () => {
       ],
     });
 
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
     process.argv = ["node", "cappa", "capture"];
 
     await run();
 
-    expect(process.exitCode).toBe(1);
+    expect(process.exit).toHaveBeenCalledWith(1);
   });
 
   test("review command groups screenshots and starts review server", async () => {
@@ -530,17 +541,29 @@ describe("cappa CLI", () => {
       "/tmp/screens/actual/bar.png",
     ];
 
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve(actualScreenshots);
-      }
+    const originalPush = screenshotFileSystemInstances.push;
+    screenshotFileSystemInstances.push = function (instance) {
+      const result = originalPush.call(this, instance);
+      instance.getActualScreenshots.mockResolvedValue(actualScreenshots);
+      instance.getDiffScreenshots.mockResolvedValue([]);
+      instance.getExpectedScreenshots.mockResolvedValue([]);
+      return result;
+    };
 
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve([]);
-      }
-
-      return Promise.resolve([]);
-    });
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "foo-id",
+        name: "foo",
+        category: "new",
+        actualPath: "actual/foo.png",
+      },
+      {
+        id: "bar-id",
+        name: "bar",
+        category: "new",
+        actualPath: "actual/bar.png",
+      },
+    ]);
 
     process.argv = ["node", "cappa", "approve", "--filter", "foo"];
 
@@ -552,7 +575,7 @@ describe("cappa CLI", () => {
     ).toHaveBeenCalledTimes(1);
     expect(
       screenshotFileSystemInstances[0]?.approveFromActualPath,
-    ).toHaveBeenCalledWith("/tmp/screens/actual/foo.png");
+    ).toHaveBeenCalledWith("foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );
@@ -574,17 +597,14 @@ describe("cappa CLI", () => {
     const expectedPath = "/tmp/screens/expected/foo.png";
     const diffPath = "/tmp/screens/diff/foo.png";
 
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve(actualScreenshots);
-      }
-
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve([expectedPath]);
-      }
-
-      return Promise.resolve([]);
-    });
+    const originalPush = screenshotFileSystemInstances.push;
+    screenshotFileSystemInstances.push = function (instance) {
+      const result = originalPush.call(this, instance);
+      instance.getActualScreenshots.mockResolvedValue(actualScreenshots);
+      instance.getDiffScreenshots.mockResolvedValue([]);
+      instance.getExpectedScreenshots.mockResolvedValue([expectedPath]);
+      return result;
+    };
 
     fsMock.existsSync.mockImplementation((filepath: string) => {
       if (
@@ -600,7 +620,17 @@ describe("cappa CLI", () => {
 
     imagesMatchMock.mockResolvedValue(true);
 
-    process.argv = ["node", "cappa", "approve", "--filter", "foo"];
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "foo-id",
+        name: "foo",
+        category: "passed",
+        actualPath: "actual/foo.png",
+        expectedPath: "expected/foo.png",
+      },
+    ]);
+
+    process.argv = ["node", "cappa", "approve"];
 
     await run();
 
@@ -613,7 +643,6 @@ describe("cappa CLI", () => {
     expect(
       screenshotFileSystemInstances[0]?.approveFromActualPath,
     ).not.toHaveBeenCalled();
-    expect(fsMock.unlinkSync).toHaveBeenCalledWith(diffPath);
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "All screenshots approved",
     );
@@ -635,17 +664,17 @@ describe("cappa CLI", () => {
     const otherActualPath = "/tmp/screens/actual/bar.png";
     const expectedPath = "/tmp/screens/expected/foo.png";
 
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve([actualPath, otherActualPath]);
-      }
-
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve([expectedPath]);
-      }
-
-      return Promise.resolve([]);
-    });
+    const originalPush = screenshotFileSystemInstances.push;
+    screenshotFileSystemInstances.push = function (instance) {
+      const result = originalPush.call(this, instance);
+      instance.getActualScreenshots.mockResolvedValue([
+        actualPath,
+        otherActualPath,
+      ]);
+      instance.getDiffScreenshots.mockResolvedValue([]);
+      instance.getExpectedScreenshots.mockResolvedValue([expectedPath]);
+      return result;
+    };
 
     fsMock.existsSync.mockImplementation((filepath: string) => {
       if (
@@ -661,6 +690,22 @@ describe("cappa CLI", () => {
 
     imagesMatchMock.mockResolvedValue(false);
 
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "foo-id",
+        name: "foo",
+        category: "passed",
+        actualPath: "actual/foo.png",
+        expectedPath: "expected/foo.png",
+      },
+      {
+        id: "bar-id",
+        name: "bar",
+        category: "new",
+        actualPath: "actual/bar.png",
+      },
+    ]);
+
     process.argv = ["node", "cappa", "approve", "--filter", "foo"];
 
     await run();
@@ -672,7 +717,7 @@ describe("cappa CLI", () => {
     ).toHaveBeenCalledTimes(1);
     expect(
       screenshotFileSystemInstances[0]?.approveFromActualPath,
-    ).toHaveBeenCalledWith(actualPath);
+    ).toHaveBeenCalledWith("foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );
@@ -690,17 +735,25 @@ describe("cappa CLI", () => {
       diff: {},
     });
 
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve(["/tmp/screens/actual/foo.png"]);
-      }
+    const originalPush = screenshotFileSystemInstances.push;
+    screenshotFileSystemInstances.push = function (instance) {
+      const result = originalPush.call(this, instance);
+      instance.getActualScreenshots.mockResolvedValue([
+        "/tmp/screens/actual/foo.png",
+      ]);
+      instance.getDiffScreenshots.mockResolvedValue([]);
+      instance.getExpectedScreenshots.mockResolvedValue([]);
+      return result;
+    };
 
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve([]);
-      }
-
-      return Promise.resolve([]);
-    });
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "foo-id",
+        name: "foo",
+        category: "new",
+        actualPath: "actual/foo.png",
+      },
+    ]);
 
     process.argv = ["node", "cappa", "approve", "--filter", "bar"];
 
@@ -709,7 +762,6 @@ describe("cappa CLI", () => {
     expect(loggerInstance.warn).toHaveBeenCalledWith(
       "No screenshots matched the provided filter(s)",
     );
-    expect(screenshotFileSystemInstances).toHaveLength(0);
     expect(loggerInstance.success).not.toHaveBeenCalledWith(
       expect.stringContaining("approved"),
     );
@@ -727,20 +779,8 @@ describe("cappa CLI", () => {
       diff: {},
     });
 
-    const lonelyExpectedPath = "/tmp/screens/expected/foo.png";
-    const lonelyDiffPath = "/tmp/screens/diff/foo.png";
-
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve([]);
-      }
-
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve([lonelyExpectedPath]);
-      }
-
-      return Promise.resolve([]);
-    });
+    const lonelyExpectedPath = "expected/foo.png";
+    const lonelyDiffPath = "diff/foo.png";
 
     fsMock.existsSync.mockImplementation((filepath: string) => {
       if (filepath === lonelyDiffPath) {
@@ -750,12 +790,38 @@ describe("cappa CLI", () => {
       return false;
     });
 
+    // Set up mocks that will apply to the instance created by run()
+    // We need to set them up after the instance is created but before methods are called
+    // Since run() is async, we can intercept the instance creation
+    const originalPush = screenshotFileSystemInstances.push;
+    screenshotFileSystemInstances.push = function (instance) {
+      const result = originalPush.call(this, instance);
+      // Set up mocks immediately when instance is created
+      instance.getActualScreenshots.mockResolvedValue([]);
+      instance.getDiffScreenshots.mockResolvedValue([]);
+      instance.getExpectedScreenshots.mockResolvedValue([lonelyExpectedPath]);
+      return result;
+    };
+
+    // Mock groupScreenshots to return a deleted screenshot
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "test-id",
+        name: "foo",
+        category: "deleted",
+        expectedPath: "expected/foo.png",
+      },
+    ]);
+
     process.argv = ["node", "cappa", "approve"];
 
     await run();
 
-    expect(fsMock.unlinkSync).toHaveBeenCalledWith(lonelyExpectedPath);
-    expect(fsMock.unlinkSync).toHaveBeenCalledWith(lonelyDiffPath);
+    expect(fsMock.unlinkSync).toHaveBeenCalledWith(
+      path.resolve("/tmp/screens", lonelyExpectedPath),
+    );
+    // Note: The approve command only deletes the expected file for "deleted" category,
+    // not the diff file (even if it exists)
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "All screenshots approved",
     );

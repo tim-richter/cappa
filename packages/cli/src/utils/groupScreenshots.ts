@@ -43,8 +43,7 @@ export const groupScreenshots = (
         ? path.relative(outputDir, diffScreenshot)
         : undefined,
       actualPath: path.relative(outputDir, screenshot),
-      approved: false,
-    });
+    } as Screenshot);
   });
 
   expectedScreenshots.forEach((expectedScreenshot) => {
@@ -71,10 +70,7 @@ export const groupScreenshots = (
       id: id,
       name: name,
       category: "deleted",
-      actualPath: undefined,
       expectedPath: path.relative(outputDir, expectedScreenshot),
-      diffPath: undefined,
-      approved: false,
     });
   });
 

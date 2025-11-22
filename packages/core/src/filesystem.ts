@@ -1,30 +1,43 @@
 import fs from "node:fs";
+import { glob } from "node:fs/promises";
 import path from "node:path";
 
 /**
  * Class for interacting with the local file system to store the screenshots.
  */
 export class ScreenshotFileSystem {
-  private readonly actualDir: string;
-  private readonly expectedDir: string;
-  private readonly diffDir: string;
+  private readonly actual: string;
+  private readonly expected: string;
+  private readonly diff: string;
 
   constructor(outputDir: string) {
-    this.actualDir = path.resolve(outputDir, "actual");
-    this.expectedDir = path.resolve(outputDir, "expected");
-    this.diffDir = path.resolve(outputDir, "diff");
+    this.actual = path.resolve(outputDir, "actual");
+    this.expected = path.resolve(outputDir, "expected");
+    this.diff = path.resolve(outputDir, "diff");
 
-    this.ensureParentDir(this.actualDir);
-    this.ensureParentDir(this.expectedDir);
-    this.ensureParentDir(this.diffDir);
+    this.ensureParentDir(this.actual);
+    this.ensureParentDir(this.expected);
+    this.ensureParentDir(this.diff);
   }
 
   clearActual() {
-    this.removeDir(this.actualDir);
+    this.removeDir(this.actual);
   }
 
   clearDiff() {
-    this.removeDir(this.diffDir);
+    this.removeDir(this.diff);
+  }
+
+  getActualScreenshots(): Promise<string[]> {
+    return Array.fromAsync(glob(path.resolve(this.actual, "**/*.png")));
+  }
+
+  getExpectedScreenshots(): Promise<string[]> {
+    return Array.fromAsync(glob(path.resolve(this.expected, "**/*.png")));
+  }
+
+  getDiffScreenshots(): Promise<string[]> {
+    return Array.fromAsync(glob(path.resolve(this.diff, "**/*.png")));
   }
 
   clearActualAndDiff() {
@@ -39,7 +52,7 @@ export class ScreenshotFileSystem {
    */
   approveFromActualPath(actualFilePath: string) {
     const actualAbsolute = this.resolveActualPath(actualFilePath);
-    const relativePath = path.relative(this.actualDir, actualAbsolute);
+    const relativePath = path.relative(this.actual, actualAbsolute);
 
     if (relativePath.startsWith("..")) {
       throw new Error(
@@ -67,9 +80,9 @@ export class ScreenshotFileSystem {
    * @returns The paths to the actual, expected, and diff screenshot files.
    */
   private approveRelative(relativePath: string) {
-    const actualPath = path.resolve(this.actualDir, relativePath);
-    const expectedPath = path.resolve(this.expectedDir, relativePath);
-    const diffPath = path.resolve(this.diffDir, relativePath);
+    const actualPath = path.resolve(this.actual, relativePath);
+    const expectedPath = path.resolve(this.expected, relativePath);
+    const diffPath = path.resolve(this.diff, relativePath);
 
     this.ensureParentDir(expectedPath);
 
@@ -112,42 +125,42 @@ export class ScreenshotFileSystem {
    * Get the actual directory path
    */
   getActualDir(): string {
-    return this.actualDir;
+    return this.actual;
   }
 
   /**
    * Get the expected directory path
    */
   getExpectedDir(): string {
-    return this.expectedDir;
+    return this.expected;
   }
 
   /**
    * Get the diff directory path
    */
   getDiffDir(): string {
-    return this.diffDir;
+    return this.diff;
   }
 
   /**
    * Get the path to an actual screenshot file
    */
   getActualFilePath(filename: string): string {
-    return path.resolve(this.actualDir, filename);
+    return path.resolve(this.actual, filename);
   }
 
   /**
    * Get the path to an expected screenshot file
    */
   getExpectedFilePath(filename: string): string {
-    return path.resolve(this.expectedDir, filename);
+    return path.resolve(this.expected, filename);
   }
 
   /**
    * Get the path to a diff screenshot file
    */
   getDiffFilePath(filename: string): string {
-    return path.resolve(this.diffDir, filename);
+    return path.resolve(this.diff, filename);
   }
 
   /**
@@ -197,6 +210,18 @@ export class ScreenshotFileSystem {
       return filePath;
     }
 
-    return path.resolve(this.actualDir, filePath);
+    return path.resolve(this.actual, filePath);
+  }
+
+  getRelativePath(directory: "actual" | "expected" | "diff", filePath: string) {
+    const relativePath = path.relative(this[directory], filePath);
+
+    if (relativePath.startsWith("..")) {
+      throw new Error(
+        `Cannot resolve relative path outside of ${directory} directory: ${filePath}`,
+      );
+    }
+
+    return relativePath;
   }
 }

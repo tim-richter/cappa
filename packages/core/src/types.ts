@@ -138,15 +138,34 @@ export type ScreenshotOptions = ScreenshotSettings & {
   variants?: ScreenshotVariant[];
 };
 
-export interface Screenshot {
+export type NewScreenshot = {
+  actualPath: string;
+  category: "new";
+};
+
+export type DeletedScreenshot = {
+  category: "deleted";
+  expectedPath: string;
+};
+
+export type ChangedScreenshot = {
+  category: "changed";
+  diffPath: string;
+  actualPath: string;
+  expectedPath: string;
+};
+
+export type PassedScreenshot = {
+  category: "passed";
+  actualPath: string;
+  expectedPath: string;
+};
+
+export type Screenshot = {
   id: string;
   name: string;
-  category: "new" | "deleted" | "changed" | "passed";
-  actualPath?: string;
-  expectedPath?: string;
-  diffPath?: string;
   approved?: boolean;
-}
+} & (NewScreenshot | DeletedScreenshot | ChangedScreenshot | PassedScreenshot);
 
 export type FailedScreenshot = Screenshot & {
   /**
