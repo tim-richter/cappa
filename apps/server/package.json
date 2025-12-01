@@ -1,6 +1,6 @@
 {
   "name": "@cappa/server",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "type": "module",
   "license": "MIT",
   "author": "Tim Richter",

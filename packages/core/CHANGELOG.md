@@ -1,5 +1,13 @@
 # @cappa/core
 
+## 0.4.3
+
+### Patch Changes
+
+- 365290f: fix: package files export
+- Updated dependencies [365290f]
+  - @cappa/logger@0.0.8
+
 ## 0.4.2
 
 ### Patch Changes
