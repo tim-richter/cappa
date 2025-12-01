@@ -9,6 +9,9 @@
     "type": "git",
     "url": "https://github.com/tim-richter/cappa.git"
   },
+  "files": [
+    "dist"
+  ],
   "license": "MIT",
   "author": "Tim Richter",
   "type": "module",
