@@ -10,15 +10,15 @@ catalog:
   '@types/node': 24.9.2
   '@types/react': 19.2.2
   '@types/react-dom': 19.2.2
-  '@vitest/coverage-v8': 4.0.6
-  '@vitest/ui': 4.0.6
+  '@vitest/coverage-v8': 4.0.15
+  '@vitest/ui': 4.0.15
   react: 19.2.0
   react-dom: 19.2.0
   tailwindcss: 4.1.16
   tsdown: 0.15.12
   tsup: 8.5.0
   typescript: 5.9.3
-  vitest: 4.0.6
+  vitest: 4.0.15
   '@arethetypeswrong/cli': 0.18.2
 
 onlyBuiltDependencies:
