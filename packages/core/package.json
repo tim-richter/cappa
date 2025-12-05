@@ -37,21 +37,21 @@
     "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
-    "@blazediff/core": "^1.6.0",
+    "@blazediff/core": "^1.7.0",
     "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
-    "playwright-core": "^1.56.1",
+    "playwright-core": "^1.57.0",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
-    "vitest": "catalog:",
-    "@arethetypeswrong/cli": "catalog:"
+    "vitest": "catalog:"
   },
   "keywords": [
     "screenshot",
