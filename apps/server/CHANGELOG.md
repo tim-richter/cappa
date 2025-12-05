@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.2.7
+
+### Patch Changes
+
+- e59bfe7: deps: upgrade dependencies
+- Updated dependencies [e59bfe7]
+  - @cappa/core@0.4.4
+
 ## 0.2.6
 
 ### Patch Changes
