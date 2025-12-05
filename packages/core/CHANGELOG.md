@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.4.4
+
+### Patch Changes
+
+- e59bfe7: deps: upgrade dependencies
+
 ## 0.4.3
 
 ### Patch Changes
