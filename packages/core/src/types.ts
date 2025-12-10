@@ -64,6 +64,32 @@ export interface DiffConfig {
 }
 
 /**
+ * Configuration for the comparison of images using GMSD
+ */
+export interface DiffConfigGMSD {
+  /**
+   * Matching threshold (0-1). Lower = more sensitive
+   * Default = 0.1
+   *
+   * This affects how similar a pixel needs to be in the reference image to be considered the same.
+   */
+  threshold?: number;
+  /**
+   * Downsample factor:
+   * - 0: full resolution (no downsampling)
+   * - 1: 2x downsample using conv2 + subsampling (MATLAB-compatible)
+   * @default 0
+   */
+  downsample?: 0 | 1;
+  /**
+   * Stability constant to prevent division by zero.
+   * Tuned for 8-bit images (0-255 range).
+   * @default 170 (from original GMSD MATLAB implementation)
+   */
+  c?: number;
+}
+
+/**
  * Config used in `cappa.config.ts`
  *
  * @example
@@ -80,7 +106,7 @@ export type UserConfig = {
   /**
    * Configuration for the comparison of images
    */
-  diff?: DiffConfig;
+  diff?: ({ type: "pixel" } & DiffConfig) | ({ type: "gmsd" } & DiffConfigGMSD);
   /**
    * The number of times to retry a screenshot if it fails
    */

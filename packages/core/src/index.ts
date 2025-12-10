@@ -1,4 +1,5 @@
-import { compareImages, imagesMatch } from "./compare";
+import { compareImagesGMSD, imagesMatchGMSD } from "./compare/gmsd";
+import { compareImages, imagesMatch } from "./compare/pixel";
 import { defineConfig } from "./config";
 import { ScreenshotFileSystem } from "./filesystem";
 import type { Plugin, PluginDef, PluginFunction } from "./plugin";
@@ -29,7 +30,9 @@ export {
   ScreenshotFileSystem,
   defineConfig,
   compareImages,
+  compareImagesGMSD,
   imagesMatch,
+  imagesMatchGMSD,
   type PluginFunction,
   type Plugin,
   type PluginDef,

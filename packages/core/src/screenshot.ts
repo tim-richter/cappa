@@ -13,7 +13,7 @@ import {
   type CompareResult,
   compareImages,
   createDiffSizePngImage,
-} from "./compare";
+} from "./compare/pixel";
 import { ScreenshotFileSystem } from "./filesystem";
 import type {
   DiffConfig,

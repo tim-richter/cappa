@@ -8,7 +8,7 @@ import {
   compareImages,
   imagesMatch,
   saveDiffImage,
-} from "./compare";
+} from "./pixel";
 
 // Test utilities
 function createSolidColorPNG(

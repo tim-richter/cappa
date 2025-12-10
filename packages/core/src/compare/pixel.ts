@@ -3,7 +3,7 @@ import blazediff from "@blazediff/core";
 import type { BlazeDiffOptions } from "@blazediff/types";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "pngjs";
-import type { DiffConfig } from "./types";
+import type { DiffConfig } from "../types";
 
 export type CompareOptions = BlazeDiffOptions;
 

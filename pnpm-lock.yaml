@@ -382,6 +382,9 @@ importers:
       '@blazediff/core':
         specifier: ^1.7.0
         version: 1.7.0
+      '@blazediff/gmsd':
+        specifier: ^1.7.0
+        version: 1.7.0
       '@blazediff/types':
         specifier: ^1.4.1
         version: 1.4.1
@@ -761,6 +764,9 @@ packages:
 
   '@blazediff/core@1.7.0':
     resolution: {integrity: sha512-NZ3c5h9wWR945soE7hjJBcllcCAZsIZ76Z7eKV/xFKQbHjcwFJr2fX6B4ctPr2vjoRqWxeO8AltjbgVlEZeeNw==}
+
+  '@blazediff/gmsd@1.7.0':
+    resolution: {integrity: sha512-JW5cxM48h1rP3kKUuIk/E8M/q92/oZp0bKkB45HOwFH/KgJ2Jj0+BwhVj5ThyrAKsmCUHhS8eevuJoZUYOwJrw==}
 
   '@blazediff/types@1.4.1':
     resolution: {integrity: sha512-c5se1YZMvdJiF/M/kPOFkw/E1BbfV6U4KsE6QcJiM9dVL1ix4ze/EmLIYvHwOX54kzxi2iWL0BZgMOlfWQRJ2A==}
@@ -7032,6 +7038,8 @@ snapshots:
     optional: true
 
   '@blazediff/core@1.7.0': {}
+
+  '@blazediff/gmsd@1.7.0': {}
 
   '@blazediff/types@1.4.1': {}
 
