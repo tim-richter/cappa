@@ -1,7 +1,7 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { type PackerOptions, PNG as PngjsPNG } from "pngjs";
 import type { MetadataEntries, PngWithMetadata } from "./types";
-import { injectTextMetadata, extractTextMetadata } from "./util";
+import { extractTextMetadata, injectTextMetadata } from "./util";
 
 /**
  * A wrapper around `pngjs` that adds support for reading and writing

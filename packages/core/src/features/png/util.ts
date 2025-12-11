@@ -79,7 +79,6 @@ export function createTextChunk(key: string, value: string) {
   return Buffer.concat([lengthBuffer, typeBuffer, data, crcBuffer]);
 }
 
-
 /**
  * Calculates the CRC32 checksum for a buffer.
  * Used to ensure data integrity.
@@ -88,7 +87,8 @@ export function crc32(buffer: Buffer) {
   let crc = 0 ^ -1;
 
   for (let i = 0; i < buffer.length; i++) {
-    crc = (crc >>> 8) ^ crcTable[(crc ^ buffer[i]) & 0xff];
+    // biome-ignore lint/style/noNonNullAssertion: we know the index is valid
+    crc = (crc >>> 8) ^ crcTable[(crc ^ buffer[i]!) & 0xff]!;
   }
 
   return (crc ^ -1) >>> 0;
@@ -106,7 +106,6 @@ function findIendChunk(buffer: Buffer): ParsedChunk | undefined {
 
   return undefined;
 }
-
 
 /**
  * Inserts metadata chunks into a PNG buffer.
