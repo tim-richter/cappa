@@ -16,7 +16,7 @@ catalog:
   react: 19.2.3
   react-dom: 19.2.3
   tailwindcss: 4.1.18
-  tsdown: 0.15.12
+  tsdown: 0.18.4
   tsup: 8.5.1
   typescript: 5.9.3
   vitest: 4.0.16
