@@ -74,7 +74,7 @@
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "playwright-core": "^1.57.0",
-    "storybook": "^10.1.4",
+    "storybook": "^10.1.11",
     "tsup": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
