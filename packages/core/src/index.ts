@@ -13,6 +13,8 @@ import type {
   ChangedScreenshot,
   ConfigEnv,
   DeletedScreenshot,
+  DiffConfig,
+  DiffConfigGMSD,
   FailedScreenshot,
   NewScreenshot,
   PassedScreenshot,
@@ -53,4 +55,6 @@ export {
   type ScreenshotVariantCaptureDetails,
   type ScreenshotCaptureExtras,
   type Viewport,
+  type DiffConfig,
+  type DiffConfigGMSD,
 };

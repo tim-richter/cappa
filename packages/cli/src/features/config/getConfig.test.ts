@@ -30,6 +30,7 @@ test("return Config when config is set with defineConfig", async () => {
     concurrency: 2,
     logConsoleEvents: true,
     diff: {
+      type: "pixel",
       threshold: 0.1,
       includeAA: false,
       fastBufferCheck: true,
@@ -79,6 +80,7 @@ test("return Config when config is a function", async () => {
     concurrency: 1,
     logConsoleEvents: true,
     diff: {
+      type: "pixel",
       threshold: 0.1,
       includeAA: false,
       fastBufferCheck: true,
@@ -109,6 +111,7 @@ test("return Config when config is a promise", async () => {
     concurrency: 4,
     logConsoleEvents: true,
     diff: {
+      type: "pixel",
       threshold: 0.1,
       includeAA: false,
       fastBufferCheck: true,
@@ -151,6 +154,7 @@ test("passes environment variables to config functions", async () => {
     concurrency: 1,
     logConsoleEvents: true,
     diff: {
+      type: "pixel",
       threshold: 0.1,
       includeAA: false,
       fastBufferCheck: true,
