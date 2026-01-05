@@ -1,5 +1,14 @@
 # @cappa/cli
 
+## 0.4.4
+
+### Patch Changes
+
+- c3b2cfc: fix: new diff types
+- Updated dependencies [c3b2cfc]
+  - @cappa/core@0.4.5
+  - @cappa/server@0.2.8
+
 ## 0.4.3
 
 ### Patch Changes

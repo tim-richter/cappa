@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.4.5
+
+### Patch Changes
+
+- c3b2cfc: fix: new diff types
+
 ## 0.4.4
 
 ### Patch Changes
