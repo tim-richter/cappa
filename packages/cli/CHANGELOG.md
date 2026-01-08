@@ -1,5 +1,11 @@
 # @cappa/cli
 
+## 0.4.5
+
+### Patch Changes
+
+- c248f15: fix(cli): cjs import
+
 ## 0.4.4
 
 ### Patch Changes
