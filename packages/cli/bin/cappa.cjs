@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import("../dist/index.js").then(({ run }) => {
+import("../dist/index.cjs").then(({ run }) => {
   process.title = "Cappa";
   run();
 });
