@@ -8,7 +8,7 @@ catalog:
   '@arethetypeswrong/cli': 0.18.2
   '@tailwindcss/postcss': 4.1.16
   '@tailwindcss/vite': 4.1.18
-  '@types/node': 24.10.1
+  '@types/node': 24.10.7
   '@types/react': 19.2.7
   '@types/react-dom': 19.2.3
   '@vitest/coverage-v8': 4.0.16
