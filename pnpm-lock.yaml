@@ -381,7 +381,7 @@ importers:
     dependencies:
       '@blazediff/core':
         specifier: ^1.9.0
-        version: 1.9.0
+        version: 1.9.1
       '@blazediff/gmsd':
         specifier: ^1.7.0
         version: 1.7.0
@@ -762,8 +762,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@blazediff/core@1.9.0':
-    resolution: {integrity: sha512-4W6TNzvD5KyUWiAHT+MyAg79FWe8rv493nfvWKeWox67lbUHTiTy40n7rmg6cQjhu5hflCDw73FExgmv22IgNQ==}
+  '@blazediff/core@1.9.1':
+    resolution: {integrity: sha512-ehg3jIkYKulZh+8om/O25vkvSsXXwC+skXmyA87FFx6A/45eqOkZsBltMw/TVteb0mloiGT8oGRTcjRAz66zaA==}
 
   '@blazediff/gmsd@1.7.0':
     resolution: {integrity: sha512-JW5cxM48h1rP3kKUuIk/E8M/q92/oZp0bKkB45HOwFH/KgJ2Jj0+BwhVj5ThyrAKsmCUHhS8eevuJoZUYOwJrw==}
@@ -7496,7 +7496,7 @@ snapshots:
   '@biomejs/cli-win32-x64@2.3.11':
     optional: true
 
-  '@blazediff/core@1.9.0': {}
+  '@blazediff/core@1.9.1': {}
 
   '@blazediff/gmsd@1.7.0': {}
 
