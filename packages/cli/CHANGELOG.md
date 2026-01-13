@@ -1,5 +1,18 @@
 # @cappa/cli
 
+## 0.5.0
+
+### Minor Changes
+
+- 13d5697: feat(cli): add more detailed error report
+
+### Patch Changes
+
+- 52922a9: deps: upgrade dependencies
+- Updated dependencies [52922a9]
+  - @cappa/core@0.4.6
+  - @cappa/server@0.2.9
+
 ## 0.4.5
 
 ### Patch Changes
