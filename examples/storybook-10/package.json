@@ -33,10 +33,10 @@
     "@storybook/addon-vitest": "^10.0.2",
     "@storybook/react-vite": "^10.1.11",
     "@types/node": "^24.10.1",
-    "@types/react": "^19.2.7",
+    "@types/react": "^19.2.8",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.2",
-    "@vitest/browser-playwright": "^4.0.16",
+    "@vitest/browser-playwright": "^4.0.17",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -47,7 +47,7 @@
     "storybook": "^10.1.11",
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.48.1",
-    "vite": "7.2.6",
+    "vite": "7.3.1",
     "vitest": "catalog:"
   }
 }

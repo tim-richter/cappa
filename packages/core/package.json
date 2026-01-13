@@ -37,8 +37,8 @@
     "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
-    "@blazediff/core": "^1.9.0",
-    "@blazediff/gmsd": "^1.7.0",
+    "@blazediff/core": "^1.9.1",
+    "@blazediff/gmsd": "^1.7.1",
     "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
     "playwright-core": "^1.57.0",

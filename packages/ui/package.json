@@ -11,7 +11,7 @@
   },
   "scripts": {},
   "dependencies": {
-    "@mantine/hooks": "^8.3.9",
+    "@mantine/hooks": "^8.3.12",
     "@radix-ui/react-dialog": "^1.1.15",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-separator": "^1.1.8",
@@ -30,7 +30,7 @@
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
-    "@turbo/gen": "2.7.3",
+    "@turbo/gen": "2.7.4",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
