@@ -1,5 +1,12 @@
 # @cappa/server
 
+## 0.2.9
+
+### Patch Changes
+
+- Updated dependencies [52922a9]
+  - @cappa/core@0.4.6
+
 ## 0.2.8
 
 ### Patch Changes
