@@ -145,11 +145,15 @@ vi.mock("chalk", () => ({
     red: identity,
     green: identity,
     blue: identity,
+    bold: identity,
+    dim: identity,
   },
   yellow: identity,
   red: identity,
   green: identity,
   blue: identity,
+  bold: identity,
+  dim: identity,
 }));
 
 let run: () => Promise<void>;

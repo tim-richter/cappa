@@ -6,6 +6,7 @@ import {
   ScreenshotTool,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
+import chalk from "chalk";
 import { getConfig } from "../features/config";
 import { groupScreenshots } from "../utils/groupScreenshots";
 
@@ -14,6 +15,16 @@ type PluginCaptureResult = {
   skipped?: boolean;
   error?: unknown;
   filepath?: string;
+  storyId?: string;
+  storyName?: string;
+  [key: string]: unknown;
+};
+
+type FailedScreenshotInfo = {
+  taskId: string;
+  taskUrl: string;
+  result: PluginCaptureResult;
+  pluginName: string;
 };
 
 const isObject = (value: unknown): value is Record<string, unknown> =>
@@ -109,6 +120,58 @@ async function executeOnFailCallback(
   }
 }
 
+function generateFailureReportMessage(
+  failedScreenshots: FailedScreenshotInfo[],
+): string {
+  if (failedScreenshots.length === 0) {
+    return "";
+  }
+
+  const lines: string[] = [];
+  lines.push(`${chalk.red(`Total failures: ${failedScreenshots.length}`)}\n`);
+
+  // Group by plugin
+  const byPlugin = new Map<string, FailedScreenshotInfo[]>();
+  for (const failed of failedScreenshots) {
+    const pluginFailures = byPlugin.get(failed.pluginName);
+    if (pluginFailures) {
+      pluginFailures.push(failed);
+    } else {
+      byPlugin.set(failed.pluginName, [failed]);
+    }
+  }
+
+  for (const [pluginName, failures] of byPlugin.entries()) {
+    lines.push(`\n${chalk.bold(`Plugin: ${pluginName}`)}`);
+
+    for (const failed of failures) {
+      lines.push(`\n  ${chalk.dim("Task ID:")} ${failed.taskId}`);
+
+      const result = failed.result;
+      if (result.storyName) {
+        lines.push(`  ${chalk.dim("Story:")} ${result.storyName}`);
+      }
+      if (result.error) {
+        const errorMsg =
+          typeof result.error === "string"
+            ? result.error
+            : result.error instanceof Error
+              ? result.error.message
+              : String(result.error);
+        lines.push(`  ${chalk.red("Error:")} ${errorMsg}`);
+      }
+      if (result.success === false) {
+        lines.push(`  ${chalk.red("Status:")} Failed (success: false)`);
+      }
+      if (!result.filepath && result.skipped !== true) {
+        lines.push(`  ${chalk.red("Status:")} Failed (no filepath generated)`);
+      }
+    }
+  }
+
+  return lines.join("\n");
+}
+
 export const capture = async (runOnFail: boolean): Promise<void> => {
   const logger = getLogger();
 
@@ -129,6 +192,7 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
 
   let captureError: unknown;
   let hasScreenshotFailure = false;
+  const failedScreenshots: FailedScreenshotInfo[] = [];
 
   try {
     await screenshotTool.init();
@@ -165,7 +229,10 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
       const allResults = await Promise.all(
         chunks.map(async (chunk, chunkIndex) => {
           const page = screenshotTool.getPageFromPool(chunkIndex);
-          const chunkResults = [];
+          const chunkResults: Array<{
+            result: PluginCaptureResult;
+            task: (typeof tasks)[number];
+          }> = [];
           let context: any;
 
           // Initialize page if plugin has initPage method
@@ -181,11 +248,17 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
               screenshotTool,
               context,
             );
-            chunkResults.push(result);
+            chunkResults.push({ result, task });
 
             if (didScreenshotFail(result)) {
               pluginHasFailure = true;
               hasScreenshotFailure = true;
+              failedScreenshots.push({
+                taskId: task.id,
+                taskUrl: task.url,
+                result: result as PluginCaptureResult,
+                pluginName: plugin.name,
+              });
             }
           }
 
@@ -193,7 +266,7 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
         }),
       );
 
-      const results = allResults.flat();
+      const results = allResults.flat().map((r) => r.result);
       if (pluginHasFailure) {
         logger.error(
           `Plugin ${plugin.name} completed with failures: ${results.length} results`,
@@ -218,7 +291,14 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
   }
 
   if (hasScreenshotFailure) {
-    logger.error("One or more screenshots failed. See logs above for details.");
+    const reportMessage = generateFailureReportMessage(failedScreenshots);
+    logger.box({
+      title: "Failed Screenshots",
+      message: reportMessage,
+    });
+    logger.error(
+      "One or more screenshots failed. See report above for details.",
+    );
     process.exit(1);
   } else {
     logger.success("All plugins completed successfully");
