@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.4.7
+
+### Patch Changes
+
+- 5fb1cb5: fix: move playwright-core into peer deps
+
 ## 0.4.6
 
 ### Patch Changes
