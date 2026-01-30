@@ -36,18 +36,21 @@
     "tsc": "tsc",
     "attw": "attw --pack --profile node16 ."
   },
+  "peerDependencies": {
+    "playwright-core": "^1.55.0"
+  },
   "dependencies": {
     "@blazediff/core": "^1.9.1",
     "@blazediff/gmsd": "^1.7.1",
     "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
-    "playwright-core": "^1.57.0",
     "pngjs": "^7.0.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
+    "playwright-core": "^1.57.0",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
