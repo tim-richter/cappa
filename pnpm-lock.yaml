@@ -64,7 +64,7 @@ importers:
         version: 24.10.7
       turbo:
         specifier: ^2.7.4
-        version: 2.7.4
+        version: 2.8.3
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -543,8 +543,8 @@ importers:
         specifier: ^4.1.18
         version: 4.1.18
       '@turbo/gen':
-        specifier: 2.7.4
-        version: 2.7.4(@swc/core@1.15.8(@swc/helpers@0.5.18))(@types/node@24.10.7)(typescript@5.9.3)
+        specifier: 2.8.3
+        version: 2.8.3(@swc/core@1.15.8(@swc/helpers@0.5.18))(@types/node@24.10.7)(typescript@5.9.3)
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.7
@@ -786,6 +786,7 @@ packages:
 
   '@blazediff/types@1.4.1':
     resolution: {integrity: sha512-c5se1YZMvdJiF/M/kPOFkw/E1BbfV6U4KsE6QcJiM9dVL1ix4ze/EmLIYvHwOX54kzxi2iWL0BZgMOlfWQRJ2A==}
+    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@braidai/lang@1.1.2':
     resolution: {integrity: sha512-qBcknbBufNHlui137Hft8xauQMTZDKdophmLFv05r2eNmdIv/MlPuP4TdUknHG68UdWLgVZwgxVe735HzJNIwA==}
@@ -3077,12 +3078,12 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  '@turbo/gen@2.7.4':
-    resolution: {integrity: sha512-izrkJuawtMU/Pp1457+wJ8W+DDAEu3hiYKPdJyKzYtFHMhuTL8UMLsNQ2fyjRzsJWiG4493oI2UAdniZmB7nPg==}
+  '@turbo/gen@2.8.3':
+    resolution: {integrity: sha512-UQP6zMJPfnJKKFO7skLcTJWBFHG+XdMnXszliFXg/TEhd53CuVYmIXCN23n7UoMnxRBSsq0LB4sUM9JgsPewSQ==}
     hasBin: true
 
-  '@turbo/workspaces@2.7.4':
-    resolution: {integrity: sha512-1jAzZzi2MkmSKHMm7SSjaADg4jPjy6tRqAZBqETdyQqFlIvfrM1uquaqaK9BPgBW3QeJlj1hIh+Eu58Xsocu9w==}
+  '@turbo/workspaces@2.8.3':
+    resolution: {integrity: sha512-p31wsDQ2DSd+TCld9xIqTG4pNA+we6/+AAZ9iCtpITRfUz3/iO8wzcz0fPfya3ostEj2B4UksLAXF570VAeO5w==}
     hasBin: true
 
   '@tybys/wasm-util@0.10.1':
@@ -4528,11 +4529,13 @@ packages:
 
   glob@10.5.0:
     resolution: {integrity: sha512-DfXN8DfhJ7NH3Oe7cFmu3NCu1wKbkReJ8TorzSAFbSKrlNaQSKfIzqYqVY8zlbs2NLBbWpRiU52GX2PbaBVNkg==}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@11.1.0:
     resolution: {integrity: sha512-vuNwKSaKiqm7g0THUBu2x7ckSs3XJLXE+2ssL7/MfTGPLLcrJQ/4Uq1CjPTtO5cCIiRxqvN6Twy1qOwhL0Xjcw==}
     engines: {node: 20 || >=22}
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
     hasBin: true
 
   glob@13.0.0:
@@ -4541,7 +4544,7 @@ packages:
 
   glob@7.2.3:
     resolution: {integrity: sha512-nFR0zLpU2YCaRxwoCJvL6UvCH2JFyFVIvwTLsIf21AuHlMskA1hhTdk+LlYJtOlYt9v6dvszD2BGRqBL+iQK9Q==}
-    deprecated: Glob versions prior to v9 are no longer supported
+    deprecated: Old versions of glob are not supported, and contain widely publicized security vulnerabilities, which have been fixed in the current version. Please update. Support for old versions may be purchased (at exorbitant rates) by contacting i@izs.me
 
   globals@14.0.0:
     resolution: {integrity: sha512-oahGvuMGQlPw/ivIYBjVSrWAfWLBeku5tpPE2fOPLi+WHffIWbuh2tCjhyQhTBPMf5E9jDEH4FOmTYgYwbKwtQ==}
@@ -4777,8 +4780,8 @@ packages:
     resolution: {integrity: sha512-JG3eIAj5V9CwcGvuOmoo6LB9kbAYT8HXffUl6memuszlwDC/qvFAJw49XJ5NROSFNPxp3iQg1GqkFhaY/CR0IA==}
     engines: {node: '>=8.0.0'}
 
-  inquirer@8.2.4:
-    resolution: {integrity: sha512-nn4F01dxU8VeKfq192IjLsxu0/OmMZ4Lg3xKAns148rCaXP6ntAoEkVYZThWjwON8AlzdZZi6oqnhNbxUG9hVg==}
+  inquirer@8.2.7:
+    resolution: {integrity: sha512-UjOaSel/iddGZJ5xP/Eixh6dY1XghiBw4XK13rCCIJcJfyhhoul/7KhLLUGtebEj6GDYM6Vnx/mVsjx2L/mFIA==}
     engines: {node: '>=12.0.0'}
 
   ip-address@10.1.0:
@@ -4934,10 +4937,6 @@ packages:
 
   js-yaml@3.14.2:
     resolution: {integrity: sha512-PMSmkqxr106Xa156c2M265Z+FTrPl+oxd/rgOQy2tijQeK5TxQ43psO1ZCwhVOSdnn+RzkzlRz/eY4BgJBYVpg==}
-    hasBin: true
-
-  js-yaml@4.1.0:
-    resolution: {integrity: sha512-wpxZs9NoxZaJESJGIZTyDEaYpl0FKSA+FB9aJiyemKhMwkxQg63h4T1KJgUGHpTqPDNRcmmYLugrRjJlBtWvRA==}
     hasBin: true
 
   js-yaml@4.1.1:
@@ -6677,38 +6676,38 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  turbo-darwin-64@2.7.4:
-    resolution: {integrity: sha512-xDR30ltfkSsRfGzABBckvl1nz1cZ3ssTujvdj+TPwOweeDRvZ0e06t5DS0rmRBvyKpgGs42K/EK6Mn2qLlFY9A==}
+  turbo-darwin-64@2.8.3:
+    resolution: {integrity: sha512-4kXRLfcygLOeNcP6JquqRLmGB/ATjjfehiojL2dJkL7GFm3SPSXbq7oNj8UbD8XriYQ5hPaSuz59iF1ijPHkTw==}
     cpu: [x64]
     os: [darwin]
 
-  turbo-darwin-arm64@2.7.4:
-    resolution: {integrity: sha512-P7sjqXtOL/+nYWPvcDGWhi8wf8M8mZHHB8XEzw2VX7VJrS8IGHyJHGD1AYfDvhAEcr7pnk3gGifz3/xyhI655w==}
+  turbo-darwin-arm64@2.8.3:
+    resolution: {integrity: sha512-xF7uCeC0UY0Hrv/tqax0BMbFlVP1J/aRyeGQPZT4NjvIPj8gSPDgFhfkfz06DhUwDg5NgMo04uiSkAWE8WB/QQ==}
     cpu: [arm64]
     os: [darwin]
 
-  turbo-linux-64@2.7.4:
-    resolution: {integrity: sha512-GofFOxRO/IhG8BcPyMSSB3Y2+oKQotsaYbHxL9yD6JPb20/o35eo+zUSyazOtilAwDHnak5dorAJFoFU8MIg2A==}
+  turbo-linux-64@2.8.3:
+    resolution: {integrity: sha512-vxMDXwaOjweW/4etY7BxrXCSkvtwh0PbwVafyfT1Ww659SedUxd5rM3V2ZCmbwG8NiCfY7d6VtxyHx3Wh1GoZA==}
     cpu: [x64]
     os: [linux]
 
-  turbo-linux-arm64@2.7.4:
-    resolution: {integrity: sha512-+RQKgNjksVPxYAyAgmDV7w/1qj++qca+nSNTAOKGOfJiDtSvRKoci89oftJ6anGs00uamLKVEQ712TI/tfNAIw==}
+  turbo-linux-arm64@2.8.3:
+    resolution: {integrity: sha512-mQX7uYBZFkuPLLlKaNe9IjR1JIef4YvY8f21xFocvttXvdPebnq3PK1Zjzl9A1zun2BEuWNUwQIL8lgvN9Pm3Q==}
     cpu: [arm64]
     os: [linux]
 
-  turbo-windows-64@2.7.4:
-    resolution: {integrity: sha512-rfak1+g+ON3czs1mDYsCS4X74ZmK6gOgRQTXjDICtzvR4o61paqtgAYtNPofcVsMWeF4wvCajSeoAkkeAnQ1kg==}
+  turbo-windows-64@2.8.3:
+    resolution: {integrity: sha512-YLGEfppGxZj3VWcNOVa08h6ISsVKiG85aCAWosOKNUjb6yErWEuydv6/qImRJUI+tDLvDvW7BxopAkujRnWCrw==}
     cpu: [x64]
     os: [win32]
 
-  turbo-windows-arm64@2.7.4:
-    resolution: {integrity: sha512-1ZgBNjNRbDu/fPeqXuX9i26x3CJ/Y1gcwUpQ+Vp7kN9Un6RZ9kzs164f/knrjcu5E+szCRexVjRSJay1k5jApA==}
+  turbo-windows-arm64@2.8.3:
+    resolution: {integrity: sha512-afTUGKBRmOJU1smQSBnFGcbq0iabAPwh1uXu2BVk7BREg30/1gMnJh9DFEQTah+UD3n3ru8V55J83RQNFfqoyw==}
     cpu: [arm64]
     os: [win32]
 
-  turbo@2.7.4:
-    resolution: {integrity: sha512-bkO4AddmDishzJB2ze7aYYPaejMoJVfS0XnaR6RCdXFOY8JGJfQE+l9fKiV7uDPa5Ut44gmOWJL3894CIMeH9g==}
+  turbo@2.8.3:
+    resolution: {integrity: sha512-8Osxz5Tu/Dw2kb31EAY+nhq/YZ3wzmQSmYa1nIArqxgCAldxv9TPlrAiaBUDVnKA4aiPn0OFBD1ACcpc5VFOAQ==}
     hasBin: true
 
   tw-animate-css@1.4.0:
@@ -9653,12 +9652,12 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@turbo/gen@2.7.4(@swc/core@1.15.8(@swc/helpers@0.5.18))(@types/node@24.10.7)(typescript@5.9.3)':
+  '@turbo/gen@2.8.3(@swc/core@1.15.8(@swc/helpers@0.5.18))(@types/node@24.10.7)(typescript@5.9.3)':
     dependencies:
-      '@turbo/workspaces': 2.7.4
+      '@turbo/workspaces': 2.8.3(@types/node@24.10.7)
       commander: 10.0.0
       fs-extra: 10.1.0
-      inquirer: 8.2.4
+      inquirer: 8.2.7(@types/node@24.10.7)
       minimatch: 9.0.0
       node-plop: 0.26.3
       picocolors: 1.0.1
@@ -9673,19 +9672,21 @@ snapshots:
       - supports-color
       - typescript
 
-  '@turbo/workspaces@2.7.4':
+  '@turbo/workspaces@2.8.3(@types/node@24.10.7)':
     dependencies:
       commander: 10.0.0
       execa: 5.1.1
       fast-glob: 3.2.12
       fs-extra: 10.1.0
       gradient-string: 2.0.1
-      inquirer: 8.2.4
-      js-yaml: 4.1.0
+      inquirer: 8.2.7(@types/node@24.10.7)
+      js-yaml: 4.1.1
       ora: 4.1.1
       picocolors: 1.0.1
       semver: 7.6.2
       update-check: 1.5.4
+    transitivePeerDependencies:
+      - '@types/node'
 
   '@tybys/wasm-util@0.10.1':
     dependencies:
@@ -9760,7 +9761,7 @@ snapshots:
 
   '@types/minimatch@6.0.0':
     dependencies:
-      minimatch: 9.0.0
+      minimatch: 10.1.1
 
   '@types/ms@2.1.0': {}
 
@@ -11962,13 +11963,13 @@ snapshots:
       strip-ansi: 6.0.1
       through: 2.3.8
 
-  inquirer@8.2.4:
+  inquirer@8.2.7(@types/node@24.10.7):
     dependencies:
+      '@inquirer/external-editor': 1.0.3(@types/node@24.10.7)
       ansi-escapes: 4.3.2
       chalk: 4.1.2
       cli-cursor: 3.1.0
       cli-width: 3.0.0
-      external-editor: 3.1.0
       figures: 3.2.0
       lodash: 4.17.21
       mute-stream: 0.0.8
@@ -11978,7 +11979,9 @@ snapshots:
       string-width: 4.2.3
       strip-ansi: 6.0.1
       through: 2.3.8
-      wrap-ansi: 7.0.0
+      wrap-ansi: 6.2.0
+    transitivePeerDependencies:
+      - '@types/node'
 
   ip-address@10.1.0: {}
 
@@ -12104,10 +12107,6 @@ snapshots:
     dependencies:
       argparse: 1.0.10
       esprima: 4.0.1
-
-  js-yaml@4.1.0:
-    dependencies:
-      argparse: 2.0.1
 
   js-yaml@4.1.1:
     dependencies:
@@ -14344,32 +14343,32 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  turbo-darwin-64@2.7.4:
+  turbo-darwin-64@2.8.3:
     optional: true
 
-  turbo-darwin-arm64@2.7.4:
+  turbo-darwin-arm64@2.8.3:
     optional: true
 
-  turbo-linux-64@2.7.4:
+  turbo-linux-64@2.8.3:
     optional: true
 
-  turbo-linux-arm64@2.7.4:
+  turbo-linux-arm64@2.8.3:
     optional: true
 
-  turbo-windows-64@2.7.4:
+  turbo-windows-64@2.8.3:
     optional: true
 
-  turbo-windows-arm64@2.7.4:
+  turbo-windows-arm64@2.8.3:
     optional: true
 
-  turbo@2.7.4:
+  turbo@2.8.3:
     optionalDependencies:
-      turbo-darwin-64: 2.7.4
-      turbo-darwin-arm64: 2.7.4
-      turbo-linux-64: 2.7.4
-      turbo-linux-arm64: 2.7.4
-      turbo-windows-64: 2.7.4
-      turbo-windows-arm64: 2.7.4
+      turbo-darwin-64: 2.8.3
+      turbo-darwin-arm64: 2.8.3
+      turbo-linux-64: 2.8.3
+      turbo-linux-arm64: 2.8.3
+      turbo-windows-64: 2.8.3
+      turbo-windows-arm64: 2.8.3
 
   tw-animate-css@1.4.0: {}
 
