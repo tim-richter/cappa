@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.2.11
+
+### Patch Changes
+
+- 0f15cef: fix: fastify vuln
+
 ## 0.2.10
 
 ### Patch Changes
