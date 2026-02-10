@@ -2,6 +2,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { PNG } from "./features/png/png";
 import { ScreenshotFileSystem } from "./filesystem";
 
 let tempDir: string;
@@ -60,6 +61,44 @@ describe("ScreenshotFileSystem", () => {
       actualPath,
       expectedPath,
       diffPath,
+    });
+  });
+
+  it("copies diff metadata onto approved expected screenshots", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+
+    const actualPath = path.join(tempDir, "actual", "component", "card.png");
+    const diffPath = path.join(tempDir, "diff", "component", "card.png");
+    const expectedPath = path.join(
+      tempDir,
+      "expected",
+      "component",
+      "card.png",
+    );
+
+    fs.mkdirSync(path.dirname(actualPath), { recursive: true });
+    fs.mkdirSync(path.dirname(diffPath), { recursive: true });
+
+    const actualPng = PNG.create(1, 1);
+    actualPng.data[0] = 10;
+    actualPng.data[1] = 20;
+    actualPng.data[2] = 30;
+    actualPng.data[3] = 255;
+
+    fs.writeFileSync(actualPath, actualPng.toBuffer());
+
+    const diffPng = PNG.create(1, 1);
+    diffPng.setMetadata("cappa.diff.algorithm", "pixel");
+    diffPng.setMetadata("cappa.diff.threshold", "0.2");
+    fs.writeFileSync(diffPath, diffPng.toBuffer());
+
+    fileSystem.approveFromActualPath(actualPath);
+
+    const expectedPng = await PNG.load(expectedPath);
+
+    expect(expectedPng.metadata).toMatchObject({
+      "cappa.diff.algorithm": "pixel",
+      "cappa.diff.threshold": "0.2",
     });
   });
 

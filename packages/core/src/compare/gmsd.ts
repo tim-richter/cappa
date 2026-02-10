@@ -2,7 +2,7 @@ import fs from "node:fs";
 import gmsd, { type GmsdOptions } from "@blazediff/gmsd";
 import type { BlazeDiffOptions } from "@blazediff/types";
 import { getLogger } from "@cappa/logger";
-import { PNG } from "pngjs";
+import { PNG } from "../features/png/png";
 import type { DiffConfigGMSD } from "../types";
 
 export type CompareOptions = BlazeDiffOptions;
@@ -44,7 +44,7 @@ export async function compareImagesGMSD(
 
   const { width, height } = png1;
 
-  const diff = withDiff ? new PNG({ width, height }) : undefined;
+  const diff = withDiff ? PNG.create(width, height) : undefined;
 
   try {
     const gmsd = compare(png1.data, png2.data, diff?.data, width, height, {
@@ -53,7 +53,9 @@ export async function compareImagesGMSD(
     });
 
     // Convert diff image to buffer
-    const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
+    const diffBuffer = diff
+      ? annotateDiffImage(diff, options).toBuffer()
+      : undefined;
 
     return {
       gmsd,
@@ -75,12 +77,21 @@ export async function compareImagesGMSD(
  * Load a PNG image from file path or Buffer
  */
 async function loadPNG(source: string | Buffer): Promise<PNG> {
-  if (Buffer.isBuffer(source)) {
-    return PNG.sync.read(source);
-  } else {
-    const buffer = fs.readFileSync(source);
-    return PNG.sync.read(buffer);
+  return PNG.load(source);
+}
+
+function annotateDiffImage(image: PNG, options: DiffConfigGMSD) {
+  image.setMetadata("cappa.diff.algorithm", "gmsd");
+
+  for (const [key, value] of Object.entries(options)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    image.setMetadata(`cappa.diff.${key}`, String(value));
   }
+
+  return image;
 }
 
 /**

@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import { glob } from "node:fs/promises";
 import path from "node:path";
+import { extractTextMetadata, injectTextMetadata } from "./features/png/util";
 
 /**
  * Class for interacting with the local file system to store the screenshots.
@@ -89,6 +90,7 @@ export class ScreenshotFileSystem {
     fs.copyFileSync(actualPath, expectedPath);
 
     if (fs.existsSync(diffPath)) {
+      this.copyDiffMetadataToExpected(diffPath, expectedPath);
       fs.unlinkSync(diffPath);
     }
 
@@ -97,6 +99,40 @@ export class ScreenshotFileSystem {
       expectedPath,
       diffPath,
     };
+  }
+
+  private copyDiffMetadataToExpected(diffPath: string, expectedPath: string) {
+    const diffExtension = path.extname(diffPath).toLowerCase();
+    const expectedExtension = path.extname(expectedPath).toLowerCase();
+
+    if (diffExtension !== ".png" || expectedExtension !== ".png") {
+      return;
+    }
+
+    try {
+      const diffBuffer = fs.readFileSync(diffPath);
+      const diffMetadata = extractTextMetadata(diffBuffer);
+
+      if (Object.keys(diffMetadata).length === 0) {
+        return;
+      }
+
+      const expectedBuffer = fs.readFileSync(expectedPath);
+      const expectedMetadata = extractTextMetadata(expectedBuffer);
+
+      const mergedMetadata = {
+        ...expectedMetadata,
+        ...diffMetadata,
+      };
+
+      const expectedWithMetadata = injectTextMetadata(
+        expectedBuffer,
+        mergedMetadata,
+      );
+      fs.writeFileSync(expectedPath, expectedWithMetadata);
+    } catch {
+      // Ignore metadata transfer errors to keep approval resilient.
+    }
   }
 
   /**

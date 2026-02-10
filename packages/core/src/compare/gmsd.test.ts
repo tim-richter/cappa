@@ -1,5 +1,5 @@
-import { PNG } from "pngjs";
 import { describe, expect, it } from "vitest";
+import { PNG as CappaPNG } from "../features/png/png";
 import { compareImagesGMSD } from "./gmsd";
 
 // Test utilities
@@ -8,7 +8,7 @@ function createSolidColorPNG(
   height: number,
   color: [number, number, number, number] = [255, 0, 0, 255],
 ): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -20,11 +20,11 @@ function createSolidColorPNG(
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 function createGradientPNG(width: number, height: number): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -36,7 +36,7 @@ function createGradientPNG(width: number, height: number): Buffer {
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 function createCheckerboardPNG(
@@ -44,7 +44,7 @@ function createCheckerboardPNG(
   height: number,
   squareSize: number = 10,
 ): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -61,7 +61,7 @@ function createCheckerboardPNG(
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 describe("compareImages", () => {
@@ -84,5 +84,33 @@ describe("compareImages", () => {
     const result = await compareImagesGMSD(redImage, blueImage);
     // Both have zero gradients, so GMSD = 0
     expect(result.gmsd).toBe(0);
+  });
+
+  it("should embed diff algorithm and options as PNG metadata", async () => {
+    const gradientImage = createGradientPNG(100, 100);
+    const checkerImage = createCheckerboardPNG(100, 100);
+
+    const result = await compareImagesGMSD(gradientImage, checkerImage, true, {
+      threshold: 0.15,
+      downsample: 1,
+      c: 170,
+    });
+
+    expect(result.diffBuffer).toBeDefined();
+
+    const diffBuffer = result.diffBuffer;
+
+    if (!diffBuffer) {
+      throw new Error("Expected a diff buffer");
+    }
+
+    const diffPng = await CappaPNG.load(diffBuffer);
+
+    expect(diffPng.metadata).toMatchObject({
+      "cappa.diff.algorithm": "gmsd",
+      "cappa.diff.threshold": "0.15",
+      "cappa.diff.downsample": "1",
+      "cappa.diff.c": "170",
+    });
   });
 });

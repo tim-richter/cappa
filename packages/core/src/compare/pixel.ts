@@ -2,7 +2,7 @@ import fs from "node:fs";
 import blazediff from "@blazediff/core";
 import type { BlazeDiffOptions } from "@blazediff/types";
 import { getLogger } from "@cappa/logger";
-import { PNG } from "pngjs";
+import { PNG } from "../features/png/png";
 import type { DiffConfig } from "../types";
 
 export type CompareOptions = BlazeDiffOptions;
@@ -57,7 +57,7 @@ export async function compareImages(
     };
   }
 
-  const diff = withDiff ? new PNG({ width, height }) : undefined;
+  const diff = withDiff ? PNG.create(width, height) : undefined;
 
   try {
     const numDiffPixels = compare(
@@ -73,7 +73,9 @@ export async function compareImages(
     const percentDifference = (numDiffPixels / totalPixels) * 100;
 
     // Convert diff image to buffer
-    const diffBuffer = diff ? PNG.sync.write(diff) : undefined;
+    const diffBuffer = diff
+      ? annotateDiffImage(diff, options).toBuffer()
+      : undefined;
 
     return {
       numDiffPixels,
@@ -101,12 +103,21 @@ export async function compareImages(
  * Load a PNG image from file path or Buffer
  */
 async function loadPNG(source: string | Buffer): Promise<PNG> {
-  if (Buffer.isBuffer(source)) {
-    return PNG.sync.read(source);
-  } else {
-    const buffer = fs.readFileSync(source);
-    return PNG.sync.read(buffer);
+  return PNG.load(source);
+}
+
+function annotateDiffImage(image: PNG, options: DiffConfig) {
+  image.setMetadata("cappa.diff.algorithm", "pixel");
+
+  for (const [key, value] of Object.entries(options)) {
+    if (value === undefined) {
+      continue;
+    }
+
+    image.setMetadata(`cappa.diff.${key}`, String(value));
   }
+
+  return image;
 }
 
 /**
@@ -175,7 +186,7 @@ const isPassed = (
  * @returns
  */
 export function createDiffSizePngImage(width: number, height: number): Buffer {
-  const png = new PNG({ width, height });
+  const png = PNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -187,5 +198,5 @@ export function createDiffSizePngImage(width: number, height: number): Buffer {
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }

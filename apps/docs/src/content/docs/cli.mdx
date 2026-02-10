@@ -40,6 +40,10 @@ During approval Cappa re-compares the latest actual image against the existing b
 updates the expected file when they truly differ. This prevents identical images with minor binary
 differences from needlessly churning in version control and keeps your baseline commits tidy.
 
+When a diff image is present, Cappa also carries over diff PNG metadata (for example
+`cappa.diff.algorithm` and related diff settings) into the approved expected PNG so the baseline
+retains the comparison context used to generate the accepted change.
+
 If a baseline image no longer has a matching capture (for example, a scenario was removed), running
 `cappa approve` now cleans up the orphaned expected file along with any remaining diff image so that
 your repository stays in sync with the latest set of screenshots.
