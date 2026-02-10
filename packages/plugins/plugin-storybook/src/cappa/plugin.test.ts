@@ -435,6 +435,16 @@ describe("console logging configuration", () => {
       goto: vi.fn(async () => {
         await exposedFunctions.__cappa_parameters?.(story.id, {
           viewport: { width: 800, height: 600 },
+          diff: { threshold: 0.2 },
+          variants: [
+            {
+              id: "mobile",
+              options: {
+                viewport: { width: 375, height: 667 },
+                diff: { threshold: 0.3 },
+              },
+            },
+          ],
         });
       }),
       setViewportSize: vi.fn(async () => {}),
@@ -487,6 +497,14 @@ describe("console logging configuration", () => {
       screenshotTool as any,
       context,
     );
+
+    expect(screenshotTool.captureWithVariants).toHaveBeenCalledTimes(1);
+    const [, , , , , captureExtras] = (
+      screenshotTool.captureWithVariants as any
+    ).mock.calls[0];
+
+    expect(captureExtras.diff).toEqual({ threshold: 0.2 });
+    expect(captureExtras.variants?.mobile?.diff).toEqual({ threshold: 0.3 });
 
     expect(
       (page.on as any).mock.calls.some(

@@ -58,8 +58,14 @@ export interface ScreenshotCaptureExtras {
     {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
+      diff?: DiffConfig;
     }
   >;
+  /**
+   * Optional diff configuration override applied to this capture.
+   * Merged on top of the global ScreenshotTool diff config.
+   */
+  diff?: DiffConfig;
 }
 
 class ScreenshotTool {
@@ -321,6 +327,7 @@ class ScreenshotTool {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
     },
+    diffOverride?: DiffConfig,
   ): Promise<{
     screenshotPath: string;
     comparisonResult: CompareResult;
@@ -346,6 +353,7 @@ class ScreenshotTool {
         page,
         referenceImage,
         screenshotSettings,
+        diffOverride,
       );
 
       if (!retryScreenshot.screenshotPath) {
@@ -413,7 +421,12 @@ class ScreenshotTool {
     page: Page,
     referenceImage: Buffer,
     options: ScreenshotSettings,
+    diffOverride?: DiffConfig,
   ) {
+    const diffConfig = diffOverride
+      ? { ...this.diff, ...diffOverride }
+      : this.diff;
+
     for (let i = 0; i < this.retries; i++) {
       try {
         const screenshotBuffer = await this.takeScreenshotBuffer(page, {
@@ -429,7 +442,7 @@ class ScreenshotTool {
           screenshotBuffer,
           referenceImage,
           true,
-          this.diff,
+          diffConfig,
         );
 
         // bail early if the images are different sizes
@@ -507,6 +520,7 @@ class ScreenshotTool {
     extras: {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
+      diff?: DiffConfig;
     } = {},
   ): Promise<ScreenshotCaptureDetails> {
     const result: ScreenshotCaptureDetails = { filename };
@@ -518,6 +532,7 @@ class ScreenshotTool {
 
     const saveDiff = extras.saveDiffImage ?? false;
     const diffFilename = extras.diffImageFilename ?? filename;
+    const diffOverride = extras.diff;
 
     if (!this.filesystem.hasExpectedFile(filename)) {
       this.logger.debug(
@@ -536,6 +551,7 @@ class ScreenshotTool {
             saveDiffImage: saveDiff,
             diffImageFilename: diffFilename,
           },
+          diffOverride,
         );
 
       result.filepath = screenshotPath;
@@ -562,6 +578,7 @@ class ScreenshotTool {
 
     const baseSaveDiff = extras.saveDiffImage ?? false;
     const baseDiffFilename = extras.diffImageFilename ?? filename;
+    const baseDiffOverride = extras.diff;
 
     if (baseOptions.skip) {
       return {
@@ -583,6 +600,7 @@ class ScreenshotTool {
       {
         saveDiffImage: baseSaveDiff,
         diffImageFilename: baseDiffFilename,
+        diff: baseDiffOverride,
       },
     );
 
@@ -614,6 +632,7 @@ class ScreenshotTool {
       const variantSaveDiff = variantExtra?.saveDiffImage ?? baseSaveDiff;
       const variantDiffFilename =
         variantExtra?.diffImageFilename ?? variantFilename;
+      const variantDiffOverride = variantExtra?.diff ?? baseDiffOverride;
 
       const variantCaptureResult = await this.captureSingleScreenshot(
         page,
@@ -622,6 +641,7 @@ class ScreenshotTool {
         {
           saveDiffImage: variantSaveDiff,
           diffImageFilename: variantDiffFilename,
+          diff: variantDiffOverride,
         },
       );
 
@@ -688,6 +708,7 @@ class ScreenshotTool {
 
     const baseSaveDiff = extras.saveDiffImage ?? false;
     const baseDiffFilename = extras.diffImageFilename ?? baseFilename;
+    const baseDiffOverride = extras.diff;
 
     // Capture base screenshot
     getLogger().debug(`Going to base URL: ${baseUrl}`);
@@ -700,6 +721,7 @@ class ScreenshotTool {
       {
         saveDiffImage: baseSaveDiff,
         diffImageFilename: baseDiffFilename,
+        diff: baseDiffOverride,
       },
     );
 
@@ -738,6 +760,7 @@ class ScreenshotTool {
       const variantSaveDiff = variantExtra?.saveDiffImage ?? baseSaveDiff;
       const variantDiffFilename =
         variantExtra?.diffImageFilename ?? variantFilename;
+      const variantDiffOverride = variantExtra?.diff ?? baseDiffOverride;
 
       const variantCaptureResult = await this.captureSingleScreenshot(
         page,
@@ -746,6 +769,7 @@ class ScreenshotTool {
         {
           saveDiffImage: variantSaveDiff,
           diffImageFilename: variantDiffFilename,
+          diff: variantDiffOverride,
         },
       );
 

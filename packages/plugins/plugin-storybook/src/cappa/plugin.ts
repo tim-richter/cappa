@@ -1,4 +1,5 @@
 import type {
+  DiffConfig,
   Plugin,
   ScreenshotCaptureExtras,
   ScreenshotVariantWithUrl,
@@ -8,7 +9,6 @@ import { minimatch } from "minimatch";
 import type { Page } from "playwright-core";
 import type {
   ScreenshotOptionsStorybook,
-  ScreenshotVariantOptionsStorybook,
   StorybookRenderOptions,
 } from "../types";
 import { buildStorybookIframeUrl } from "./storybook-url";
@@ -325,46 +325,62 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         const filename = buildFilename(story);
 
         // Convert variants to the new format with URLs
-        const variantsWithUrls: ScreenshotVariantWithUrl[] =
-          variantParameters.map(
-            (variant: ScreenshotVariantOptionsStorybook) => {
-              const variantFilename =
-                variant.filename ||
-                screenshotTool.getVariantFilename(filename, {
-                  id: variant.id,
-                  label: variant.label,
-                  filename: variant.filename,
-                });
+        const variantsWithUrls: ScreenshotVariantWithUrl[] = [];
+        const variantExtrasEntries: [
+          string,
+          {
+            saveDiffImage: boolean;
+            diffImageFilename?: string;
+            diff?: DiffConfig;
+          },
+        ][] = [];
 
-              // Merge variant args with default storybook options
-              const mergedArgs = {
-                ...defaultStorybookOptions?.args,
-                ...variant.options?.args,
-              };
+        for (const variant of variantParameters) {
+          const variantFilename =
+            variant.filename ||
+            screenshotTool.getVariantFilename(filename, {
+              id: variant.id,
+              label: variant.label,
+              filename: variant.filename,
+            });
 
-              return {
-                id: variant.id,
-                label: variant.label,
-                filename: variantFilename,
-                url: buildStorybookIframeUrl({
-                  baseUrl: options?.storybookUrl || "",
-                  storyId: story.id,
-                  viewMode: defaultStorybookOptions?.viewMode,
-                  args: mergedArgs,
-                  globals: defaultStorybookOptions?.globals,
-                  query: defaultStorybookOptions?.query,
-                  fullscreen: defaultStorybookOptions?.fullscreen,
-                  singleStory: defaultStorybookOptions?.singleStory,
-                }),
-                options: variant.options
-                  ? {
-                      ...variant.options,
-                      mask: toLocatorMask(variant.options.mask),
-                    }
-                  : undefined,
-              };
+          // Merge variant args with default storybook options
+          const mergedArgs = {
+            ...defaultStorybookOptions?.args,
+            ...variant.options?.args,
+          };
+
+          variantsWithUrls.push({
+            id: variant.id,
+            label: variant.label,
+            filename: variantFilename,
+            url: buildStorybookIframeUrl({
+              baseUrl: options?.storybookUrl || "",
+              storyId: story.id,
+              viewMode: defaultStorybookOptions?.viewMode,
+              args: mergedArgs,
+              globals: defaultStorybookOptions?.globals,
+              query: defaultStorybookOptions?.query,
+              fullscreen: defaultStorybookOptions?.fullscreen,
+              singleStory: defaultStorybookOptions?.singleStory,
+            }),
+            options: variant.options
+              ? {
+                  ...variant.options,
+                  mask: toLocatorMask(variant.options.mask),
+                }
+              : undefined,
+          });
+
+          variantExtrasEntries.push([
+            variant.id,
+            {
+              saveDiffImage: true,
+              diffImageFilename: variantFilename,
+              diff: variant.options?.diff,
             },
-          );
+          ]);
+        }
 
         const baseOptions = {
           fullPage: storyParameters?.fullPage,
@@ -383,20 +399,10 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           variantFilenameMap.set(variant.id, variantFilename);
         }
 
-        const variantExtrasEntries = variantsWithUrls.map(
-          (variant) =>
-            [
-              variant.id,
-              {
-                saveDiffImage: true,
-                diffImageFilename: variant.filename,
-              },
-            ] as const,
-        );
-
         const captureExtras: ScreenshotCaptureExtras = {
           saveDiffImage: true,
           diffImageFilename: filename,
+          diff: storyParameters?.diff,
           variants: variantExtrasEntries.length
             ? Object.fromEntries(variantExtrasEntries)
             : undefined,
