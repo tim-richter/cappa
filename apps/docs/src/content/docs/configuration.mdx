@@ -117,6 +117,15 @@ so it is affected by the size of the images. A 100px image with a 10% difference
 but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
 this can mean that small changes still slip through.
 
+### Diff PNG metadata
+
+Generated diff PNG files include textual metadata (`tEXt` chunks) with the comparison details. This includes:
+
+- `cappa.diff.algorithm` (`pixel` or `gmsd`)
+- the configured diff options used for that comparison, stored as `cappa.diff.<option>`
+
+You can read these fields in custom tooling to audit how a diff image was produced.
+
 ## onFail
 
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`

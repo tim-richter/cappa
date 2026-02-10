@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
-import { PNG } from "pngjs";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { PNG as CappaPNG } from "../features/png/png";
 import {
   type CompareOptions,
   type CompareResult,
@@ -16,7 +16,7 @@ function createSolidColorPNG(
   height: number,
   color: [number, number, number, number] = [255, 0, 0, 255],
 ): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -28,11 +28,11 @@ function createSolidColorPNG(
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 function createGradientPNG(width: number, height: number): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -44,7 +44,7 @@ function createGradientPNG(width: number, height: number): Buffer {
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 function createCheckerboardPNG(
@@ -52,7 +52,7 @@ function createCheckerboardPNG(
   height: number,
   squareSize: number = 10,
 ): Buffer {
-  const png = new PNG({ width, height });
+  const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -69,7 +69,7 @@ function createCheckerboardPNG(
     }
   }
 
-  return PNG.sync.write(png);
+  return png.toBuffer();
 }
 
 describe("compare", () => {
@@ -286,6 +286,32 @@ describe("compare", () => {
   });
 
   describe("saveDiffImage", () => {
+    it("should embed diff algorithm and options as PNG metadata", async () => {
+      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+
+      const result = await compareImages(redImage, blueImage, true, {
+        threshold: 0.2,
+        includeAA: true,
+      });
+
+      expect(result.diffBuffer).toBeDefined();
+
+      const diffBuffer = result.diffBuffer;
+
+      if (!diffBuffer) {
+        throw new Error("Expected a diff buffer");
+      }
+
+      const diffPng = await CappaPNG.load(diffBuffer);
+
+      expect(diffPng.metadata).toMatchObject({
+        "cappa.diff.algorithm": "pixel",
+        "cappa.diff.threshold": "0.2",
+        "cappa.diff.includeAA": "true",
+      });
+    });
+
     it("should save diff image to file", async () => {
       const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
       const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
@@ -299,7 +325,7 @@ describe("compare", () => {
 
       // Verify the saved file is a valid PNG
       const savedBuffer = fs.readFileSync(outputPath);
-      expect(() => PNG.sync.read(savedBuffer)).not.toThrow();
+      await expect(CappaPNG.load(savedBuffer)).resolves.toBeDefined();
 
       // Clean up
       fs.unlinkSync(outputPath);

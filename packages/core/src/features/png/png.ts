@@ -22,6 +22,10 @@ export class PNG {
     this.metadataEntries = { ...(metadata ?? {}) };
   }
 
+  static create(width: number, height: number) {
+    return new PNG(new PngjsPNG({ width, height }) as PngWithMetadata);
+  }
+
   static async load(source: string | Buffer) {
     const buffer = typeof source === "string" ? await readFile(source) : source;
     const png = PngjsPNG.sync.read(buffer) as PngWithMetadata;
