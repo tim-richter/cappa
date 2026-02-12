@@ -1,11 +1,10 @@
 import fs from "node:fs";
-import blazediff from "@blazediff/core";
-import type { BlazeDiffOptions } from "@blazediff/types";
+import blazediff, { type CoreOptions } from "@blazediff/core";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
 import type { DiffConfig } from "../types";
 
-export type CompareOptions = BlazeDiffOptions;
+export type CompareOptions = CoreOptions;
 
 export interface CompareResult {
   numDiffPixels: number;
@@ -23,7 +22,7 @@ const compare = (
   diff: Uint8Array | Uint8ClampedArray | undefined,
   width: number,
   height: number,
-  options?: BlazeDiffOptions,
+  options?: CoreOptions,
 ) => {
   return blazediff(image1, image2, diff, width, height, options);
 };

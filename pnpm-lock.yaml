@@ -391,9 +391,6 @@ importers:
       '@blazediff/gmsd':
         specifier: ^1.7.1
         version: 1.7.1
-      '@blazediff/types':
-        specifier: ^1.4.1
-        version: 1.4.1
       '@cappa/logger':
         specifier: workspace:*
         version: link:../logger
@@ -786,10 +783,6 @@ packages:
 
   '@blazediff/gmsd@1.7.1':
     resolution: {integrity: sha512-ypgVDWo8tn+mSoClBBVw3+7spNBO34ebHKPdPkdZEwFEYjzOK+OYqTCF6cqnlnMBYqGxESlyh3wqEzb5Zd/u6A==}
-
-  '@blazediff/types@1.4.1':
-    resolution: {integrity: sha512-c5se1YZMvdJiF/M/kPOFkw/E1BbfV6U4KsE6QcJiM9dVL1ix4ze/EmLIYvHwOX54kzxi2iWL0BZgMOlfWQRJ2A==}
-    deprecated: Package no longer supported. Contact Support at https://www.npmjs.com/support for more info.
 
   '@braidai/lang@1.1.2':
     resolution: {integrity: sha512-qBcknbBufNHlui137Hft8xauQMTZDKdophmLFv05r2eNmdIv/MlPuP4TdUknHG68UdWLgVZwgxVe735HzJNIwA==}
@@ -7571,8 +7564,6 @@ snapshots:
   '@blazediff/core@1.9.1': {}
 
   '@blazediff/gmsd@1.7.1': {}
-
-  '@blazediff/types@1.4.1': {}
 
   '@braidai/lang@1.1.2': {}
 

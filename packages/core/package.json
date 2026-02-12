@@ -42,7 +42,6 @@
   "dependencies": {
     "@blazediff/core": "^1.9.1",
     "@blazediff/gmsd": "^1.7.1",
-    "@blazediff/types": "^1.4.1",
     "@cappa/logger": "workspace:*",
     "pngjs": "^7.0.0"
   },

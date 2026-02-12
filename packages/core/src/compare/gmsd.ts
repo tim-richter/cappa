@@ -1,11 +1,10 @@
 import fs from "node:fs";
 import gmsd, { type GmsdOptions } from "@blazediff/gmsd";
-import type { BlazeDiffOptions } from "@blazediff/types";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
 import type { DiffConfigGMSD } from "../types";
 
-export type CompareOptions = BlazeDiffOptions;
+export type CompareOptions = GmsdOptions;
 
 export interface CompareResult {
   gmsd: number;
