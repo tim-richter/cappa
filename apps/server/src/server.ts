@@ -20,6 +20,8 @@ interface StartServerOptions {
   outputDir: string;
   screenshots: Screenshot[];
   logger?: boolean;
+  /** Theme for the review UI: 'light' or 'dark' */
+  theme?: "light" | "dark";
 }
 
 export async function createServer(opts: StartServerOptions) {
@@ -30,6 +32,10 @@ export async function createServer(opts: StartServerOptions) {
   app.decorate("outputDir", opts.outputDir);
 
   app.get("/api/health", async () => ({ ok: true }));
+
+  app.get("/api/config", async () => ({
+    theme: opts.theme ?? "light",
+  }));
 
   // Register the screenshots plugin with the /api/screenshots prefix
   app.register(screenshotsPlugin, { prefix: "/api/screenshots" });

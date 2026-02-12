@@ -39,7 +39,24 @@ test("return Config when config is set with defineConfig", async () => {
     },
     plugins: [],
     onFail: undefined,
+    review: { theme: "light" },
   });
+});
+
+test("respects review.theme override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    retries: 2,
+    plugins: [],
+    review: { theme: "dark" },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.review.theme).toBe("dark");
 });
 
 test("respects logConsoleEvents override", async () => {
@@ -89,6 +106,7 @@ test("return Config when config is a function", async () => {
     },
     plugins: [],
     onFail: undefined,
+    review: { theme: "light" },
   });
 });
 
@@ -120,6 +138,7 @@ test("return Config when config is a promise", async () => {
     },
     plugins: [],
     onFail: undefined,
+    review: { theme: "light" },
   });
 });
 
@@ -163,6 +182,7 @@ test("passes environment variables to config functions", async () => {
     },
     plugins: [],
     onFail: undefined,
+    review: { theme: "light" },
   });
 
   if (originalNodeEnv === undefined) {

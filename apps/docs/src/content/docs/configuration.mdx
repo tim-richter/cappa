@@ -126,6 +126,25 @@ Generated diff PNG files include textual metadata (`tEXt` chunks) with the compa
 
 You can read these fields in custom tooling to audit how a diff image was produced.
 
+## review
+
+Configuration for the review UI.
+
+### review.theme
+
+- **type**: `'light' | 'dark'`
+- **default**: `'light'`
+
+Color theme for the review UI. Set to `'dark'` for dark mode.
+
+```ts
+export default defineConfig({
+  review: {
+    theme: 'dark',
+  },
+});
+```
+
 ## onFail
 
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`

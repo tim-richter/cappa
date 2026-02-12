@@ -2,6 +2,10 @@ import type { Screenshot } from "@cappa/core";
 import { HttpResponse, http } from "msw";
 
 export const handlers = [
+  http.get("/api/config", () => {
+    return HttpResponse.json({ theme: "light" });
+  }),
+
   http.get("/api/screenshots", ({ request }) => {
     const url = new URL(request.url);
     const category = url.searchParams.get("category");

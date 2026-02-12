@@ -3,6 +3,18 @@ import { RouterProvider } from "react-router/dom";
 import { Providers } from "./Providers";
 import { router } from "./routes";
 
+async function applyTheme() {
+  try {
+    const res = await fetch("/api/config");
+    if (res.ok) {
+      const { theme } = (await res.json()) as { theme: "light" | "dark" };
+      document.documentElement.classList.toggle("dark", theme === "dark");
+    }
+  } catch {
+    // Default to light when API is unavailable (e.g. dev without server)
+  }
+}
+
 async function enableMocking() {
   if (import.meta.env.DEV !== true) {
     return;
@@ -18,13 +30,15 @@ async function enableMocking() {
 const root = document.getElementById("root");
 
 if (root) {
-  enableMocking().then(() => {
-    createRoot(root).render(
-      <Providers>
-        <RouterProvider router={router} />
-      </Providers>,
-    );
-  });
+  enableMocking().then(() =>
+    applyTheme().then(() => {
+      createRoot(root).render(
+        <Providers>
+          <RouterProvider router={router} />
+        </Providers>,
+      );
+    }),
+  );
 } else {
   console.error("Root element not found");
 }

@@ -74,7 +74,7 @@ export function ScreenshotComparison({
             variant="ghost"
             size="sm"
             onClick={onBack}
-            className="text-muted-foreground hover:text-foreground"
+            className="text-card-foreground hover:text-card-foreground/80 hover:bg-accent"
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
@@ -92,7 +92,7 @@ export function ScreenshotComparison({
               {screenshot.approved && (
                 <Badge
                   variant="default"
-                  className="text-green-100 bg-green-800 cursor-default self-end"
+                  className="text-green-100 bg-green-800 dark:bg-green-900/50 dark:text-green-300 cursor-default self-end"
                 >
                   <BadgeCheckIcon /> Approved
                 </Badge>
@@ -105,7 +105,12 @@ export function ScreenshotComparison({
         <div className="flex items-center justify-center">
           <div className="flex items-center gap-2">
             {screenshot.prev && (
-              <Button variant="ghost" size="sm" asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
+              >
                 <Link to={`/screenshots/${screenshot.prev}`}>
                   <ArrowLeft className="h-4 w-4" />
                   Prev
@@ -113,7 +118,12 @@ export function ScreenshotComparison({
               </Button>
             )}
             {screenshot.next && (
-              <Button variant="ghost" size="sm" asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
+              >
                 <Link to={`/screenshots/${screenshot.next}`}>
                   Next <ArrowRight className="h-4 w-4" />
                 </Link>
@@ -130,7 +140,7 @@ export function ScreenshotComparison({
                 <Button
                   onClick={() => approveScreenshot(true)}
                   size="icon"
-                  className={`fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900`}
+                  className="fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600"
                 >
                   <Check className="size-8" />
                 </Button>
@@ -144,13 +154,18 @@ export function ScreenshotComparison({
             <div className="flex items-center gap-2 flex-wrap">
               {viewModes.map((mode) => {
                 const Icon = mode.icon;
+                const isSelected = viewMode === mode.id;
                 return (
                   <Button
                     key={mode.id}
-                    variant={viewMode === mode.id ? "default" : "ghost"}
+                    variant={isSelected ? "default" : "ghost"}
                     size="sm"
                     onClick={() => setViewMode(mode.id as ViewMode)}
-                    className="gap-2"
+                    className={
+                      isSelected
+                        ? "gap-2"
+                        : "gap-2 text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                    }
                   >
                     <Icon className="h-4 w-4" />
                     <span className="hidden sm:inline">{mode.label}</span>

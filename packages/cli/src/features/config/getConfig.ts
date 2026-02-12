@@ -81,6 +81,9 @@ export async function getConfig(
     diff: diffConfig,
     plugins: userConfig.plugins ? await getPlugins(userConfig.plugins) : [],
     onFail: userConfig.onFail,
+    review: {
+      theme: userConfig.review?.theme ?? "light",
+    },
   };
 
   getLogger().debug(

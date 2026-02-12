@@ -487,6 +487,7 @@ describe("cappa CLI", () => {
       outputDir: "/tmp/screens",
       plugins: [],
       diff: {},
+      review: { theme: "light" },
     });
 
     globMock.mockImplementation((pattern: string) => {
@@ -519,6 +520,7 @@ describe("cappa CLI", () => {
       outputDir: path.resolve("/tmp/screens"),
       screenshots: grouped,
       logger: true,
+      theme: "light",
     });
 
     expect(serverInstances).toHaveLength(1);

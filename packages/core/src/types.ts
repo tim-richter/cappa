@@ -132,6 +132,17 @@ export type UserConfig = {
    * Receives the failing screenshots so they can be uploaded or processed.
    */
   onFail?: (screenshots: FailedScreenshot[]) => PossiblePromise<void>;
+  /**
+   * Configuration for the review UI.
+   */
+  review?: {
+    /**
+     * Color theme for the review UI.
+     * - `'light'`: Light mode (default)
+     * - `'dark'`: Dark mode
+     */
+    theme?: "light" | "dark";
+  };
 };
 
 export type Viewport = { width: number; height: number };

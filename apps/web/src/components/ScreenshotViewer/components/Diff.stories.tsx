@@ -9,28 +9,48 @@ const meta = {
 export default meta;
 type Story = StoryObj<typeof meta>;
 
-export const Page: Story = {
-  args: {
-    screenshot: {
-      id: "1",
-      name: "Overlay",
-      category: "passed",
-      expectedPath: "/1b.jpeg",
-      actualPath: "/1a.jpeg",
-      diffPath: "/1diff.png",
-    },
+const darkModeDecorator = (Story: React.ComponentType) => (
+  <div className="dark min-h-screen bg-background p-4">
+    <Story />
+  </div>
+);
+
+const pageArgs = {
+  screenshot: {
+    id: "1",
+    name: "Overlay",
+    category: "passed" as const,
+    expectedPath: "/1b.jpeg",
+    actualPath: "/1a.jpeg",
+    diffPath: "/1diff.png",
   },
 };
 
-export const Small: Story = {
-  args: {
-    screenshot: {
-      id: "1",
-      name: "Overlay",
-      category: "passed",
-      expectedPath: "/4a.png",
-      actualPath: "/4b.png",
-      diffPath: "/4diff.png",
-    },
+const smallArgs = {
+  screenshot: {
+    id: "1",
+    name: "Overlay",
+    category: "passed" as const,
+    expectedPath: "/4a.png",
+    actualPath: "/4b.png",
+    diffPath: "/4diff.png",
   },
+};
+
+export const Page: Story = {
+  args: pageArgs,
+};
+
+export const PageDark: Story = {
+  args: pageArgs,
+  decorators: [darkModeDecorator],
+};
+
+export const Small: Story = {
+  args: smallArgs,
+};
+
+export const SmallDark: Story = {
+  args: smallArgs,
+  decorators: [darkModeDecorator],
 };

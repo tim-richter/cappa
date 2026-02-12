@@ -1,4 +1,8 @@
-import { createBrowserRouter } from "react-router";
+import {
+  createBrowserRouter,
+  createMemoryRouter,
+  type RouteObject,
+} from "react-router";
 import { Layout } from "./layout/Layout";
 import { MainWithHeader } from "./layout/MainWithHeader";
 import { Changed } from "./pages/Changed";
@@ -8,7 +12,7 @@ import { New } from "./pages/New";
 import { Passed } from "./pages/Passed";
 import { Screenshot } from "./pages/Screenshot";
 
-export const router = createBrowserRouter([
+export const routes: RouteObject[] = [
   {
     Component: Layout,
     children: [
@@ -44,4 +48,10 @@ export const router = createBrowserRouter([
     path: "screenshots/:id",
     Component: Screenshot,
   },
-]);
+];
+
+export const router = createBrowserRouter(routes);
+
+export function createPageRouter(initialPath: string) {
+  return createMemoryRouter(routes, { initialEntries: [initialPath] });
+}
