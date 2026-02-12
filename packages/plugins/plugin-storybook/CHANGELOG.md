@@ -1,5 +1,18 @@
 # @cappa/plugin-storybook
 
+## 0.5.0
+
+### Minor Changes
+
+- 3f392e2: feat: add options to override diff configs on per-screenshot level
+
+### Patch Changes
+
+- Updated dependencies [3f392e2]
+- Updated dependencies [11aeef9]
+- Updated dependencies [34d27f5]
+  - @cappa/core@0.5.0
+
 ## 0.4.7
 
 ### Patch Changes
