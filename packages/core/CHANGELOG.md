@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.5.1
+
+### Patch Changes
+
+- 1606296: Remove deprecated @blazediff/types dependency. Types for pixel comparison now come from @blazediff/core (CoreOptions), and GMSD comparison uses GmsdOptions from @blazediff/gmsd.
+
 ## 0.5.0
 
 ### Minor Changes
