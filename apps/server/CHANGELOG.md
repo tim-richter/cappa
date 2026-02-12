@@ -1,5 +1,18 @@
 # @cappa/server
 
+## 0.3.0
+
+### Minor Changes
+
+- 11aeef9: feat: add review.theme config option for dark mode in review UI
+
+### Patch Changes
+
+- Updated dependencies [3f392e2]
+- Updated dependencies [11aeef9]
+- Updated dependencies [34d27f5]
+  - @cappa/core@0.5.0
+
 ## 0.2.11
 
 ### Patch Changes

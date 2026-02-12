@@ -1,5 +1,16 @@
 # @cappa/core
 
+## 0.5.0
+
+### Minor Changes
+
+- 3f392e2: feat: add options to override diff configs on per-screenshot level
+- 11aeef9: feat: add review.theme config option for dark mode in review UI
+
+### Patch Changes
+
+- 34d27f5: Store diff generation metadata in produced PNG files, including the diff algorithm and configured comparison options. When approving screenshots, copy diff metadata onto approved expected PNGs so baseline images retain the accepted diff context.
+
 ## 0.4.7
 
 ### Patch Changes
