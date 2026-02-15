@@ -197,3 +197,55 @@ test("passes environment variables to config functions", async () => {
     process.env.UPLOAD_KEY = originalUploadKey;
   }
 });
+
+test("keeps explicit pixel diff values from config", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    plugins: [],
+    diff: {
+      type: "pixel",
+      threshold: 0,
+      includeAA: true,
+      fastBufferCheck: false,
+      maxDiffPixels: 5,
+      maxDiffPercentage: 1,
+    },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.diff).toEqual({
+    type: "pixel",
+    threshold: 0,
+    includeAA: true,
+    fastBufferCheck: false,
+    maxDiffPixels: 5,
+    maxDiffPercentage: 1,
+  });
+});
+
+test("supports gmsd diff config values", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    plugins: [],
+    diff: {
+      type: "gmsd",
+      threshold: 0.2,
+      downsample: 1,
+      c: 200,
+    },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.diff).toEqual({
+    type: "gmsd",
+    threshold: 0.2,
+    downsample: 1,
+    c: 200,
+  });
+});

@@ -1,5 +1,5 @@
 import type {
-  DiffConfig,
+  DiffOptions,
   Plugin,
   ScreenshotCaptureExtras,
   ScreenshotVariantWithUrl,
@@ -148,7 +148,6 @@ export interface StorybookPluginOptions {
  */
 function createLatch<T>() {
   let resolve!: (v: T) => void;
-  // biome-ignore lint/suspicious/noAssignInExpressions: explicitly setting resolve
   const p = new Promise<T>((r) => (resolve = r));
   return { p, resolve };
 }
@@ -331,7 +330,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           {
             saveDiffImage: boolean;
             diffImageFilename?: string;
-            diff?: DiffConfig;
+            diff?: DiffOptions;
           },
         ][] = [];
 

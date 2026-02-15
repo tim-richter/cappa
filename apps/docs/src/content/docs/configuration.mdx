@@ -72,7 +72,20 @@ Whether to take a full page screenshot. If `false`, the viewport will be used.
 
 ## diff
 
-Diff configuration sets different, global comparison settings for the images.
+Diff configuration sets global comparison settings for screenshots.
+
+`diff` supports two algorithms via `diff.type`:
+
+- `"pixel"` (default) for pixel-count based comparisons
+- `"gmsd"` for gradient magnitude similarity deviation comparisons
+
+### diff.type
+
+- **type**: `"pixel" | "gmsd"`
+- **default**: `"pixel"`
+
+Selects which algorithm is used when comparing screenshots.
+
 
 ### diff.threshold
 
@@ -81,6 +94,10 @@ Diff configuration sets different, global comparison settings for the images.
 - **range**: `0-1`
 
 This affects how similar a pixel needs to be to the reference image to be considered the same.
+
+### Pixel-only options
+
+The following options apply when `diff.type` is `"pixel"`.
 
 ### diff.includeAA
 
@@ -116,6 +133,24 @@ The maximum percentage of different pixels before the comparison fails. This is 
 so it is affected by the size of the images. A 100px image with a 10% difference is 10 pixels different,
 but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
 this can mean that small changes still slip through.
+
+### GMSD-only options
+
+The following options apply when `diff.type` is `"gmsd"`.
+
+### diff.downsample
+
+- **type**: `0 | 1`
+- **default**: `0`
+
+Downsample factor used by GMSD.
+
+### diff.c
+
+- **type**: `number`
+- **default**: `170`
+
+Stability constant used in the GMSD equation.
 
 ### Diff PNG metadata
 
