@@ -89,6 +89,12 @@ export interface DiffConfigGMSD {
   c?: number;
 }
 
+export type DiffOptionsPixel = { type?: "pixel" } & DiffConfig;
+
+export type DiffOptionsGMSD = { type: "gmsd" } & DiffConfigGMSD;
+
+export type DiffOptions = DiffOptionsPixel | DiffOptionsGMSD;
+
 /**
  * Config used in `cappa.config.ts`
  *
@@ -106,7 +112,7 @@ export type UserConfig = {
   /**
    * Configuration for the comparison of images
    */
-  diff?: ({ type: "pixel" } & DiffConfig) | ({ type: "gmsd" } & DiffConfigGMSD);
+  diff?: DiffOptions;
   /**
    * The number of times to retry a screenshot if it fails
    */

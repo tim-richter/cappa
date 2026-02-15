@@ -15,6 +15,9 @@ import type {
   DeletedScreenshot,
   DiffConfig,
   DiffConfigGMSD,
+  DiffOptions,
+  DiffOptionsGMSD,
+  DiffOptionsPixel,
   FailedScreenshot,
   NewScreenshot,
   PassedScreenshot,
@@ -57,4 +60,7 @@ export {
   type Viewport,
   type DiffConfig,
   type DiffConfigGMSD,
+  type DiffOptions,
+  type DiffOptionsPixel,
+  type DiffOptionsGMSD,
 };

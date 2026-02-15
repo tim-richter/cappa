@@ -118,7 +118,7 @@ under `parameters.cappa`.
 | `omitBackground` | Capture the page with a transparent background. | `false` |
 | `viewport` | Override the viewport size for the story. | Playwright default |
 | `variants` | Additional screenshots to capture with overrides. | `[]` |
-| `diff` | Override the global diff configuration for this story (threshold, AA, pixel/percentage limits). | Inherits global `diff` from `cappa.config.ts` |
+| `diff` | Override the global diff configuration for this story. Supports both `{ type: "pixel", ... }` and `{ type: "gmsd", ... }`. | Inherits global `diff` from `cappa.config.ts` |
 
 ```ts title="Button.stories.tsx"
 export const Primary = {
@@ -127,9 +127,10 @@ export const Primary = {
       delay: 250,
       mask: ['.tooltip'],
       diff: {
-        // Loosen comparison slightly for this story only
+        // Switch this story to gmsd
+        type: "gmsd",
         threshold: 0.2,
-        maxDiffPercentage: 0.5,
+        downsample: 1,
       },
       variants: [
         {
@@ -137,9 +138,11 @@ export const Primary = {
           label: 'Mobile',
           options: {
             viewport: { width: 375, height: 812 },
-            // Per-variant diff override, merged on top of the global and story-level diff
+            // Per-variant diff override (can also switch algorithm)
             diff: {
+              type: "pixel",
               threshold: 0.25,
+              maxDiffPixels: 10,
             },
           },
         },

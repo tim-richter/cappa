@@ -1,3 +1,5 @@
+import type { DiffOptions } from "@cappa/core";
+
 export interface StorybookRenderOptions {
   viewMode?: "story" | "docs";
   args?: Record<string, unknown>;
@@ -7,13 +9,7 @@ export interface StorybookRenderOptions {
   singleStory?: boolean;
 }
 
-export interface DiffOptionsStorybook {
-  threshold?: number;
-  includeAA?: boolean;
-  fastBufferCheck?: boolean;
-  maxDiffPixels?: number;
-  maxDiffPercentage?: number;
-}
+export type DiffOptionsStorybook = DiffOptions;
 
 export interface ScreenshotVariantOverrideStorybook {
   fullPage?: boolean;
@@ -25,7 +21,7 @@ export interface ScreenshotVariantOverrideStorybook {
   args?: Record<string, unknown>;
   /**
    * Optional diff settings override applied when comparing this screenshot.
-   * These map directly to Cappa's diff configuration options.
+   * Supports both pixel (default) and gmsd algorithms.
    */
   diff?: DiffOptionsStorybook;
 }

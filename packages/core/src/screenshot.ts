@@ -10,20 +10,29 @@ import {
   webkit,
 } from "playwright-core";
 import {
-  type CompareResult,
+  compareImagesGMSD,
+  type CompareResult as GMSDCompareResult,
+} from "./compare/gmsd";
+import {
   compareImages,
   createDiffSizePngImage,
+  type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
 import { ScreenshotFileSystem } from "./filesystem";
 import type {
   DiffConfig,
+  DiffConfigGMSD,
+  DiffOptions,
+  DiffOptionsGMSD,
+  DiffOptionsPixel,
   ScreenshotOptions,
   ScreenshotSettings,
   ScreenshotVariant,
   ScreenshotVariantWithUrl,
 } from "./types";
 
-const defaultDiffConfig: DiffConfig = {
+const defaultPixelDiffConfig: DiffOptionsPixel = {
+  type: "pixel",
   threshold: 0.1,
   includeAA: false,
   fastBufferCheck: true,
@@ -31,10 +40,17 @@ const defaultDiffConfig: DiffConfig = {
   maxDiffPercentage: 0,
 };
 
+const defaultGMSDDiffConfig: DiffOptionsGMSD = {
+  type: "gmsd",
+  threshold: 0.1,
+  downsample: 0,
+  c: 170,
+};
+
 export interface ScreenshotCaptureDetails {
   filename: string;
   filepath?: string;
-  comparisonResult?: CompareResult;
+  comparisonResult?: PixelCompareResult | GMSDCompareResult;
   diffImagePath?: string;
   skipped?: boolean;
 }
@@ -58,14 +74,14 @@ export interface ScreenshotCaptureExtras {
     {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
-      diff?: DiffConfig;
+      diff?: DiffOptions;
     }
   >;
   /**
    * Optional diff configuration override applied to this capture.
    * Merged on top of the global ScreenshotTool diff config.
    */
-  diff?: DiffConfig;
+  diff?: DiffOptions;
 }
 
 class ScreenshotTool {
@@ -79,7 +95,7 @@ class ScreenshotTool {
   concurrency: number;
   contexts: BrowserContext[] = [];
   pages: Page[] = [];
-  diff: DiffConfig;
+  diff: DiffOptions;
   logger: Logger;
   retries: number;
   filesystem: ScreenshotFileSystem;
@@ -90,7 +106,7 @@ class ScreenshotTool {
     headless?: boolean;
     viewport?: { width: number; height: number };
     outputDir?: string;
-    diff?: DiffConfig;
+    diff?: DiffOptions;
     retries?: number;
     concurrency?: number;
     logConsoleEvents?: boolean;
@@ -99,13 +115,42 @@ class ScreenshotTool {
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.outputDir = options.outputDir || "./screenshots";
-    this.diff = { ...defaultDiffConfig, ...options.diff };
+    this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
     this.logConsoleEvents = options.logConsoleEvents ?? true;
 
     this.logger = getLogger();
     this.retries = options.retries || 2;
     this.filesystem = new ScreenshotFileSystem(this.outputDir);
+  }
+
+  private resolveDiffOptions(diff?: DiffOptions): DiffOptions {
+    if (diff?.type === "gmsd") {
+      return { ...defaultGMSDDiffConfig, ...diff };
+    }
+
+    return { ...defaultPixelDiffConfig, ...diff, type: "pixel" };
+  }
+
+  private mergeDiffOptions(override?: DiffOptions): DiffOptions {
+    const base = this.resolveDiffOptions(this.diff);
+
+    if (!override) {
+      return base;
+    }
+
+    if (override.type === "gmsd" || base.type === "gmsd") {
+      const gmsdBase: DiffOptionsGMSD =
+        base.type === "gmsd" ? base : defaultGMSDDiffConfig;
+
+      return { ...gmsdBase, ...override, type: "gmsd" };
+    }
+
+    return {
+      ...(base as DiffOptionsPixel),
+      ...(override as DiffOptionsPixel),
+      type: "pixel",
+    };
   }
 
   /**
@@ -327,10 +372,10 @@ class ScreenshotTool {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
     },
-    diffOverride?: DiffConfig,
+    diffOverride?: DiffOptions,
   ): Promise<{
     screenshotPath: string;
-    comparisonResult: CompareResult;
+    comparisonResult: PixelCompareResult | GMSDCompareResult;
     diffImagePath?: string;
   }> {
     if (!this.browser) {
@@ -421,11 +466,9 @@ class ScreenshotTool {
     page: Page,
     referenceImage: Buffer,
     options: ScreenshotSettings,
-    diffOverride?: DiffConfig,
+    diffOverride?: DiffOptions,
   ) {
-    const diffConfig = diffOverride
-      ? { ...this.diff, ...diffOverride }
-      : this.diff;
+    const diffConfig = this.mergeDiffOptions(diffOverride);
 
     for (let i = 0; i < this.retries; i++) {
       try {
@@ -438,15 +481,26 @@ class ScreenshotTool {
           throw new Error("Screenshot buffer is undefined");
         }
 
-        const comparisonResult = await compareImages(
-          screenshotBuffer,
-          referenceImage,
-          true,
-          diffConfig,
-        );
+        const comparisonResult =
+          diffConfig.type === "gmsd"
+            ? await compareImagesGMSD(
+                screenshotBuffer,
+                referenceImage,
+                true,
+                diffConfig as DiffConfigGMSD,
+              )
+            : await compareImages(
+                screenshotBuffer,
+                referenceImage,
+                true,
+                diffConfig as DiffConfig,
+              );
 
-        // bail early if the images are different sizes
-        if (comparisonResult.differentSizes) {
+        // bail early if the images are different sizes (pixel algorithm only)
+        if (
+          "differentSizes" in comparisonResult &&
+          comparisonResult.differentSizes
+        ) {
           return {
             screenshotPath: screenshotBuffer,
             comparisonResult,
@@ -473,8 +527,13 @@ class ScreenshotTool {
             passed: true,
           };
         } else {
+          const summary =
+            "numDiffPixels" in comparisonResult
+              ? `${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`
+              : `gmsd score ${comparisonResult.gmsd.toFixed(4)}`;
+
           this.logger.warn(
-            `Comparison did not match. Retrying in ${this.getIncBackoffDelay(i + 1, options.delay || 0)}ms... \nComparison result: ${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`,
+            `Comparison did not match. Retrying in ${this.getIncBackoffDelay(i + 1, options.delay || 0)}ms... \nComparison result: ${summary}`,
           );
         }
       } catch (error) {
@@ -520,7 +579,7 @@ class ScreenshotTool {
     extras: {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
-      diff?: DiffConfig;
+      diff?: DiffOptions;
     } = {},
   ): Promise<ScreenshotCaptureDetails> {
     const result: ScreenshotCaptureDetails = { filename };

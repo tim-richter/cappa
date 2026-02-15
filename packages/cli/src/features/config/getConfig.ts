@@ -42,36 +42,25 @@ export async function getConfig(
     throw new Error("Invalid configuration: no valid config found");
   }
 
-  let diffConfig: UserConfig["diff"];
-
-  if (!userConfig.diff) {
-    diffConfig = {
-      type: "pixel",
-      threshold: 0.1,
-      includeAA: false,
-      fastBufferCheck: true,
-      maxDiffPixels: 0,
-      maxDiffPercentage: 0,
-    };
-  } else {
-    if (userConfig.diff.type === "gmsd") {
-      diffConfig = {
-        type: "gmsd",
-        threshold: userConfig.diff.threshold || 0.1,
-        downsample: userConfig.diff.downsample || 0,
-        c: userConfig.diff.c || 170,
-      };
-    } else {
-      diffConfig = {
+  const diffConfig: UserConfig["diff"] = (() => {
+    if (!userConfig.diff || userConfig.diff.type !== "gmsd") {
+      return {
         type: "pixel",
-        threshold: userConfig.diff.threshold || 0.1,
-        includeAA: userConfig.diff.includeAA || false,
-        fastBufferCheck: userConfig.diff.fastBufferCheck || true,
-        maxDiffPixels: userConfig.diff.maxDiffPixels || 0,
-        maxDiffPercentage: userConfig.diff.maxDiffPercentage || 0,
+        threshold: userConfig.diff?.threshold ?? 0.1,
+        includeAA: userConfig.diff?.includeAA ?? false,
+        fastBufferCheck: userConfig.diff?.fastBufferCheck ?? true,
+        maxDiffPixels: userConfig.diff?.maxDiffPixels ?? 0,
+        maxDiffPercentage: userConfig.diff?.maxDiffPercentage ?? 0,
       };
     }
-  }
+
+    return {
+      type: "gmsd",
+      threshold: userConfig.diff.threshold ?? 0.1,
+      downsample: userConfig.diff.downsample ?? 0,
+      c: userConfig.diff.c ?? 170,
+    };
+  })();
 
   const configWithDefaults = {
     outputDir: userConfig.outputDir || "./screenshots",

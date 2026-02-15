@@ -545,4 +545,47 @@ describe("console logging configuration", () => {
       ),
     ).toBe(true);
   });
+
+  it("passes diff algorithm types from story parameters to capture extras", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, {
+        diff: { type: "gmsd", threshold: 0.2, downsample: 1 },
+        variants: [
+          {
+            id: "mobile",
+            options: {
+              diff: { type: "pixel", threshold: 0.3, maxDiffPixels: 10 },
+            },
+          },
+        ],
+      });
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    const [, , , , , captureExtras] = (
+      screenshotTool.captureWithVariants as any
+    ).mock.calls[0];
+
+    expect(captureExtras.diff).toEqual({
+      type: "gmsd",
+      threshold: 0.2,
+      downsample: 1,
+    });
+    expect(captureExtras.variants?.mobile?.diff).toEqual({
+      type: "pixel",
+      threshold: 0.3,
+      maxDiffPixels: 10,
+    });
+  });
 });
