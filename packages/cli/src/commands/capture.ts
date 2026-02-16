@@ -7,6 +7,7 @@ import {
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
+import type { Command } from "commander";
 import { getConfig } from "../features/config";
 import { groupScreenshots } from "../utils/groupScreenshots";
 
@@ -172,7 +173,11 @@ function generateFailureReportMessage(
   return lines.join("\n");
 }
 
-export const capture = async (runOnFail: boolean): Promise<void> => {
+type CaptureOptions = {
+  ci?: boolean;
+};
+
+const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const logger = getLogger();
 
   const config = await getConfig();
@@ -286,7 +291,9 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
     await screenshotTool.close();
   }
 
-  if (!captureError && runOnFail) {
+  const isCi = options.ci || process.env.CI === "true";
+
+  if (!captureError && isCi) {
     await executeOnFailCallback(config);
   }
 
@@ -303,4 +310,14 @@ export const capture = async (runOnFail: boolean): Promise<void> => {
   } else {
     logger.success("All plugins completed successfully");
   }
+};
+
+export const registerCaptureCommand = (program: Command): void => {
+  program
+    .command("capture")
+    .description("Capture screenshots")
+    .option("--ci", "run capture in CI mode and execute onFail callback")
+    .action(async (options: CaptureOptions) => {
+      await runCapture(options);
+    });
 };
