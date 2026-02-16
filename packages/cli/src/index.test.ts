@@ -189,6 +189,7 @@ beforeEach(() => {
 afterEach(() => {
   process.argv = [...originalArgv];
   process.exitCode = undefined;
+  delete process.env.CI;
 });
 
 describe("cappa CLI", () => {
@@ -235,7 +236,7 @@ describe("cappa CLI", () => {
     });
   });
 
-  test("capture command does not trigger onFail callback", async () => {
+  test("capture command does not trigger onFail callback without ci mode", async () => {
     const onFail = vi.fn().mockResolvedValue(undefined);
 
     loadConfigMock.mockResolvedValue({
@@ -261,7 +262,7 @@ describe("cappa CLI", () => {
     expect(groupScreenshotsMock).not.toHaveBeenCalled();
   });
 
-  test("ci command triggers onFail callback with failing screenshots", async () => {
+  test("capture --ci triggers onFail callback with failing screenshots", async () => {
     const onFail = vi.fn().mockResolvedValue(undefined);
 
     loadConfigMock.mockResolvedValue({
@@ -316,7 +317,7 @@ describe("cappa CLI", () => {
       },
     ]);
 
-    process.argv = ["node", "cappa", "ci"];
+    process.argv = ["node", "cappa", "capture", "--ci"];
 
     await run();
 
@@ -354,7 +355,69 @@ describe("cappa CLI", () => {
     ]);
   });
 
-  test("ci command does not trigger onFail callback when there are no failing screenshots", async () => {
+  test("capture command triggers onFail callback when CI=true", async () => {
+    const onFail = vi.fn().mockResolvedValue(undefined);
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2 },
+      retries: 2,
+      concurrency: 1,
+      plugins: [],
+      onFail,
+    });
+
+    globMock.mockImplementation((pattern: string) => {
+      if (pattern.includes("/actual/")) {
+        return Promise.resolve(["/tmp/screenshots/actual/button.png"]);
+      }
+      if (pattern.includes("/expected/")) {
+        return Promise.resolve(["/tmp/screenshots/expected/button.png"]);
+      }
+      if (pattern.includes("/diff/")) {
+        return Promise.resolve(["/tmp/screenshots/diff/button.png"]);
+      }
+
+      return Promise.resolve([]);
+    });
+
+    groupScreenshotsMock.mockReturnValue([
+      {
+        id: "1",
+        name: "button",
+        category: "changed",
+        actualPath: "actual/button.png",
+        expectedPath: "expected/button.png",
+        diffPath: "diff/button.png",
+      },
+    ]);
+
+    process.env.CI = "true";
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    expect(groupScreenshotsMock).toHaveBeenCalled();
+    expect(onFail).toHaveBeenCalledWith([
+      expect.objectContaining({
+        id: "1",
+        name: "button",
+        category: "changed",
+        absoluteActualPath: path.resolve(
+          "/tmp/screenshots",
+          "actual/button.png",
+        ),
+      }),
+    ]);
+
+    delete process.env.CI;
+  });
+  test("capture --ci does not trigger onFail callback when there are no failing screenshots", async () => {
     const onFail = vi.fn().mockResolvedValue(undefined);
 
     loadConfigMock.mockResolvedValue({
@@ -395,7 +458,7 @@ describe("cappa CLI", () => {
       },
     ]);
 
-    process.argv = ["node", "cappa", "ci"];
+    process.argv = ["node", "cappa", "capture", "--ci"];
 
     await run();
 

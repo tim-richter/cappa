@@ -9,16 +9,22 @@ operates on the screenshots defined in your `cappa.config.ts` file.
 ## `cappa capture`
 
 Runs Playwright to render every configured scenario and writes the resulting images to the
-configured `outputDir`. Use this command for local development when you don't need to trigger
-failure callbacks. Use flags such as `--log-level` to adjust verbosity when diagnosing flaky tests.
+configured `outputDir`. Use flags such as `--log-level` to adjust verbosity when diagnosing
+flaky tests.
 
-Note: This command does not execute the `onFail` callback even if failures are detected.
+Use `--ci` to run capture in CI mode. In CI mode, Cappa executes the `onFail` callback after
+capture if any screenshots fail comparison.
 
-## `cappa ci`
+```bash
+# local capture only
+cappa capture
 
-Runs the same capture process as `cappa capture`, but also automatically executes the `onFail`
-callback if any screenshots fail comparison. This command is designed for use in CI/CD pipelines
-where you want to report failures (e.g., upload diff images to storage or notify external systems).
+# capture + onFail callback behavior
+cappa capture --ci
+```
+
+Cappa also enables the same CI mode automatically when `CI=true` is set in the environment, so
+`cappa capture` behaves like `cappa capture --ci` in most CI/CD pipelines.
 
 The `onFail` callback receives an array of failed screenshots with both relative and absolute
 paths to actual, expected, and diff images.

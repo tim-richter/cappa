@@ -2,7 +2,7 @@ import { initLogger } from "@cappa/logger";
 import { Command } from "commander";
 import { version } from "../package.json";
 import { approve } from "./commands/approve";
-import { capture } from "./commands/capture";
+import { registerCaptureCommand } from "./commands/capture";
 import { init } from "./commands/init";
 import { review } from "./commands/review";
 import { status } from "./commands/status";
@@ -24,21 +24,7 @@ program
     logger?.debug(`Log level set to: ${logLevel}`);
   });
 
-program
-  .command("capture")
-  .description("Capture screenshots")
-  .action(async () => {
-    await capture(false);
-  });
-
-program
-  .command("ci")
-  .description(
-    "Capture screenshots and run onFail callback for failed screenshots",
-  )
-  .action(async () => {
-    await capture(true);
-  });
+registerCaptureCommand(program);
 
 program.command("review").description("Review screenshots").action(review);
 
