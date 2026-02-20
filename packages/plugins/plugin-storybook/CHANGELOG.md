@@ -1,5 +1,16 @@
 # @cappa/plugin-storybook
 
+## 0.5.2
+
+### Patch Changes
+
+- ccc1c16: fix diff option typing and runtime handling for pixel and gmsd algorithms across config and Storybook per-screenshot overrides.
+- b70bb4e: Add debug logging when screenshot capture waits for a configured `delay`, and add regression tests to verify delay handling in core screenshots and Storybook-provided screenshot options.
+- Updated dependencies [ccc1c16]
+- Updated dependencies [337f150]
+- Updated dependencies [b70bb4e]
+  - @cappa/core@0.6.0
+
 ## 0.5.1
 
 ### Patch Changes
