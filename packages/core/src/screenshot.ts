@@ -263,6 +263,9 @@ class ScreenshotTool {
 
       await this.withViewport(page, options.viewport, async () => {
         if (options.delay) {
+          this.logger.debug(
+            `Waiting ${options.delay}ms before taking screenshot`,
+          );
           await page.waitForTimeout(options.delay);
         }
 
@@ -350,6 +353,9 @@ class ScreenshotTool {
         options.viewport,
         async () => {
           if (options.delay) {
+            this.logger.debug(
+              `Waiting ${options.delay}ms before taking screenshot`,
+            );
             await page.waitForTimeout(options.delay);
           }
 

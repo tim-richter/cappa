@@ -1,5 +1,5 @@
 import { initLogger } from "@cappa/logger";
-import { beforeAll, describe, expect, it } from "vitest";
+import { beforeAll, describe, expect, it, vi } from "vitest";
 import ScreenshotTool from "./screenshot";
 
 beforeAll(() => {
@@ -36,5 +36,53 @@ describe("ScreenshotTool getVariantFilename", () => {
     });
 
     expect(filename).toBe("Badge/mobile-custom.png");
+  });
+});
+
+describe("ScreenshotTool delay", () => {
+  const createPage = () => {
+    return {
+      waitForTimeout: vi.fn(async () => {}),
+      screenshot: vi.fn(async () => Buffer.from("test")),
+      viewportSize: vi.fn(() => ({ width: 1024, height: 768 })),
+      setViewportSize: vi.fn(async () => {}),
+      url: vi.fn(() => "http://localhost:6006/iframe.html?id=button--primary"),
+    };
+  };
+
+  it("waits before taking a saved screenshot when delay is configured", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+
+    tool.browser = {} as any;
+    tool.filesystem.getActualFilePath = vi.fn(() => "/tmp/Button.png");
+    tool.filesystem.ensureParentDir = vi.fn();
+
+    await tool.takeScreenshot(page as any, "Button.png", {
+      delay: 250,
+      viewport: { width: 1024, height: 768 },
+    });
+
+    expect(page.waitForTimeout).toHaveBeenCalledWith(250);
+    expect(page.waitForTimeout.mock.invocationCallOrder[0]).toBeLessThan(
+      page.screenshot.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("waits before taking comparison buffer screenshots when delay is configured", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+
+    tool.browser = {} as any;
+
+    await tool.takeScreenshotBuffer(page as any, {
+      delay: 125,
+      viewport: { width: 1024, height: 768 },
+    });
+
+    expect(page.waitForTimeout).toHaveBeenCalledWith(125);
+    expect(page.waitForTimeout.mock.invocationCallOrder[0]).toBeLessThan(
+      page.screenshot.mock.invocationCallOrder[0],
+    );
   });
 });
