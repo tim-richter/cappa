@@ -88,6 +88,7 @@ class ScreenshotTool {
   browserType: "chromium" | "firefox" | "webkit";
   headless: boolean;
   viewport: { width: number; height: number };
+  fullPage: boolean;
   outputDir: string;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
@@ -105,6 +106,7 @@ class ScreenshotTool {
     browserType?: "chromium" | "firefox" | "webkit";
     headless?: boolean;
     viewport?: { width: number; height: number };
+    fullPage?: boolean;
     outputDir?: string;
     diff?: DiffOptions;
     retries?: number;
@@ -114,6 +116,7 @@ class ScreenshotTool {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
+    this.fullPage = options.fullPage ?? true;
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
@@ -248,7 +251,7 @@ class ScreenshotTool {
       // Take screenshot
       const screenshotOptions = {
         path: filepath,
-        fullPage: options.fullPage,
+        fullPage: options.fullPage ?? this.fullPage,
         type: "png" as const,
         timeout: 60000,
         mask: options.mask,
@@ -332,7 +335,7 @@ class ScreenshotTool {
     try {
       // Take screenshot without saving to file
       const screenshotOptions = {
-        fullPage: options.fullPage,
+        fullPage: options.fullPage ?? this.fullPage,
         type: "png" as const,
         timeout: 60000,
         mask: options.mask,
@@ -387,7 +390,7 @@ class ScreenshotTool {
       const filepath = this.filesystem.getActualFilePath(filename);
 
       const screenshotSettings: ScreenshotSettings = {
-        fullPage: options.fullPage,
+        fullPage: options.fullPage ?? this.fullPage,
         mask: options.mask,
         omitBackground: options.omitBackground,
         delay: options.delay,
@@ -436,7 +439,11 @@ class ScreenshotTool {
       }
 
       // different sizes diff image
-      if (retryScreenshot.comparisonResult.differentSizes) {
+      if (
+        typeof retryScreenshot.comparisonResult === "object" &&
+        "differentSizes" in retryScreenshot.comparisonResult &&
+        retryScreenshot.comparisonResult.differentSizes
+      ) {
         this.logger.warn(`Screenshot has different sizes than reference image`);
 
         const diffFilename = options.diffImageFilename || filename;

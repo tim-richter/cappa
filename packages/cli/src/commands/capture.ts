@@ -193,6 +193,8 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     retries: config.retries,
     concurrency: config.concurrency,
     logConsoleEvents: config.logConsoleEvents,
+    fullPage: config.screenshot?.fullPage ?? true,
+    viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
   });
 
   let captureError: unknown;

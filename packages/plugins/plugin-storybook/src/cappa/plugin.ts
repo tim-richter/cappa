@@ -1,5 +1,4 @@
 import type {
-  DiffOptions,
   Plugin,
   ScreenshotCaptureExtras,
   ScreenshotVariantWithUrl,
@@ -8,6 +7,7 @@ import { getLogger } from "@cappa/logger";
 import { minimatch } from "minimatch";
 import type { Page } from "playwright-core";
 import type {
+  DiffOptionsStorybook,
   ScreenshotOptionsStorybook,
   StorybookRenderOptions,
 } from "../types";
@@ -148,7 +148,9 @@ export interface StorybookPluginOptions {
  */
 function createLatch<T>() {
   let resolve!: (v: T) => void;
-  const p = new Promise<T>((r) => (resolve = r));
+  const p = new Promise<T>((r) => {
+    resolve = r;
+  });
   return { p, resolve };
 }
 
@@ -330,7 +332,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           {
             saveDiffImage: boolean;
             diffImageFilename?: string;
-            diff?: DiffOptions;
+            diff?: DiffOptionsStorybook;
           },
         ][] = [];
 

@@ -39,7 +39,51 @@ test("return Config when config is set with defineConfig", async () => {
     },
     plugins: [],
     onFail: undefined,
+    screenshot: {
+      fullPage: true,
+      viewport: { width: 1920, height: 1080 },
+    },
     review: { theme: "light" },
+  });
+});
+
+test("respects screenshot.fullPage override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    retries: 2,
+    plugins: [],
+    screenshot: { fullPage: false },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.screenshot.fullPage).toBe(false);
+  expect(cappaUserConfig.screenshot.viewport).toEqual({
+    width: 1920,
+    height: 1080,
+  });
+});
+
+test("respects screenshot.viewport override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    retries: 2,
+    plugins: [],
+    screenshot: { viewport: { width: 1024, height: 768 } },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.screenshot.fullPage).toBe(true);
+  expect(cappaUserConfig.screenshot.viewport).toEqual({
+    width: 1024,
+    height: 768,
   });
 });
 
@@ -106,6 +150,10 @@ test("return Config when config is a function", async () => {
     },
     plugins: [],
     onFail: undefined,
+    screenshot: {
+      fullPage: true,
+      viewport: { width: 1920, height: 1080 },
+    },
     review: { theme: "light" },
   });
 });
@@ -138,6 +186,10 @@ test("return Config when config is a promise", async () => {
     },
     plugins: [],
     onFail: undefined,
+    screenshot: {
+      fullPage: true,
+      viewport: { width: 1920, height: 1080 },
+    },
     review: { theme: "light" },
   });
 });
@@ -182,6 +234,10 @@ test("passes environment variables to config functions", async () => {
     },
     plugins: [],
     onFail: undefined,
+    screenshot: {
+      fullPage: true,
+      viewport: { width: 1920, height: 1080 },
+    },
     review: { theme: "light" },
   });
 

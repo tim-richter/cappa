@@ -70,6 +70,13 @@ export async function getConfig(
     diff: diffConfig,
     plugins: userConfig.plugins ? await getPlugins(userConfig.plugins) : [],
     onFail: userConfig.onFail,
+    screenshot: {
+      fullPage: userConfig.screenshot?.fullPage ?? true,
+      viewport: userConfig.screenshot?.viewport ?? {
+        width: 1920,
+        height: 1080,
+      },
+    },
     review: {
       theme: userConfig.review?.theme ?? "light",
     },

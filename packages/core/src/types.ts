@@ -139,6 +139,22 @@ export type UserConfig = {
    */
   onFail?: (screenshots: FailedScreenshot[]) => PossiblePromise<void>;
   /**
+   * Default screenshot settings applied globally.
+   * Plugins and per-task options can override these.
+   */
+  screenshot?: {
+    /**
+     * Whether to take full page screenshots by default.
+     * @default true
+     */
+    fullPage?: boolean;
+    /**
+     * Default viewport size for screenshots.
+     * @default { width: 1920, height: 1080 }
+     */
+    viewport?: Viewport;
+  };
+  /**
    * Configuration for the review UI.
    */
   review?: {

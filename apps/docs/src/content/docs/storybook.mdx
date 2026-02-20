@@ -113,7 +113,7 @@ under `parameters.cappa`.
 | --- | --- | --- |
 | `skip` | Skip capturing the story. | `false` |
 | `delay` | Wait (in ms) before taking the screenshot. | `null` (no delay) |
-| `fullPage` | Capture the full page instead of the viewport. | `true` |
+| `fullPage` | Capture the full page instead of the viewport. Inherits from global `screenshot.fullPage` in `cappa.config.ts` when not set. | `true` |
 | `mask` | Array of selectors to blur or hide in the screenshot. | `[]` |
 | `omitBackground` | Capture the page with a transparent background. | `false` |
 | `viewport` | Override the viewport size for the story. | Playwright default |
