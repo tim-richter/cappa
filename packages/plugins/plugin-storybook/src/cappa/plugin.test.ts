@@ -435,12 +435,14 @@ describe("console logging configuration", () => {
       goto: vi.fn(async () => {
         await exposedFunctions.__cappa_parameters?.(story.id, {
           viewport: { width: 800, height: 600 },
+          delay: 300,
           diff: { threshold: 0.2 },
           variants: [
             {
               id: "mobile",
               options: {
                 viewport: { width: 375, height: 667 },
+                delay: 150,
                 diff: { threshold: 0.3 },
               },
             },
@@ -499,10 +501,12 @@ describe("console logging configuration", () => {
     );
 
     expect(screenshotTool.captureWithVariants).toHaveBeenCalledTimes(1);
-    const [, , , , , captureExtras] = (
+    const [, , , baseOptions, variantsWithUrls, captureExtras] = (
       screenshotTool.captureWithVariants as any
     ).mock.calls[0];
 
+    expect(baseOptions.delay).toBe(300);
+    expect(variantsWithUrls[0].options.delay).toBe(150);
     expect(captureExtras.diff).toEqual({ threshold: 0.2 });
     expect(captureExtras.variants?.mobile?.diff).toEqual({ threshold: 0.3 });
 
