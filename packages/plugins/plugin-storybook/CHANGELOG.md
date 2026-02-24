@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.5.3
+
+### Patch Changes
+
+- 990b71d: fix: build clean
+
 ## 0.5.2
 
 ### Patch Changes
