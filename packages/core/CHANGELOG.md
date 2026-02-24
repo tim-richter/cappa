@@ -1,5 +1,21 @@
 # @cappa/core
 
+## 0.6.0
+
+### Minor Changes
+
+- 337f150: Add global `screenshot.fullPage` and `screenshot.viewport` configuration.
+
+  Screenshots now default to full-page capture (`fullPage: true`) at the global level. This applies to all plugins (including Storybook) when per-task options don't override it. Set `screenshot.fullPage: false` in `cappa.config.ts` to use viewport-only screenshots by default.
+
+### Patch Changes
+
+- ccc1c16: fix diff option typing and runtime handling for pixel and gmsd algorithms across config and Storybook per-screenshot overrides.
+- b70bb4e: Add debug logging when screenshot capture waits for a configured `delay`, and add regression tests to verify delay handling in core screenshots and Storybook-provided screenshot options.
+- 5159a52: fix: build
+- Updated dependencies [5159a52]
+  - @cappa/logger@0.0.9
+
 ## 0.5.1
 
 ### Patch Changes

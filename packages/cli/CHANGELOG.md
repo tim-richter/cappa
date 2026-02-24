@@ -1,5 +1,29 @@
 # @cappa/cli
 
+## 0.7.0
+
+### Minor Changes
+
+- a9109e9: Remove the dedicated `ci` command and add a `--ci` option to `cappa capture`.
+
+  When CI mode is enabled (either with `cappa capture --ci` or `CI=true`), Cappa now executes the configured `onFail` callback for failing screenshots.
+
+- 337f150: Add global `screenshot.fullPage` and `screenshot.viewport` configuration.
+
+  Screenshots now default to full-page capture (`fullPage: true`) at the global level. This applies to all plugins (including Storybook) when per-task options don't override it. Set `screenshot.fullPage: false` in `cappa.config.ts` to use viewport-only screenshots by default.
+
+### Patch Changes
+
+- ccc1c16: fix diff option typing and runtime handling for pixel and gmsd algorithms across config and Storybook per-screenshot overrides.
+- 5159a52: fix: build
+- Updated dependencies [ccc1c16]
+- Updated dependencies [337f150]
+- Updated dependencies [b70bb4e]
+- Updated dependencies [5159a52]
+  - @cappa/core@0.6.0
+  - @cappa/logger@0.0.9
+  - @cappa/server@0.3.2
+
 ## 0.6.1
 
 ### Patch Changes
