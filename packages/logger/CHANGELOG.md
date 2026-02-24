@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.9
+
+### Patch Changes
+
+- 5159a52: fix: build
+
 ## 0.0.8
 
 ### Patch Changes
