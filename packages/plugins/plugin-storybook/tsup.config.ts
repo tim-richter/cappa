@@ -8,7 +8,6 @@ export default defineConfig([
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
-    clean: true,
   },
   {
     entry: { index: "src/index.cjs.ts" },
@@ -17,7 +16,6 @@ export default defineConfig([
     splitting: false,
     external: ["./preview.js"],
     sourcemap: false,
-    clean: true,
   },
   {
     entry: ["src/storybook/addon/preview.ts"],
@@ -25,7 +23,6 @@ export default defineConfig([
     format: ["esm"],
     splitting: false,
     sourcemap: false,
-    clean: true,
   },
   {
     entry: ["src/storybook/addon/browser.ts"],
@@ -34,6 +31,5 @@ export default defineConfig([
     dts: true,
     splitting: false,
     sourcemap: false,
-    clean: true,
   },
 ]);
