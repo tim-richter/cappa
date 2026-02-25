@@ -1,5 +1,13 @@
 # @cappa/plugin-storybook
 
+## 0.5.4
+
+### Patch Changes
+
+- 09f5068: chore(deps): upgrade + minimatch security fix
+- Updated dependencies [09f5068]
+  - @cappa/core@0.6.1
+
 ## 0.5.3
 
 ### Patch Changes

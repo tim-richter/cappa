@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.3.3
+
+### Patch Changes
+
+- 09f5068: chore(deps): upgrade + minimatch security fix
+- Updated dependencies [09f5068]
+  - @cappa/core@0.6.1
+
 ## 0.3.2
 
 ### Patch Changes
