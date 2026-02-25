@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.6.1
+
+### Patch Changes
+
+- 09f5068: chore(deps): upgrade + minimatch security fix
+
 ## 0.6.0
 
 ### Minor Changes

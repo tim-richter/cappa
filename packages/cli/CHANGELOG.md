@@ -1,5 +1,14 @@
 # @cappa/cli
 
+## 0.7.1
+
+### Patch Changes
+
+- 09f5068: chore(deps): upgrade + minimatch security fix
+- Updated dependencies [09f5068]
+  - @cappa/core@0.6.1
+  - @cappa/server@0.3.3
+
 ## 0.7.0
 
 ### Minor Changes
