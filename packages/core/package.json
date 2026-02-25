@@ -49,9 +49,9 @@
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
     "@types/pngjs": "^6.0.5",
-    "playwright-core": "^1.57.0",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
+    "playwright-core": "^1.58.2",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

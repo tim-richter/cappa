@@ -65,7 +65,7 @@ describe("ScreenshotTool delay", () => {
 
     expect(page.waitForTimeout).toHaveBeenCalledWith(250);
     expect(page.waitForTimeout.mock.invocationCallOrder[0]).toBeLessThan(
-      page.screenshot.mock.invocationCallOrder[0],
+      page.screenshot.mock.invocationCallOrder[0] as number,
     );
   });
 
@@ -82,7 +82,7 @@ describe("ScreenshotTool delay", () => {
 
     expect(page.waitForTimeout).toHaveBeenCalledWith(125);
     expect(page.waitForTimeout.mock.invocationCallOrder[0]).toBeLessThan(
-      page.screenshot.mock.invocationCallOrder[0],
+      page.screenshot.mock.invocationCallOrder[0] as number,
     );
   });
 });
