@@ -64,7 +64,7 @@ importers:
         version: 24.10.7
       turbo:
         specifier: ^2.8.10
-        version: 2.8.10
+        version: 2.8.12
       typescript:
         specifier: 'catalog:'
         version: 5.9.3
@@ -543,8 +543,8 @@ importers:
         specifier: ^4.2.1
         version: 4.2.1
       '@turbo/gen':
-        specifier: 2.8.10
-        version: 2.8.10(@types/node@24.10.7)
+        specifier: 2.8.12
+        version: 2.8.12(@types/node@24.10.7)
       '@types/node':
         specifier: 'catalog:'
         version: 24.10.7
@@ -3388,33 +3388,33 @@ packages:
   '@tsconfig/node16@1.0.4':
     resolution: {integrity: sha512-vxhUy4J8lyeyinH7Azl1pdd43GJhZH/tP2weN8TntQblOY+A0XbT8DJk1/oCPuOOyg/Ja757rG0CgHcWC8OfMA==}
 
-  '@turbo/gen-darwin-64@2.8.10':
-    resolution: {integrity: sha512-rDDixX4p0G6bmGeHClQrenY43bueQ5u1iQdCa03lyylaGipX0YwVV+4WQCCMxSMaZ1niu3jgo4/XHWf8pUpLHQ==}
+  '@turbo/gen-darwin-64@2.8.12':
+    resolution: {integrity: sha512-kqdHAPUF1cRTwJdE8HhqOHeFJ3vptqjXtnEGOHTqFgtdgN+ocA0ugKUPnzVsKjp2jqUVsVjkv159p0+FlyaP6Q==}
     cpu: [x64]
     os: [darwin]
 
-  '@turbo/gen-darwin-arm64@2.8.10':
-    resolution: {integrity: sha512-Ca3L53rUM03vIM9kGxWOtMFwFCL4jzCPCDWskfqfwz/CEAK8WfH5KKGrIUSgPxCWeRM/mc93YTtkAWj04FEwtQ==}
+  '@turbo/gen-darwin-arm64@2.8.12':
+    resolution: {integrity: sha512-N770qkkF8h7UmESwnIxGg6IDYuaJ0lmWAJGB9i31GLFb3sqeAgvd7IMmAb/KhhYdPQexB6uF5BXJZvtiL2jPKQ==}
     cpu: [arm64]
     os: [darwin]
 
-  '@turbo/gen-linux-64@2.8.10':
-    resolution: {integrity: sha512-/GJJdfQeFS2Y2ZFcnkXzmHdacww/48i2c7IwklHFlFuLGP6CzJY+zA1izoU1Uas07A8+UVrN/Lm8Sr1+fZDzrw==}
+  '@turbo/gen-linux-64@2.8.12':
+    resolution: {integrity: sha512-OpRjqHTQffpPJYPORmxbMmNVmZgZ+6/Ik0IpqRifbqplelVAAf+PyFM3GqjbCqs0YH048IAIf3GH9IqsN9V2Gw==}
     cpu: [x64]
     os: [linux]
 
-  '@turbo/gen-linux-arm64@2.8.10':
-    resolution: {integrity: sha512-8kqjbGXqjTIYvEndZjVtxQJvQTGN2mMI554qwAHPdxwQV94txGLYvW+tn87hVIoHoRNAxhoyn9LoK5vACjLF4Q==}
+  '@turbo/gen-linux-arm64@2.8.12':
+    resolution: {integrity: sha512-pq/IYQN7gi7ujwHGgSKHr0PJvgQE1j1KS1A1I15pFQnW9IuNL++Pahh9LD+oeU21EZ3349UTBzYNdC6lHmJGzQ==}
     cpu: [arm64]
     os: [linux]
 
-  '@turbo/gen-windows-64@2.8.10':
-    resolution: {integrity: sha512-jit+UXJlTOkGJSWa+Bq/Arhf1VVk1HfKmDx0q/t1PFJ/hCxkH/s0Tmdcy3VqysvfBIagxOxlftx3mjjA6tgbVQ==}
+  '@turbo/gen-windows-64@2.8.12':
+    resolution: {integrity: sha512-wmgT/inrVARRsvBlDstUHuMa2ef37Y44f4x+nSitTeSmtpBt/Mo131PtgHMtcvBheKIJVKrBoP3oz1fw8nyOTg==}
     cpu: [x64]
     os: [win32]
 
-  '@turbo/gen@2.8.10':
-    resolution: {integrity: sha512-P3L2jMPfdktnRd16VzHaJ6W+P8yHuDSIesU7Fy8j6P2bihp/hPHHG/9G3lpL2+QMkSuaczC5JKxDNCV0beyd0Q==}
+  '@turbo/gen@2.8.12':
+    resolution: {integrity: sha512-9Zw71/j/ejnasg++4bM1jfwqSWo/F3WT0A0OTeeS1aVhlmzdstQY7gdj9hFgB7qnSbx/P/hFSnltKLfWDQeY4A==}
     hasBin: true
 
   '@tybys/wasm-util@0.10.1':
@@ -6774,38 +6774,38 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  turbo-darwin-64@2.8.10:
-    resolution: {integrity: sha512-A03fXh+B7S8mL3PbdhTd+0UsaGrhfyPkODvzBDpKRY7bbeac4MDFpJ7I+Slf2oSkCEeSvHKR7Z4U71uKRUfX7g==}
+  turbo-darwin-64@2.8.12:
+    resolution: {integrity: sha512-EiHJmW2MeQQx+21x8hjMHw/uPhXt9PIxvDrxzOtyVwrXzL0tQmsxtO4qHf2l7uA+K6PUJ4+TjY1MHZDuCvWXrw==}
     cpu: [x64]
     os: [darwin]
 
-  turbo-darwin-arm64@2.8.10:
-    resolution: {integrity: sha512-sidzowgWL3s5xCHLeqwC9M3s9M0i16W1nuQF3Mc7fPHpZ+YPohvcbVFBB2uoRRHYZg6yBnwD4gyUHKTeXfwtXA==}
+  turbo-darwin-arm64@2.8.12:
+    resolution: {integrity: sha512-cbqqGN0vd7ly2TeuaM8k9AK9u1CABO4kBA5KPSqovTiLL3sORccn/mZzJSbvQf0EsYRfU34MgW5FotfwW3kx8Q==}
     cpu: [arm64]
     os: [darwin]
 
-  turbo-linux-64@2.8.10:
-    resolution: {integrity: sha512-YK9vcpL3TVtqonB021XwgaQhY9hJJbKKUhLv16osxV0HkcQASQWUqR56yMge7puh6nxU67rQlTq1b7ksR1T3KA==}
+  turbo-linux-64@2.8.12:
+    resolution: {integrity: sha512-jXKw9j4r4q6s0goSXuKI3aKbQK2qiNeP25lGGEnq018TM6SWRW1CCpPMxyG91aCKrub7wDm/K45sGNT4ZFBcFQ==}
     cpu: [x64]
     os: [linux]
 
-  turbo-linux-arm64@2.8.10:
-    resolution: {integrity: sha512-3+j2tL0sG95iBJTm+6J8/45JsETQABPqtFyYjVjBbi6eVGdtNTiBmHNKrbvXRlQ3ZbUG75bKLaSSDHSEEN+btQ==}
+  turbo-linux-arm64@2.8.12:
+    resolution: {integrity: sha512-BRJCMdyXjyBoL0GYpvj9d2WNfMHwc3tKmJG5ATn2Efvil9LsiOsd/93/NxDqW0jACtHFNVOPnd/CBwXRPiRbwA==}
     cpu: [arm64]
     os: [linux]
 
-  turbo-windows-64@2.8.10:
-    resolution: {integrity: sha512-hdeF5qmVY/NFgiucf8FW0CWJWtyT2QPm5mIsX0W1DXAVzqKVXGq+Zf+dg4EUngAFKjDzoBeN6ec2Fhajwfztkw==}
+  turbo-windows-64@2.8.12:
+    resolution: {integrity: sha512-vyFOlpFFzQFkikvSVhVkESEfzIopgs2J7J1rYvtSwSHQ4zmHxkC95Q8Kjkus8gg+8X2mZyP1GS5jirmaypGiPw==}
     cpu: [x64]
     os: [win32]
 
-  turbo-windows-arm64@2.8.10:
-    resolution: {integrity: sha512-QGdr/Q8LWmj+ITMkSvfiz2glf0d7JG0oXVzGL3jxkGqiBI1zXFj20oqVY0qWi+112LO9SVrYdpHS0E/oGFrMbQ==}
+  turbo-windows-arm64@2.8.12:
+    resolution: {integrity: sha512-9nRnlw5DF0LkJClkIws1evaIF36dmmMEO84J5Uj4oQ8C0QTHwlH7DNe5Kq2Jdmu8GXESCNDNuUYG8Cx6W/vm3g==}
     cpu: [arm64]
     os: [win32]
 
-  turbo@2.8.10:
-    resolution: {integrity: sha512-OxbzDES66+x7nnKGg2MwBA1ypVsZoDTLHpeaP4giyiHSixbsiTaMyeJqbEyvBdp5Cm28fc+8GG6RdQtic0ijwQ==}
+  turbo@2.8.12:
+    resolution: {integrity: sha512-auUAMLmi0eJhxDhQrxzvuhfEbICnVt0CTiYQYY8WyRJ5nwCDZxD0JG8bCSxT4nusI2CwJzmZAay5BfF6LmK7Hw==}
     hasBin: true
 
   tw-animate-css@1.4.0:
@@ -9997,31 +9997,31 @@ snapshots:
 
   '@tsconfig/node16@1.0.4': {}
 
-  '@turbo/gen-darwin-64@2.8.10':
+  '@turbo/gen-darwin-64@2.8.12':
     optional: true
 
-  '@turbo/gen-darwin-arm64@2.8.10':
+  '@turbo/gen-darwin-arm64@2.8.12':
     optional: true
 
-  '@turbo/gen-linux-64@2.8.10':
+  '@turbo/gen-linux-64@2.8.12':
     optional: true
 
-  '@turbo/gen-linux-arm64@2.8.10':
+  '@turbo/gen-linux-arm64@2.8.12':
     optional: true
 
-  '@turbo/gen-windows-64@2.8.10':
+  '@turbo/gen-windows-64@2.8.12':
     optional: true
 
-  '@turbo/gen@2.8.10(@types/node@24.10.7)':
+  '@turbo/gen@2.8.12(@types/node@24.10.7)':
     dependencies:
       '@inquirer/prompts': 7.10.1(@types/node@24.10.7)
       node-plop: 0.26.3
     optionalDependencies:
-      '@turbo/gen-darwin-64': 2.8.10
-      '@turbo/gen-darwin-arm64': 2.8.10
-      '@turbo/gen-linux-64': 2.8.10
-      '@turbo/gen-linux-arm64': 2.8.10
-      '@turbo/gen-windows-64': 2.8.10
+      '@turbo/gen-darwin-64': 2.8.12
+      '@turbo/gen-darwin-arm64': 2.8.12
+      '@turbo/gen-linux-64': 2.8.12
+      '@turbo/gen-linux-arm64': 2.8.12
+      '@turbo/gen-windows-64': 2.8.12
     transitivePeerDependencies:
       - '@types/node'
 
@@ -14293,32 +14293,32 @@ snapshots:
     optionalDependencies:
       fsevents: 2.3.3
 
-  turbo-darwin-64@2.8.10:
+  turbo-darwin-64@2.8.12:
     optional: true
 
-  turbo-darwin-arm64@2.8.10:
+  turbo-darwin-arm64@2.8.12:
     optional: true
 
-  turbo-linux-64@2.8.10:
+  turbo-linux-64@2.8.12:
     optional: true
 
-  turbo-linux-arm64@2.8.10:
+  turbo-linux-arm64@2.8.12:
     optional: true
 
-  turbo-windows-64@2.8.10:
+  turbo-windows-64@2.8.12:
     optional: true
 
-  turbo-windows-arm64@2.8.10:
+  turbo-windows-arm64@2.8.12:
     optional: true
 
-  turbo@2.8.10:
+  turbo@2.8.12:
     optionalDependencies:
-      turbo-darwin-64: 2.8.10
-      turbo-darwin-arm64: 2.8.10
-      turbo-linux-64: 2.8.10
-      turbo-linux-arm64: 2.8.10
-      turbo-windows-64: 2.8.10
-      turbo-windows-arm64: 2.8.10
+      turbo-darwin-64: 2.8.12
+      turbo-darwin-arm64: 2.8.12
+      turbo-linux-64: 2.8.12
+      turbo-linux-arm64: 2.8.12
+      turbo-windows-64: 2.8.12
+      turbo-windows-arm64: 2.8.12
 
   tw-animate-css@1.4.0: {}
 
