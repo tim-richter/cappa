@@ -30,7 +30,7 @@
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
-    "@fastify/middie": "9.1.0",
+    "@fastify/middie": "9.2.0",
     "@fastify/static": "9.0.0",
     "fastify": "5.7.4",
     "zod": "4.3.6"
@@ -39,7 +39,7 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "memfs": "^4.51.1",
+    "memfs": "^4.56.10",
     "tsup": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:",

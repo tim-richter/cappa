@@ -29,7 +29,7 @@
     "@biomejs/biome": "^2.4.4",
     "@changesets/cli": "^2.29.8",
     "@types/node": "catalog:",
-    "turbo": "^2.8.10",
+    "turbo": "^2.8.12",
     "typescript": "catalog:"
   },
   "packageManager": "pnpm@10.28.0",

@@ -18,14 +18,14 @@
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
-    "@tanstack/react-query": "^5.90.16",
+    "@tanstack/react-query": "^5.90.21",
     "lucide-react": "0.575.0",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "^7.13.1"
   },
   "devDependencies": {
-    "@storybook/react-vite": "^10.2.12",
+    "@storybook/react-vite": "^10.2.13",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "catalog:",
@@ -34,8 +34,8 @@
     "@vitejs/plugin-react": "5.1.4",
     "msw": "^2.12.10",
     "msw-storybook-addon": "^2.0.6",
-    "nuqs": "^2.8.8",
-    "storybook": "^10.2.12",
+    "nuqs": "^2.8.9",
+    "storybook": "^10.2.13",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "tsx": "4.21.0",
