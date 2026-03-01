@@ -1,5 +1,13 @@
 # @cappa/core
 
+## 0.6.2
+
+### Patch Changes
+
+- 66124db: Update dependencies to latest versions
+- Updated dependencies [66124db]
+  - @cappa/logger@0.0.10
+
 ## 0.6.1
 
 ### Patch Changes
