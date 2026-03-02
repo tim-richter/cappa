@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.10
+
+### Patch Changes
+
+- 66124db: Update dependencies to latest versions
+
 ## 0.0.9
 
 ### Patch Changes
