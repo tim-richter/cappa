@@ -43,6 +43,10 @@ export async function compareImagesGMSD(
 
   const { width, height } = png1;
 
+  if (width !== png2.width || height !== png2.height) {
+    return { gmsd: Infinity, passed: false };
+  }
+
   const diff = withDiff ? PNG.create(width, height) : undefined;
 
   try {

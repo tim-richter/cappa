@@ -1,7 +1,7 @@
 import { initLogger } from "@cappa/logger";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import ScreenshotTool from "./screenshot";
 import * as pixelCompare from "./compare/pixel";
+import ScreenshotTool from "./screenshot";
 
 vi.mock("./compare/pixel", () => ({
   compareImages: vi.fn(),
@@ -272,9 +272,7 @@ describe("ScreenshotTool retryScreenshot", () => {
     });
 
     expect(warnSpy).not.toHaveBeenCalled();
-    expect(errorSpy).toHaveBeenCalledWith(
-      expect.stringContaining("1 retries"),
-    );
+    expect(errorSpy).toHaveBeenCalledWith(expect.stringContaining("1 retries"));
   });
 
   it("continues retrying even when images have different sizes", async () => {

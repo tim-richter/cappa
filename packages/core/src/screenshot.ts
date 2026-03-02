@@ -530,7 +530,9 @@ class ScreenshotTool {
         } else {
           const summary =
             "numDiffPixels" in comparisonResult
-              ? `${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`
+              ? comparisonResult.differentSizes
+                ? "different image sizes"
+                : `${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`
               : `gmsd score ${comparisonResult.gmsd.toFixed(4)}`;
 
           this.logger.warn(
