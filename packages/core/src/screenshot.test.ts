@@ -277,7 +277,7 @@ describe("ScreenshotTool retryScreenshot", () => {
     );
   });
 
-  it("stops retrying immediately when images have different sizes", async () => {
+  it("continues retrying even when images have different sizes", async () => {
     const tool = new ScreenshotTool({ outputDir: "/tmp", retries: 3 });
     const page = createPage();
     tool.browser = {} as any;
@@ -297,6 +297,6 @@ describe("ScreenshotTool retryScreenshot", () => {
     );
 
     expect(result.passed).toBe(false);
-    expect(bufferSpy).toHaveBeenCalledTimes(1);
+    expect(bufferSpy).toHaveBeenCalledTimes(3);
   });
 });

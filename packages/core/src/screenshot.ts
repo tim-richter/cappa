@@ -509,18 +509,6 @@ class ScreenshotTool {
                 diffConfig as DiffConfig,
               );
 
-        // bail early if the images are different sizes (pixel algorithm only)
-        if (
-          "differentSizes" in comparisonResult &&
-          comparisonResult.differentSizes
-        ) {
-          return {
-            screenshotPath: screenshotBuffer,
-            comparisonResult,
-            passed: false,
-          };
-        }
-
         // last retry
         if (i === this.retries - 1 && !comparisonResult.passed) {
           this.logger.error(
