@@ -407,6 +407,8 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           variants: variantExtrasEntries.length
             ? Object.fromEntries(variantExtrasEntries)
             : undefined,
+          skipBaseNavigation: true,
+          waitForStability: waitForVisualIdle,
         };
 
         const captureResult = await screenshotTool.captureWithVariants(

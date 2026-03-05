@@ -37,7 +37,7 @@ export const freezeUI = async (page: Page) => {
  */
 export const waitForVisualIdle = async (page: Page) => {
   // Wait for the page to be fully loaded
-  await page.waitForLoadState("networkidle");
+  await page.waitForLoadState("load");
 
   // fonts + images
   await page.evaluate(async () => {

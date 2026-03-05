@@ -82,6 +82,17 @@ export interface ScreenshotCaptureExtras {
    * Merged on top of the global ScreenshotTool diff config.
    */
   diff?: DiffOptions;
+  /**
+   * Skip navigating to the base URL before capturing the base screenshot.
+   * Use this when the page is already at the correct URL and in a stable state,
+   * to avoid the redundant navigation.
+   */
+  skipBaseNavigation?: boolean;
+  /**
+   * Optional callback invoked after each navigation (variants only, or base when
+   * skipBaseNavigation is false) to wait for visual stability before capturing.
+   */
+  waitForStability?: (page: Page) => Promise<void>;
 }
 
 class ScreenshotTool {
@@ -176,26 +187,27 @@ class ScreenshotTool {
       headless: this.headless,
     });
 
-    const defaultUserAgent = (await this.browser.newContext())
-      .newPage()
-      .then((page) => page.evaluate(() => navigator.userAgent));
+    const tempCtx = await this.browser.newContext();
+    const tempPage = await tempCtx.newPage();
+    const defaultUserAgent = await tempPage.evaluate(() => navigator.userAgent);
+    await tempCtx.close();
 
-    // Create N contexts and pages
-    this.contexts = [];
-    this.pages = [];
+    // Create N contexts and pages in parallel
+    const results = await Promise.all(
+      Array.from({ length: this.concurrency }, async () => {
+        const context = await this.browser!.newContext({
+          reducedMotion: "reduce",
+          deviceScaleFactor: 2,
+          userAgent: `${defaultUserAgent} CappaStorybook`,
+          viewport: this.viewport,
+        });
+        const page = await context.newPage();
+        return { context, page };
+      }),
+    );
 
-    for (let i = 0; i < this.concurrency; i++) {
-      const context = await this.browser.newContext({
-        reducedMotion: "reduce",
-        deviceScaleFactor: 2,
-        userAgent: `${await defaultUserAgent} CappaStorybook`,
-        viewport: this.viewport,
-      });
-      const page = await context.newPage();
-
-      this.contexts.push(context);
-      this.pages.push(page);
-    }
+    this.contexts = results.map((r) => r.context);
+    this.pages = results.map((r) => r.page);
 
     // Backward compatibility
     this.context = this.contexts[0] ?? null;
@@ -773,9 +785,12 @@ class ScreenshotTool {
     const baseDiffOverride = extras.diff;
 
     // Capture base screenshot
-    getLogger().debug(`Going to base URL: ${baseUrl}`);
-    await page.goto(baseUrl);
-    await this.applyScreenshotOptimizations(page);
+    if (!extras.skipBaseNavigation) {
+      getLogger().debug(`Going to base URL: ${baseUrl}`);
+      await page.goto(baseUrl);
+      await this.applyScreenshotOptimizations(page);
+      await extras.waitForStability?.(page);
+    }
     const baseCaptureResult = await this.captureSingleScreenshot(
       page,
       baseFilename,
@@ -817,6 +832,7 @@ class ScreenshotTool {
       getLogger().debug(`Going to variant URL: ${variant.url}`);
       await page.goto(variant.url);
       await this.applyScreenshotOptimizations(page);
+      await extras.waitForStability?.(page);
 
       const variantExtra = extras.variants?.[variant.id];
       const variantSaveDiff = variantExtra?.saveDiffImage ?? baseSaveDiff;
