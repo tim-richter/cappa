@@ -1,5 +1,17 @@
 # @cappa/server
 
+## 0.4.0
+
+### Minor Changes
+
+- 558a782: feat: improve performance for page initialization
+
+### Patch Changes
+
+- Updated dependencies [b6d8ad7]
+- Updated dependencies [558a782]
+  - @cappa/core@0.7.0
+
 ## 0.3.5
 
 ### Patch Changes

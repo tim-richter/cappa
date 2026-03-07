@@ -1,5 +1,15 @@
 # @cappa/core
 
+## 0.7.0
+
+### Minor Changes
+
+- 558a782: feat: improve performance for page initialization
+
+### Patch Changes
+
+- b6d8ad7: Improve screenshot capture performance and stability
+
 ## 0.6.3
 
 ### Patch Changes
