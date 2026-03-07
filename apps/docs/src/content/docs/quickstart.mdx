@@ -19,9 +19,9 @@ Install the Playwright browsers if your project has not already done so:
 
 ```bash
 pnpm add -D playwright
-// or install only the needed browsers
-npx playwright install --with-deps
 ```
+
+> To be able to capture screenshots, you need also playwright browsers installed for your system.
 
 ## 2. Create a configuration file
 
@@ -39,7 +39,24 @@ export default defineConfig({
 Configuration objects can include additional options like custom commands, plugin settings, and CI
 integration hooks. Explore the [Configuration](/cappa/configuration) guide for a deeper tour.
 
-## 3. Capture, review, and approve
+## 3. Add a plugin
+
+Cappa needs to be able to know where to take screenshots from. It ships with a plugin system so you can connect Storybook or other
+custom data sources without forking the core tool.
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { cappaPluginStorybook } from '@cappa/plugin-storybook';
+
+export default defineConfig({
+  plugins: [cappaPluginStorybook({ storybookUrl: 'http://localhost:6006' })],
+});
+```
+
+This is just an example.
+For a full guide on how to use the Storybook plugin, see the [Storybook integration](/cappa/storybook) guide.
+
+## 4. Capture, review, and approve
 
 With the configuration in place you can run the standard workflow:
 

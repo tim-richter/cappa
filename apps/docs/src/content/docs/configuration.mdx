@@ -27,6 +27,8 @@ export default defineConfig(({ env }) => ({
 Folder where screenshots and diffs are written.
 Cappa will create actual, expected, and diff directories within this folder.
 
+You most probably want to exclude the actual and diff directories from your version control system.
+
 ## retries
 
 - **type**: `number`
@@ -70,14 +72,17 @@ The viewport to use for the screenshots.
 
 Whether to take a full page screenshot. If `false`, the viewport will be used.
 
+If a height is defined, this setting will supersede the viewport height.
+
 ## diff
 
 Diff configuration sets global comparison settings for screenshots.
 
 `diff` supports two algorithms via `diff.type`:
 
-- `"pixel"` (default) for pixel-count based comparisons
-- `"gmsd"` for gradient magnitude similarity deviation comparisons
+- `"pixel"` (default) for 'traditional' pixel-count based comparisons
+- `"gmsd"` for 'gradient magnitude similarity deviation' comparisons. 
+Measures gradient similarity, not just pixel differences. Closer to human perception of similarity.
 
 ### diff.type
 
@@ -154,7 +159,7 @@ Stability constant used in the GMSD equation.
 
 ### Diff PNG metadata
 
-Generated diff PNG files include textual metadata (`tEXt` chunks) with the comparison details. This includes:
+Generated PNG files include textual metadata (`tEXt` chunks) with the comparison details. This includes:
 
 - `cappa.diff.algorithm` (`pixel` or `gmsd`)
 - the configured diff options used for that comparison, stored as `cappa.diff.<option>`
@@ -192,12 +197,13 @@ expected, and diff images. Use this hook to upload diff images to object storage
 CI systems.
 
 ```ts
+import { awsS3Upload } from 'aws-sdk';
+
 onFail: async (screenshots) => {
   // Upload diff images to your storage provider
   for (const screenshot of screenshots) {
     if (screenshot.absoluteDiffPath) {
-      await uploadToS3(screenshot.absoluteDiffPath);
-      // etc
+      await awsS3Upload(screenshot.absoluteDiffPath);
     }
   }
 }

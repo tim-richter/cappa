@@ -13,21 +13,15 @@ configured `outputDir`. Use flags such as `--log-level` to adjust verbosity when
 flaky tests.
 
 Use `--ci` to run capture in CI mode. In CI mode, Cappa executes the `onFail` callback after
-capture if any screenshots fail comparison.
+capture, if any screenshots fail comparison.
 
 ```bash
-# local capture only
+# capture screenshots locally
 cappa capture
-
-# capture + onFail callback behavior
-cappa capture --ci
 ```
 
 Cappa also enables the same CI mode automatically when `CI=true` is set in the environment, so
 `cappa capture` behaves like `cappa capture --ci` in most CI/CD pipelines.
-
-The `onFail` callback receives an array of failed screenshots with both relative and absolute
-paths to actual, expected, and diff images.
 
 ## `cappa review`
 
@@ -45,14 +39,6 @@ manual review or as a final step in an automated pipeline when the diffs are acc
 During approval Cappa re-compares the latest actual image against the existing baseline and only
 updates the expected file when they truly differ. This prevents identical images with minor binary
 differences from needlessly churning in version control and keeps your baseline commits tidy.
-
-When a diff image is present, Cappa also carries over diff PNG metadata (for example
-`cappa.diff.algorithm` and related diff settings) into the approved expected PNG so the baseline
-retains the comparison context used to generate the accepted change.
-
-If a baseline image no longer has a matching capture (for example, a scenario was removed), running
-`cappa approve` now cleans up the orphaned expected file along with any remaining diff image so that
-your repository stays in sync with the latest set of screenshots.
 
 ## `cappa status`
 
