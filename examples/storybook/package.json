@@ -31,6 +31,6 @@
     "@vitest/coverage-v8": "catalog:",
     "playwright": "1.58.2",
     "start-server-and-test": "^2.1.5",
-    "storybook": "9.1.12"
+    "storybook": "9.1.19"
   }
 }
