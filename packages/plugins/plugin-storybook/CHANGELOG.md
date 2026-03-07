@@ -1,5 +1,18 @@
 # @cappa/plugin-storybook
 
+## 0.6.0
+
+### Minor Changes
+
+- 558a782: feat: improve performance for page initialization
+
+### Patch Changes
+
+- b6d8ad7: Improve screenshot capture performance and stability
+- Updated dependencies [b6d8ad7]
+- Updated dependencies [558a782]
+  - @cappa/core@0.7.0
+
 ## 0.5.6
 
 ### Patch Changes
