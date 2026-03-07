@@ -237,16 +237,35 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       }));
     },
 
-    initPage: async () => {
-      return {
-        latchMap: new Map<
-          string,
-          {
-            p: Promise<ScreenshotOptionsStorybook>;
-            resolve: (v: ScreenshotOptionsStorybook) => void;
-          }
-        >(),
-      };
+    initPage: async (page, screenshotTool) => {
+      const logger = getLogger();
+      const { logConsoleEvents = true } = screenshotTool;
+
+      const latchMap = new Map<
+        string,
+        {
+          p: Promise<ScreenshotOptionsStorybook>;
+          resolve: (v: ScreenshotOptionsStorybook) => void;
+        }
+      >();
+
+      await page.exposeFunction(
+        "__cappa_parameters",
+        async (id: string, payload: ScreenshotOptionsStorybook) => {
+          latchMap.get(id)?.resolve?.(payload);
+        },
+      );
+
+      if (logConsoleEvents) {
+        page.on("console", (message) => {
+          logger.debug("console", message.text());
+        });
+      }
+      page.on("pageerror", (error) => {
+        logger.debug("pageerror", error);
+      });
+
+      return { latchMap };
     },
 
     // Phase 2: Execute single story
@@ -255,34 +274,11 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const { story } = data;
       const logger = getLogger();
       const { storybook: defaultStorybookOptions } = options || {};
-      const { logConsoleEvents = true } = screenshotTool;
 
       try {
-        // Setup exposed function for this page
+        // Setup latch for this story's parameters
         const currentLatch = createLatch<ScreenshotOptionsStorybook>();
         context.latchMap.set(story.id, currentLatch);
-
-        if (
-          await page.evaluate(() => {
-            return (window as any).__cappa_parameters === undefined;
-          })
-        ) {
-          await page.exposeFunction(
-            "__cappa_parameters",
-            async (id: string, payload: ScreenshotOptionsStorybook) => {
-              context.latchMap.get(id)?.resolve?.(payload);
-            },
-          );
-        }
-
-        if (logConsoleEvents) {
-          page.on("console", (message) => {
-            logger.debug("console", message.text());
-          });
-        }
-        page.on("pageerror", (error) => {
-          logger.debug("pageerror", error);
-        });
 
         // Navigate to story
         await page.goto(url);

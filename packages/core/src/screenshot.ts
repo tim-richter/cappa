@@ -441,7 +441,7 @@ class ScreenshotTool {
       // Save diff image if requested and there are differences
       if (
         options.saveDiffImage &&
-        retryScreenshot.comparisonResult.diffBuffer &&
+        retryScreenshot.comparisonResult?.diffBuffer &&
         !retryScreenshot.passed
       ) {
         const diffFilename = options.diffImageFilename || filename;
@@ -458,6 +458,7 @@ class ScreenshotTool {
 
       // different sizes diff image
       if (
+        retryScreenshot.comparisonResult !== null &&
         typeof retryScreenshot.comparisonResult === "object" &&
         "differentSizes" in retryScreenshot.comparisonResult &&
         retryScreenshot.comparisonResult.differentSizes
