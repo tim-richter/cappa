@@ -688,6 +688,7 @@ class ScreenshotTool {
         saveDiffImage: baseSaveDiff,
         diffImageFilename: baseDiffFilename,
         diff: baseDiffOverride,
+        captureStart: extras.captureStart,
       },
     );
 
