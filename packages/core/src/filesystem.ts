@@ -1,5 +1,5 @@
 import fs from "node:fs";
-import { glob } from "node:fs/promises";
+import fsp, { glob } from "node:fs/promises";
 import path from "node:path";
 import { extractTextMetadata, injectTextMetadata } from "./features/png/util";
 
@@ -16,9 +16,9 @@ export class ScreenshotFileSystem {
     this.expected = path.resolve(outputDir, "expected");
     this.diff = path.resolve(outputDir, "diff");
 
-    this.ensureParentDir(this.actual);
-    this.ensureParentDir(this.expected);
-    this.ensureParentDir(this.diff);
+    this.ensureParentDirSync(this.actual);
+    this.ensureParentDirSync(this.expected);
+    this.ensureParentDirSync(this.diff);
   }
 
   clearActual() {
@@ -85,7 +85,7 @@ export class ScreenshotFileSystem {
     const expectedPath = path.resolve(this.expected, relativePath);
     const diffPath = path.resolve(this.diff, relativePath);
 
-    this.ensureParentDir(expectedPath);
+    this.ensureParentDirSync(expectedPath);
 
     fs.copyFileSync(actualPath, expectedPath);
 
@@ -139,7 +139,15 @@ export class ScreenshotFileSystem {
    * Ensure the parent directory of a file exists. If not, it creates it.
    * @param filePath - The path to the file.
    */
-  ensureParentDir(filePath: string) {
+  async ensureParentDir(filePath: string) {
+    const dir = path.dirname(filePath);
+    await fsp.mkdir(dir, { recursive: true });
+  }
+
+  /**
+   * Synchronous version used only during constructor initialization.
+   */
+  private ensureParentDirSync(filePath: string) {
     const dir = path.dirname(filePath);
 
     if (!fs.existsSync(dir)) {
@@ -202,38 +210,44 @@ export class ScreenshotFileSystem {
   /**
    * Write a file to the actual directory
    */
-  writeActualFile(filename: string, data: Buffer): void {
+  async writeActualFile(filename: string, data: Buffer): Promise<void> {
     const filepath = this.getActualFilePath(filename);
-    this.ensureParentDir(filepath);
-    fs.writeFileSync(filepath, data);
+    await this.ensureParentDir(filepath);
+    await fsp.writeFile(filepath, data);
   }
 
   /**
    * Write a file to the diff directory
    */
-  writeDiffFile(filename: string, data: Buffer): void {
+  async writeDiffFile(filename: string, data: Buffer): Promise<void> {
     const filepath = this.getDiffFilePath(filename);
-    this.ensureParentDir(filepath);
-    fs.writeFileSync(filepath, data);
+    await this.ensureParentDir(filepath);
+    await fsp.writeFile(filepath, data);
   }
 
   /**
    * Check if an expected file exists
    */
-  hasExpectedFile(filename: string): boolean {
+  async hasExpectedFile(filename: string): Promise<boolean> {
     const expectedPath = this.getExpectedFilePath(filename);
-    return fs.existsSync(expectedPath);
+    try {
+      await fsp.access(expectedPath);
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   /**
    * Read an expected file
    */
-  readExpectedFile(filename: string): Buffer {
+  async readExpectedFile(filename: string): Promise<Buffer> {
     const expectedPath = this.getExpectedFilePath(filename);
-    if (!fs.existsSync(expectedPath)) {
+    try {
+      return await fsp.readFile(expectedPath);
+    } catch {
       throw new Error(`Expected image not found: ${expectedPath}`);
     }
-    return fs.readFileSync(expectedPath);
   }
 
   /**

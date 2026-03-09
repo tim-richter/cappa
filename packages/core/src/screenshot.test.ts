@@ -62,7 +62,7 @@ describe("ScreenshotTool delay", () => {
 
     tool.browser = {} as any;
     tool.filesystem.getActualFilePath = vi.fn(() => "/tmp/Button.png");
-    tool.filesystem.ensureParentDir = vi.fn();
+    tool.filesystem.ensureParentDir = vi.fn(async () => {});
 
     await tool.takeScreenshot(page as any, "Button.png", {
       delay: 250,
@@ -144,8 +144,10 @@ describe("ScreenshotTool capture duration logging", () => {
     const tool = new ScreenshotTool({ outputDir: "/tmp" });
     const page = createPage();
     tool.browser = {} as any;
-    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
-    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue(
+      "/tmp/actual/Button.png",
+    );
+    tool.filesystem.hasExpectedFile = vi.fn(async () => false);
 
     const debugSpy = vi.spyOn(tool.logger, "debug");
 
@@ -160,8 +162,10 @@ describe("ScreenshotTool capture duration logging", () => {
     const tool = new ScreenshotTool({ outputDir: "/tmp" });
     const page = createPage();
     tool.browser = {} as any;
-    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
-    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue(
+      "/tmp/actual/Button.png",
+    );
+    tool.filesystem.hasExpectedFile = vi.fn(async () => false);
 
     const debugSpy = vi.spyOn(tool.logger, "debug");
     vi.spyOn(performance, "now").mockReturnValue(2000);
@@ -175,8 +179,10 @@ describe("ScreenshotTool capture duration logging", () => {
     const tool = new ScreenshotTool({ outputDir: "/tmp" });
     const page = createPage();
     tool.browser = {} as any;
-    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
-    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue(
+      "/tmp/actual/Button.png",
+    );
+    tool.filesystem.hasExpectedFile = vi.fn(async () => false);
 
     const debugSpy = vi.spyOn(tool.logger, "debug");
     vi.spyOn(performance, "now")

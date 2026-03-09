@@ -1,6 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import type { Screenshot } from "@cappa/core";
+import compress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
 import { screenshotsPlugin } from "./screenshots";
@@ -31,6 +32,8 @@ export async function createServer(opts: StartServerOptions) {
   app.decorate("screenshots", transform(opts.screenshots));
   app.decorate("outputDir", opts.outputDir);
 
+  await app.register(compress);
+
   app.get("/api/health", async () => ({ ok: true }));
 
   app.get("/api/config", async () => ({
@@ -47,6 +50,7 @@ export async function createServer(opts: StartServerOptions) {
       // security: disable dotfiles and traversal
       decorateReply: false,
       serveDotFiles: false,
+      maxAge: "1d",
     });
   }
 

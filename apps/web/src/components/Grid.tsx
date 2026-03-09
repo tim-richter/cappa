@@ -30,6 +30,7 @@ export const Grid: FC<ScreenshotGridProps> = ({ screenshots, category }) => {
                       findPreviewScreenshot(screenshot) || "/placeholder.svg"
                     }
                     alt={screenshot.name}
+                    loading="lazy"
                     className="w-full h-full object-cover transition-transform duration-200 group-hover:scale-105"
                   />
 

@@ -41,8 +41,7 @@ export async function compareImages(
   withDiff: boolean = false,
   options: DiffConfig = {},
 ): Promise<CompareResult> {
-  const png1 = await loadPNG(image1);
-  const png2 = await loadPNG(image2);
+  const [png1, png2] = await Promise.all([loadPNG(image1), loadPNG(image2)]);
 
   const { width, height } = png1;
 

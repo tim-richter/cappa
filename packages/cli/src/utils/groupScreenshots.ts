@@ -10,27 +10,30 @@ export const groupScreenshots = (
 ) => {
   const screenshotRepresentations: Screenshot[] = [];
 
-  actualScreenshots.forEach((screenshot) => {
+  // Build Maps for O(1) lookups instead of O(n) .find() calls
+  const expectedByRelativePath = new Map<string, string>();
+  for (const screenshot of expectedScreenshots) {
+    const relativePath = path.relative(`${outputDir}/expected`, screenshot);
+    expectedByRelativePath.set(relativePath, screenshot);
+  }
+
+  const diffByRelativePath = new Map<string, string>();
+  for (const screenshot of diffScreenshots) {
+    const relativePath = path.relative(`${outputDir}/diff`, screenshot);
+    diffByRelativePath.set(relativePath, screenshot);
+  }
+
+  const actualRelativePaths = new Set<string>();
+
+  for (const screenshot of actualScreenshots) {
     const relativePath = path.relative(`${outputDir}/actual`, screenshot);
-    const name = path
-      .relative(`${outputDir}/actual`, screenshot)
-      .replace(".png", "");
+    actualRelativePaths.add(relativePath);
+
+    const name = relativePath.replace(".png", "");
     const id = createHash("sha256").update(relativePath).digest("hex");
 
-    const expectedScreenshot = expectedScreenshots.find(
-      (expectedScreenshot) => {
-        const expectedName = path.relative(
-          `${outputDir}/expected`,
-          expectedScreenshot,
-        );
-        return expectedName === relativePath;
-      },
-    );
-
-    const diffScreenshot = diffScreenshots.find((diffScreenshot) => {
-      const diffName = path.relative(`${outputDir}/diff`, diffScreenshot);
-      return diffName === relativePath;
-    });
+    const expectedScreenshot = expectedByRelativePath.get(relativePath);
+    const diffScreenshot = diffByRelativePath.get(relativePath);
 
     screenshotRepresentations.push({
       id: id,
@@ -44,27 +47,21 @@ export const groupScreenshots = (
         : undefined,
       actualPath: path.relative(outputDir, screenshot),
     } as Screenshot);
-  });
+  }
 
-  expectedScreenshots.forEach((expectedScreenshot) => {
+  for (const expectedScreenshot of expectedScreenshots) {
     const relativePath = path.relative(
       `${outputDir}/expected`,
       expectedScreenshot,
     );
-    const name = path
-      .relative(`${outputDir}/expected`, expectedScreenshot)
-      .replace(".png", "");
-    const id = createHash("sha256").update(relativePath).digest("hex");
 
-    const actualScreenshot = actualScreenshots.find((actualScreenshot) => {
-      const actualName = path.relative(`${outputDir}/actual`, actualScreenshot);
-      return actualName === relativePath;
-    });
-
-    // If the actual screenshot exists, it means we already added it to the screenshotRepresentations
-    if (actualScreenshot) {
-      return;
+    // If the actual screenshot exists, it means we already added it
+    if (actualRelativePaths.has(relativePath)) {
+      continue;
     }
+
+    const name = relativePath.replace(".png", "");
+    const id = createHash("sha256").update(relativePath).digest("hex");
 
     screenshotRepresentations.push({
       id: id,
@@ -72,7 +69,7 @@ export const groupScreenshots = (
       category: "deleted",
       expectedPath: path.relative(outputDir, expectedScreenshot),
     });
-  });
+  }
 
   return screenshotRepresentations.sort((a, b) => {
     return CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
