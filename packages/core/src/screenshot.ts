@@ -281,7 +281,10 @@ class ScreenshotTool {
           await page.waitForTimeout(options.delay);
         }
 
+        const start = performance.now();
         await page.screenshot(screenshotOptions);
+        const duration = Math.round(performance.now() - start);
+        this.logger.debug(`Screenshot captured in ${duration}ms`);
       });
 
       this.logger.success(`Screenshot saved: ${filepath}`);
@@ -371,7 +374,11 @@ class ScreenshotTool {
             await page.waitForTimeout(options.delay);
           }
 
-          return page.screenshot(screenshotOptions);
+          const start = performance.now();
+          const result = await page.screenshot(screenshotOptions);
+          const duration = Math.round(performance.now() - start);
+          this.logger.debug(`Screenshot captured in ${duration}ms`);
+          return result;
         },
       );
 
