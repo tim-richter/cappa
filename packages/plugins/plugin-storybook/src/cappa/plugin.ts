@@ -281,6 +281,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         context.latchMap.set(story.id, currentLatch);
 
         // Navigate to story
+        const captureStart = performance.now();
         await page.goto(url);
 
         // Get story parameters
@@ -405,6 +406,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
             : undefined,
           skipBaseNavigation: true,
           waitForStability: waitForVisualIdle,
+          captureStart,
         };
 
         const captureResult = await screenshotTool.captureWithVariants(

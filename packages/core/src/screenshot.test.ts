@@ -127,6 +127,82 @@ describe("ScreenshotTool getIncBackoffDelay", () => {
   });
 });
 
+describe("ScreenshotTool capture duration logging", () => {
+  const createPage = () => ({
+    waitForTimeout: vi.fn(async () => {}),
+    screenshot: vi.fn(async () => Buffer.from("test")),
+    viewportSize: vi.fn(() => ({ width: 1024, height: 768 })),
+    setViewportSize: vi.fn(async () => {}),
+    url: vi.fn(() => "http://localhost:6006/iframe.html?id=button--primary"),
+  });
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("logs the capture duration with the filename after a new screenshot", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+    tool.browser = {} as any;
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
+    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+
+    const debugSpy = vi.spyOn(tool.logger, "debug");
+
+    await tool.capture(page as any, "Button.png", {});
+
+    expect(debugSpy).toHaveBeenCalledWith(
+      expect.stringMatching(/^Button\.png captured in \d+ms$/),
+    );
+  });
+
+  it("uses captureStart from extras to compute the duration", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+    tool.browser = {} as any;
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
+    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+
+    const debugSpy = vi.spyOn(tool.logger, "debug");
+    vi.spyOn(performance, "now").mockReturnValue(2000);
+
+    await tool.capture(page as any, "Button.png", {}, { captureStart: 500 });
+
+    expect(debugSpy).toHaveBeenCalledWith("Button.png captured in 1500ms");
+  });
+
+  it("falls back to performance.now() when captureStart is not provided", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+    tool.browser = {} as any;
+    vi.spyOn(tool, "takeScreenshot").mockResolvedValue("/tmp/actual/Button.png");
+    tool.filesystem.hasExpectedFile = vi.fn(() => false);
+
+    const debugSpy = vi.spyOn(tool.logger, "debug");
+    vi.spyOn(performance, "now")
+      .mockReturnValueOnce(100) // start (fallback inside captureSingleScreenshot)
+      .mockReturnValueOnce(350); // end
+
+    await tool.capture(page as any, "Button.png", {});
+
+    expect(debugSpy).toHaveBeenCalledWith("Button.png captured in 250ms");
+  });
+
+  it("does not log duration for skipped screenshots", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    const page = createPage();
+    tool.browser = {} as any;
+
+    const debugSpy = vi.spyOn(tool.logger, "debug");
+
+    await tool.capture(page as any, "Button.png", { skip: true });
+
+    expect(debugSpy).not.toHaveBeenCalledWith(
+      expect.stringContaining("captured in"),
+    );
+  });
+});
+
 describe("ScreenshotTool retryScreenshot", () => {
   const createPage = () => ({
     waitForTimeout: vi.fn(async () => {}),
