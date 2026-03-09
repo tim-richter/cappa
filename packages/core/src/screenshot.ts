@@ -93,6 +93,13 @@ export interface ScreenshotCaptureExtras {
    * skipBaseNavigation is false) to wait for visual stability before capturing.
    */
   waitForStability?: (page: Page) => Promise<void>;
+  /**
+   * Timestamp (from `performance.now()`) marking when the screenshot process
+   * started — i.e. when the browser first navigated to the page. When provided,
+   * the logged duration covers the full journey: navigation → stability waits →
+   * capture. When omitted, timing begins at the capture step itself.
+   */
+  captureStart?: number;
 }
 
 class ScreenshotTool {
@@ -281,10 +288,7 @@ class ScreenshotTool {
           await page.waitForTimeout(options.delay);
         }
 
-        const start = performance.now();
         await page.screenshot(screenshotOptions);
-        const duration = Math.round(performance.now() - start);
-        this.logger.debug(`Screenshot captured in ${duration}ms`);
       });
 
       this.logger.success(`Screenshot saved: ${filepath}`);
@@ -374,11 +378,7 @@ class ScreenshotTool {
             await page.waitForTimeout(options.delay);
           }
 
-          const start = performance.now();
-          const result = await page.screenshot(screenshotOptions);
-          const duration = Math.round(performance.now() - start);
-          this.logger.debug(`Screenshot captured in ${duration}ms`);
-          return result;
+          return page.screenshot(screenshotOptions);
         },
       );
 
@@ -603,6 +603,7 @@ class ScreenshotTool {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
       diff?: DiffOptions;
+      captureStart?: number;
     } = {},
   ): Promise<ScreenshotCaptureDetails> {
     const result: ScreenshotCaptureDetails = { filename };
@@ -612,6 +613,7 @@ class ScreenshotTool {
       return result;
     }
 
+    const start = extras.captureStart ?? performance.now();
     const saveDiff = extras.saveDiffImage ?? false;
     const diffFilename = extras.diffImageFilename ?? filename;
     const diffOverride = extras.diff;
@@ -640,6 +642,9 @@ class ScreenshotTool {
       result.comparisonResult = comparisonResult;
       result.diffImagePath = diffImagePath;
     }
+
+    const duration = Math.round(performance.now() - start);
+    this.logger.debug(`${filename} captured in ${duration}ms`);
 
     return result;
   }
@@ -793,7 +798,9 @@ class ScreenshotTool {
     const baseDiffOverride = extras.diff;
 
     // Capture base screenshot
+    let baseStart: number;
     if (!extras.skipBaseNavigation) {
+      baseStart = performance.now();
       getLogger().debug(`Going to base URL: ${baseUrl}`);
       await page.goto(baseUrl);
       await this.applyScreenshotOptimizations(page);
@@ -807,6 +814,7 @@ class ScreenshotTool {
         saveDiffImage: baseSaveDiff,
         diffImageFilename: baseDiffFilename,
         diff: baseDiffOverride,
+        captureStart: extras.captureStart ?? baseStart,
       },
     );
 
@@ -837,6 +845,7 @@ class ScreenshotTool {
       }
 
       // Navigate to variant URL and apply optimizations
+      const variantStart = performance.now();
       getLogger().debug(`Going to variant URL: ${variant.url}`);
       await page.goto(variant.url);
       await this.applyScreenshotOptimizations(page);
@@ -856,6 +865,7 @@ class ScreenshotTool {
           saveDiffImage: variantSaveDiff,
           diffImageFilename: variantDiffFilename,
           diff: variantDiffOverride,
+          captureStart: variantStart,
         },
       );
 
