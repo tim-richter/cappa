@@ -204,13 +204,19 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   try {
     await screenshotTool.init();
 
-    for (const plugin of (config.plugins || []) as any[]) {
-      logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
+    const plugins = (config.plugins || []) as any[];
 
-      // Phase 1: Discover all tasks
-      const tasks = await plugin.discover(screenshotTool);
-      logger.info(`Found ${tasks.length} tasks for ${plugin.name}`);
+    // Phase 1: Discover all tasks in parallel across plugins
+    const pluginTasks = await Promise.all(
+      plugins.map(async (plugin) => {
+        logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
+        const tasks = await plugin.discover(screenshotTool);
+        logger.info(`Found ${tasks.length} tasks for ${plugin.name}`);
+        return { plugin, tasks };
+      }),
+    );
 
+    for (const { plugin, tasks } of pluginTasks) {
       if (tasks.length === 0) {
         continue;
       }

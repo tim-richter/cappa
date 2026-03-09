@@ -265,7 +265,7 @@ class ScreenshotTool {
       const filepath = this.filesystem.getActualFilePath(filename);
 
       // Ensure parent directories exist before taking screenshot
-      this.filesystem.ensureParentDir(filepath);
+      await this.filesystem.ensureParentDir(filepath);
 
       // Take screenshot
       const screenshotOptions = {
@@ -434,7 +434,10 @@ class ScreenshotTool {
       }
 
       // Save screenshot to actual directory
-      this.filesystem.writeActualFile(filename, retryScreenshot.screenshotPath);
+      await this.filesystem.writeActualFile(
+        filename,
+        retryScreenshot.screenshotPath,
+      );
       this.logger.debug(`Actual screenshot saved: ${filepath}`);
 
       if (retryScreenshot.passed) {
@@ -455,7 +458,7 @@ class ScreenshotTool {
         // Save to diff directory
         diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
 
-        this.filesystem.writeDiffFile(
+        await this.filesystem.writeDiffFile(
           diffFilename,
           retryScreenshot.comparisonResult.diffBuffer,
         );
@@ -476,7 +479,7 @@ class ScreenshotTool {
         diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
         const diffBuffer = createDiffSizePngImage(200, 200);
 
-        this.filesystem.writeDiffFile(diffFilename, diffBuffer);
+        await this.filesystem.writeDiffFile(diffFilename, diffBuffer);
 
         this.logger.debug(`Diff Size image saved: ${diffImagePath}`);
       }
@@ -618,7 +621,7 @@ class ScreenshotTool {
     const diffFilename = extras.diffImageFilename ?? filename;
     const diffOverride = extras.diff;
 
-    if (!this.filesystem.hasExpectedFile(filename)) {
+    if (!(await this.filesystem.hasExpectedFile(filename))) {
       this.logger.debug(
         `Expected image not found for ${filename}, taking screenshot`,
       );
@@ -629,7 +632,7 @@ class ScreenshotTool {
         await this.takeScreenshotWithComparison(
           page,
           filename,
-          this.filesystem.readExpectedFile(filename),
+          await this.filesystem.readExpectedFile(filename),
           {
             ...options,
             saveDiffImage: saveDiff,
