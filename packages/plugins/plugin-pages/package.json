@@ -1,0 +1,56 @@
+{
+  "name": "@cappa/plugin-pages",
+  "version": "0.1.0",
+  "description": "Pages plugin for Cappa - takes screenshots of URLs",
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-richter/cappa.git"
+  },
+  "files": [
+    "dist"
+  ],
+  "license": "MIT",
+  "author": "Tim Richter",
+  "type": "module",
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "test": "vitest",
+    "test:run": "vitest run",
+    "build": "tsdown",
+    "tsc": "tsc",
+    "attw": "attw --pack --profile node16 ."
+  },
+  "keywords": [
+    "screenshot",
+    "plugin",
+    "pages",
+    "urls",
+    "visual-testing"
+  ],
+  "dependencies": {
+    "@cappa/core": "workspace:*",
+    "@cappa/logger": "workspace:*"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "@vitest/ui": "catalog:",
+    "playwright-core": "^1.58.2",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}
