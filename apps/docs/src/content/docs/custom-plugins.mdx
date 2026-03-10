@@ -13,7 +13,37 @@ import type { CappaPlugin } from '@cappa/core';
 export function myPlugin(): CappaPlugin {
   return {
     name: 'my-plugin',
-    async execute(screenshotTool) {
+    description: 'My plugin description',
+
+    /**
+     * Discover all tasks (pages, screenshots, etc.) to be executed
+     * A single task will be later passed to the execute callback
+     */
+    discover: async () => {
+      return [
+        {
+          name: 'my-page',
+          url: 'https://example.com',
+        },
+      ];
+    },
+    /**
+     * Initialize the page before executing tasks on that page
+     * This is called once per page before executing tasks on that page
+     * 
+     * You may initialize the page with custom logic, e.g. add a custom header, or wait for a specific element to be visible.
+     */
+    initPage: async (page, screenshotTool) => {
+      return {
+        page,
+        screenshotTool,
+      };
+    },
+    /**
+     * Execute a single task
+     * This is called once per task
+     */
+    execute: async (task, page, screenshotTool) => {
       await screenshotTool.capture(page, 'my-page', {
         fullPage: true,
         viewport: { width: 1024, height: 768 },

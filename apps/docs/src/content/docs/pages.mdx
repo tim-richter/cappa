@@ -1,0 +1,233 @@
+---
+title: Pages plugin
+description: Capture arbitrary URLs with the @cappa/plugin-pages integration.
+---
+
+The `@cappa/plugin-pages` package lets you point Cappa at any list of URLs and capture
+screenshots without having to wire them through other data sources.
+It is useful for marketing sites, standalone pages, or routes that are easier
+to address directly.
+
+## Install the plugin
+
+Add the Pages plugin alongside the Cappa core packages inside your project:
+
+```bash
+pnpm add -D @cappa/plugin-pages
+```
+
+## Register pages in `cappa.config.ts`
+
+Configure the plugin inside your `cappa.config.ts` file and pass a list of pages to capture.
+Each page entry must contain a `url` and can optionally define a human‑readable `name`:
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { cappaPluginPages } from '@cappa/plugin-pages';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  plugins: [
+    cappaPluginPages({
+      pages: [
+        { url: 'https://example.com', name: 'homepage' },
+        { url: 'https://example.com/pricing', name: 'pricing' },
+      ],
+    }),
+  ],
+});
+```
+
+- **`pages`** – Required array of page entries. Each entry must include:
+  - **`url`** – The URL to navigate to and screenshot.
+  - **`name`** – Optional, human‑readable name used as the screenshot filename.
+    When omitted, a filename is derived from the URL.
+
+> The plugin will throw an error if you forget to pass `options` or if `pages` is empty.
+> This helps catch misconfigurations early in CI.
+
+## Control how pages are captured
+
+Each page can override how its screenshot is taken using `options`. You can also
+set global defaults on the plugin and override them per page when needed.
+
+### Global defaults
+
+Use `defaults` to define screenshot behaviour that applies to all pages unless
+they override a particular field:
+
+```ts
+export default defineConfig({
+  plugins: [
+    cappaPluginPages({
+      pages: [
+        { url: 'https://example.com', name: 'homepage' },
+        { url: 'https://example.com/blog', name: 'blog' },
+      ],
+      defaults: {
+        fullPage: true,
+        viewport: { width: 1440, height: 900 },
+        omitBackground: false,
+        mask: ['.cookie-banner'],
+      },
+    }),
+  ],
+});
+```
+
+Supported defaults (and per‑page overrides) are:
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `fullPage` | `boolean` | Capture the full scrollable page. |
+| `delay` | `number` | Milliseconds to wait before taking the screenshot. |
+| `mask` | `string[]` | CSS selectors to hide or blur in the screenshot. |
+| `omitBackground` | `boolean` | Render the page with a transparent background. |
+| `viewport` | `{ width: number; height: number }` | Override the viewport for this page. |
+| `diff` | `DiffOptions` | Override global diff settings from `cappa.config.ts`. |
+
+### Per‑page overrides
+
+Use the `options` field on individual pages to fine‑tune behaviour:
+
+```ts
+export default defineConfig({
+  plugins: [
+    cappaPluginPages({
+      pages: [
+        {
+          url: 'https://example.com',
+          name: 'homepage',
+        },
+        {
+          url: 'https://example.com/pricing',
+          name: 'pricing',
+          options: {
+            viewport: { width: 375, height: 812 },
+            fullPage: false,
+            mask: ['.tooltip'],
+          },
+        },
+      ],
+      defaults: {
+        fullPage: true,
+      },
+    }),
+  ],
+});
+```
+
+In the example above:
+
+- All pages capture full‑page screenshots by default.
+- The `pricing` page overrides the viewport and disables `fullPage`, so the
+  screenshot is constrained to the mobile viewport instead.
+
+## Waiting for pages to stabilise
+
+Real‑world pages often need additional time before they settle into a visually
+stable state. The Pages plugin supports a flexible waiting strategy that can be
+configured globally or per page.
+
+### Global wait strategy
+
+Use `wait` on the plugin options to define how Cappa should wait after
+navigating to a URL:
+
+```ts
+export default defineConfig({
+  plugins: [
+    cappaPluginPages({
+      pages: [{ url: 'https://example.com', name: 'homepage' }],
+      wait: {
+        waitForSelector: '#app-ready',
+        waitForTimeout: 250,
+        waitForNetworkIdle: true,
+        waitForStable: true,
+      },
+    }),
+  ],
+});
+```
+
+`wait` supports the following fields:
+
+| Option | Type | Description |
+| --- | --- | --- |
+| `waitForSelector` | `string` | Wait for a specific CSS selector to appear. |
+| `waitForTimeout` | `number` | Wait a fixed number of milliseconds after navigation. |
+| `waitForNetworkIdle` | `boolean` | Wait until there are no in‑flight network requests for a short period. |
+| `waitForStable` | `boolean` | Wait until the DOM stops mutating for a period. |
+
+When both plugin‑level `wait` options and per‑page `wait` options are present,
+per‑page values take precedence.
+
+### Per‑page wait overrides
+
+Use the `wait` field on a page to override only what you need:
+
+```ts
+export default defineConfig({
+  plugins: [
+    cappaPluginPages({
+      pages: [
+        {
+          url: 'https://example.com',
+          name: 'homepage',
+        },
+        {
+          url: 'https://example.com/dashboard',
+          name: 'dashboard',
+          wait: {
+            waitForSelector: '[data-test-id="dashboard-ready"]',
+            waitForStable: true,
+          },
+        },
+      ],
+      wait: {
+        waitForNetworkIdle: true,
+      },
+    }),
+  ],
+});
+```
+
+Here the `dashboard` page keeps the global `waitForNetworkIdle` behaviour but
+adds its own selector‑based and stability checks before capturing.
+
+## How screenshots are named
+
+For each page, the plugin builds a filename from the `name` you provide. If
+`name` is omitted, a filename is derived from the URL instead (e.g.
+`https-example-com-pricing.png`). Cappa uses this filename for the actual,
+expected, and diff images and exposes it in the CLI output and review UI.
+
+This makes it easier to scan screenshots in the UI and to correlate them back
+to your configuration when diff failures occur.
+
+## Advanced usage
+
+### Programmatic usage
+
+Since the config file is just a JavaScript file, you can use it to programmatically define the pages to capture.
+
+For example, you could get a sitemap from your website and dynamically generate pages to capture.
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { cappaPluginPages } from '@cappa/plugin-pages';
+
+// simplified example, in reality you would need to parse the sitemap XML
+const sitemap = await fetch('https://example.com/sitemap.xml').then(res => res.json());
+
+const pages = sitemap.map((page) => ({
+  url: page.url,
+  name: page.name,
+}));
+
+export default defineConfig({
+  plugins: [
+    cappaPluginPages({ pages }),
+  ],
+});
+```

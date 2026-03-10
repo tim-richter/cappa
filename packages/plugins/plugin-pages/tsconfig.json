@@ -4,10 +4,5 @@
     "baseUrl": ".",
     "types": ["vitest", "node"]
   },
-  "include": [
-    "src/**/*",
-    "./package.json",
-    "./tsdown.config.ts",
-    "./vitest.config.ts"
-  ]
+  "include": ["src/**/*", "./tsdown.config.ts", "./vitest.config.ts"]
 }

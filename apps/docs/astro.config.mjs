@@ -30,6 +30,7 @@ export default defineConfig({
         {
           label: "Plugins",
           items: [
+            { label: "Pages", link: "/pages" },
             { label: "Storybook", link: "/storybook" },
             { label: "Custom Plugins", link: "/custom-plugins" },
           ],
