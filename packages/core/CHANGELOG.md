@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.7.1
+
+### Patch Changes
+
+- 21ebbc5: Log how long each screenshot capture took in milliseconds at debug level
+
 ## 0.7.0
 
 ### Minor Changes
