@@ -42,6 +42,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
     "view",
     parseAsStringEnum<View>(Object.values(View)),
   );
+  const activeView = view ?? View.List;
 
   return (
     <div className="border-b border-border bg-card">
@@ -86,7 +87,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
                 <TooltipTrigger asChild>
                   <Button
                     aria-label="Grid view"
-                    variant={view === View.Grid ? "primary" : "ghost"}
+                    variant={activeView === View.Grid ? "primary" : "ghost"}
                     size="sm"
                     className="h-7 w-7 p-0 flex items-center justify-center"
                     onClick={() => setView(View.Grid)}
@@ -102,7 +103,7 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
                 <TooltipTrigger asChild>
                   <Button
                     aria-label="List view"
-                    variant={view === View.List ? "primary" : "ghost"}
+                    variant={activeView === View.List ? "primary" : "ghost"}
                     size="sm"
                     className="h-7 w-7 p-0 flex items-center justify-center"
                     onClick={() => setView(View.List)}

@@ -17,10 +17,11 @@ export const Home: FC = () => {
     "view",
     parseAsStringEnum<View>(Object.values(View)),
   );
+  const activeView = view ?? View.List;
   const [isSelectMode, setIsSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
-  const ScreenshotComponent = view === View.Grid ? Grid : List;
+  const ScreenshotComponent = activeView === View.Grid ? Grid : List;
 
   const { data, isPending, isError } = useQuery<Screenshot[]>({
     queryKey: ["screenshots", search],
