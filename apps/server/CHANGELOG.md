@@ -1,5 +1,15 @@
 # @cappa/server
 
+## 0.5.0
+
+### Minor Changes
+
+- 52cd104: Add `POST /api/screenshots/approve-batch` to approve multiple screenshots by name in one request. The review UI uses this for "Approve selected" and "Approve all in category" batch actions.
+
+### Patch Changes
+
+- 830622d: Refactor screenshot view handling across multiple pages
+
 ## 0.4.1
 
 ### Patch Changes
