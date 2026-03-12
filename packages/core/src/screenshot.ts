@@ -809,7 +809,10 @@ class ScreenshotTool {
       await page.goto(baseUrl);
       await this.applyScreenshotOptimizations(page);
       await extras.waitForStability?.(page);
+    } else {
+      baseStart = performance.now();
     }
+
     const baseCaptureResult = await this.captureSingleScreenshot(
       page,
       baseFilename,

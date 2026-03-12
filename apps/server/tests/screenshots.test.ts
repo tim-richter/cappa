@@ -12,21 +12,28 @@ describe("GET /", () => {
           name: "Screenshot 1",
           id: "1",
           category: "new",
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
+          expectedPath: "/screenshots/expected/Screenshot 2.png",
         },
         {
           name: "Screenshot 3",
           id: "3",
           category: "changed",
+          actualPath: "/screenshots/actual/Screenshot 3.png",
+          expectedPath: "/screenshots/expected/Screenshot 3.png",
+          diffPath: "/screenshots/diff/Screenshot 3.png",
         },
         {
           name: "Screenshot 4",
           id: "4",
           category: "passed",
+          actualPath: "/screenshots/actual/Screenshot 4.png",
+          expectedPath: "/screenshots/expected/Screenshot 4.png",
         },
       ],
     });
@@ -42,12 +49,15 @@ describe("GET /", () => {
         name: "Screenshot 1",
         id: "1",
         category: "new",
+        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
         next: "2",
       },
       {
         name: "Screenshot 2",
         id: "2",
         category: "deleted",
+        expectedPath:
+          "/assets/screenshots//screenshots/expected/Screenshot 2.png",
         next: "3",
         prev: "1",
       },
@@ -55,6 +65,10 @@ describe("GET /", () => {
         name: "Screenshot 3",
         id: "3",
         category: "changed",
+        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 3.png",
+        expectedPath:
+          "/assets/screenshots//screenshots/expected/Screenshot 3.png",
+        diffPath: "/assets/screenshots//screenshots/diff/Screenshot 3.png",
         next: "4",
         prev: "2",
       },
@@ -62,6 +76,9 @@ describe("GET /", () => {
         name: "Screenshot 4",
         id: "4",
         category: "passed",
+        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 4.png",
+        expectedPath:
+          "/assets/screenshots//screenshots/expected/Screenshot 4.png",
         prev: "3",
       },
     ]);
@@ -76,21 +93,28 @@ describe("GET /", () => {
           name: "Screenshot 1",
           id: "1",
           category: "new",
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
+          expectedPath: "/screenshots/expected/Screenshot 2.png",
         },
         {
           name: "Screenshot 3",
           id: "3",
           category: "changed",
+          actualPath: "/screenshots/actual/Screenshot 3.png",
+          expectedPath: "/screenshots/expected/Screenshot 3.png",
+          diffPath: "/screenshots/diff/Screenshot 3.png",
         },
         {
           name: "Screenshot 4",
           id: "4",
           category: "passed",
+          actualPath: "/screenshots/actual/Screenshot 4.png",
+          expectedPath: "/screenshots/expected/Screenshot 4.png",
         },
       ],
     });
@@ -107,6 +131,7 @@ describe("GET /", () => {
         name: "Screenshot 1",
         id: "1",
         category: "new",
+        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
         next: "2",
       },
     ]);
@@ -121,21 +146,28 @@ describe("GET /", () => {
           name: "Screenshot 1",
           id: "1",
           category: "new",
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
+          expectedPath: "/screenshots/expected/Screenshot 2.png",
         },
         {
           name: "Screenshot 3",
           id: "3",
           category: "changed",
+          actualPath: "/screenshots/actual/Screenshot 3.png",
+          expectedPath: "/screenshots/expected/Screenshot 3.png",
+          diffPath: "/screenshots/diff/Screenshot 3.png",
         },
         {
           name: "Screenshot 4",
           id: "4",
           category: "passed",
+          actualPath: "/screenshots/actual/Screenshot 4.png",
+          expectedPath: "/screenshots/expected/Screenshot 4.png",
         },
       ],
     });
@@ -152,6 +184,8 @@ describe("GET /", () => {
         name: "Screenshot 2",
         id: "2",
         category: "deleted",
+        expectedPath:
+          "/assets/screenshots//screenshots/expected/Screenshot 2.png",
         next: "3",
         prev: "1",
       },
@@ -169,21 +203,28 @@ describe("GET /:id", () => {
           name: "Screenshot 1",
           id: "1",
           category: "new",
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
+          expectedPath: "/screenshots/expected/Screenshot 2.png",
         },
         {
           name: "Screenshot 3",
           id: "3",
           category: "changed",
+          actualPath: "/screenshots/actual/Screenshot 3.png",
+          expectedPath: "/screenshots/expected/Screenshot 3.png",
+          diffPath: "/screenshots/diff/Screenshot 3.png",
         },
         {
           name: "Screenshot 4",
           id: "4",
           category: "passed",
+          actualPath: "/screenshots/actual/Screenshot 4.png",
+          expectedPath: "/screenshots/expected/Screenshot 4.png",
         },
       ],
     });
@@ -198,6 +239,7 @@ describe("GET /:id", () => {
       name: "Screenshot 1",
       id: "1",
       category: "new",
+      actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
       next: "2",
     });
   });
@@ -211,6 +253,7 @@ describe("GET /:id", () => {
           name: "Screenshot 1",
           id: "1",
           category: "new",
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
       ],
     });
@@ -240,12 +283,14 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
           approved: false,
+          expectedPath: "/screenshots/expected/Screenshot 2.png",
         },
       ],
     });
@@ -264,6 +309,7 @@ describe("PATCH /:id", () => {
       id: "1",
       category: "new",
       approved: true,
+      actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
       next: "2",
     });
   });
@@ -282,6 +328,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
       ],
     });
@@ -314,6 +361,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
       ],
     });
@@ -351,6 +399,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
       ],
     });
@@ -385,6 +434,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
         },
       ],
     });
@@ -402,5 +452,126 @@ describe("PATCH /:id", () => {
       "/screenshots/actual/Screenshot 1.png": "actual screenshot",
       "/screenshots/expected/Screenshot 1.png": "actual screenshot",
     });
+  });
+});
+
+describe("POST /approve-batch", () => {
+  it("should approve multiple screenshots and move to expected directory", async () => {
+    vol.fromJSON({
+      "/screenshots/actual/Screenshot 1.png": "actual 1",
+      "/screenshots/actual/Screenshot 2.png": "actual 2",
+    });
+
+    const app = await createServer({
+      outputDir: "/screenshots",
+      logger: false,
+      screenshots: [
+        {
+          name: "Screenshot 1",
+          id: "1",
+          category: "new",
+          approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
+        },
+        {
+          name: "Screenshot 2",
+          id: "2",
+          category: "new",
+          approved: false,
+          actualPath: "/screenshots/actual/Screenshot 2.png",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/screenshots/approve-batch",
+      payload: { names: ["Screenshot 1", "Screenshot 2"] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { approved: string[]; errors: unknown[] };
+    expect(body.approved).toEqual(["Screenshot 1", "Screenshot 2"]);
+    expect(body.errors).toEqual([]);
+
+    expect(vol.toJSON()).toEqual({
+      "/screenshots/actual/Screenshot 1.png": "actual 1",
+      "/screenshots/actual/Screenshot 2.png": "actual 2",
+      "/screenshots/expected/Screenshot 1.png": "actual 1",
+      "/screenshots/expected/Screenshot 2.png": "actual 2",
+    });
+
+    const listResponse = await app.inject({
+      method: "GET",
+      url: "/api/screenshots",
+    });
+    const list = listResponse.json() as { approved?: boolean }[];
+    expect(list.every((s) => s.approved)).toBe(true);
+  });
+
+  it("should return 400 if names is empty", async () => {
+    const app = await createServer({
+      outputDir: "/screenshots",
+      logger: false,
+      screenshots: [],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/screenshots/approve-batch",
+      payload: { names: [] },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("should skip already approved and collect errors for missing files", async () => {
+    vol.fromJSON({
+      "/screenshots/actual/Screenshot 1.png": "actual 1",
+    });
+
+    const app = await createServer({
+      outputDir: "/screenshots",
+      logger: false,
+      screenshots: [
+        {
+          name: "Screenshot 1",
+          id: "1",
+          category: "new",
+          approved: false,
+          actualPath: "/screenshots/actual/Screenshot 1.png",
+        },
+        {
+          name: "Screenshot 2",
+          id: "2",
+          category: "new",
+          approved: true,
+          actualPath: "/screenshots/actual/Screenshot 2.png",
+        },
+        {
+          name: "Screenshot 3",
+          id: "3",
+          category: "new",
+          approved: false,
+          actualPath: "/screenshots/actual/Screenshot 3.png",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/screenshots/approve-batch",
+      payload: { names: ["Screenshot 1", "Screenshot 2", "Screenshot 3"] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as {
+      approved: string[];
+      errors: { name: string; error: string }[];
+    };
+    expect(body.approved).toEqual(["Screenshot 1"]);
+    expect(body.errors.length).toBe(1);
+    expect(body.errors[0].name).toBe("Screenshot 3");
+    expect(body.errors[0].error).toBeDefined();
   });
 });

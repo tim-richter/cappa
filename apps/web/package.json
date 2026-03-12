@@ -14,11 +14,13 @@
     "build": "vite build",
     "typecheck": "tsc --noEmit",
     "storybook": "storybook dev -p 6006",
-    "build-storybook": "storybook build"
+    "build-storybook": "storybook build",
+    "tsc": "tsc"
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@tanstack/react-query": "^5.90.21",
+    "class-variance-authority": "0.7.1",
     "lucide-react": "0.577.0",
     "react": "catalog:",
     "react-dom": "catalog:",

@@ -9,7 +9,7 @@ import {
 } from "@ui/components/tooltip";
 import { Grid3X3, List, Search } from "lucide-react";
 import { debounce, parseAsStringEnum, useQueryState } from "nuqs";
-import type { FC } from "react";
+import type { FC, ReactNode } from "react";
 import { useLocation } from "react-router";
 import { View } from "@/types";
 export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
@@ -21,7 +21,11 @@ const categoryLabels = {
   passed: "Passed Screenshots",
 };
 
-export const Header: FC = () => {
+export interface HeaderProps {
+  actions?: ReactNode;
+}
+
+export const Header: FC<HeaderProps> = ({ actions }) => {
   const { pathname } = useLocation();
   const category = pathname.split("/")[1] as ScreenshotCategory;
   const { data: count } = useQuery({
@@ -53,61 +57,68 @@ export const Header: FC = () => {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
-          <div className="relative flex-1 max-w-md">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              value={search || ""}
-              placeholder="Search screenshots..."
-              className="pl-10"
-              onChange={(e) => {
-                setSearch(e.target.value || null, {
-                  // Send immediate update if resetting, otherwise debounce at 500ms
-                  limitUrlUpdates:
-                    e.target.value === "" ? undefined : debounce(500),
-                });
-              }}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  setSearch(e.currentTarget.value);
-                }
-              }}
-            />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="relative flex-1 max-w-md">
+              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+
+              <Input
+                value={search || ""}
+                placeholder="Search screenshots..."
+                className="pl-10 w-[300px]"
+                onChange={(e) => {
+                  setSearch(e.target.value || null, {
+                    // Send immediate update if resetting, otherwise debounce at 500ms
+                    limitUrlUpdates:
+                      e.target.value === "" ? undefined : debounce(500),
+                  });
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") {
+                    setSearch(e.currentTarget.value);
+                  }
+                }}
+              />
+            </div>
+
+            <div className="flex items-center justify-center gap-1 border border-border rounded-lg p-1">
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label="Grid view"
+                    variant={view === View.Grid ? "primary" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0 flex items-center justify-center"
+                    onClick={() => setView(View.Grid)}
+                  >
+                    <Grid3X3 size={16} />
+                  </Button>
+                </TooltipTrigger>
+
+                <TooltipContent>Grid view</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    aria-label="List view"
+                    variant={view === View.List ? "primary" : "ghost"}
+                    size="sm"
+                    className="h-7 w-7 p-0 flex items-center justify-center"
+                    onClick={() => setView(View.List)}
+                  >
+                    <List size={16} />
+                  </Button>
+                </TooltipTrigger>
+
+                <TooltipContent>List view</TooltipContent>
+              </Tooltip>
+            </div>
           </div>
 
-          <div className="flex items-center justify-center gap-1 border border-border rounded-lg p-1">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label="Grid view"
-                  variant={view === View.Grid ? "primary" : "ghost"}
-                  size="sm"
-                  className="h-7 w-7 p-0 flex items-center justify-center"
-                  onClick={() => setView(View.Grid)}
-                >
-                  <Grid3X3 size={16} />
-                </Button>
-              </TooltipTrigger>
-
-              <TooltipContent>Grid view</TooltipContent>
-            </Tooltip>
-
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  aria-label="List view"
-                  variant={view === View.List ? "primary" : "ghost"}
-                  size="sm"
-                  className="h-7 w-7 p-0 flex items-center justify-center"
-                  onClick={() => setView(View.List)}
-                >
-                  <List size={16} />
-                </Button>
-              </TooltipTrigger>
-
-              <TooltipContent>List view</TooltipContent>
-            </Tooltip>
-          </div>
+          {actions != null ? (
+            <div className="flex items-center shrink-0 h-7">{actions}</div>
+          ) : null}
         </div>
       </div>
     </div>

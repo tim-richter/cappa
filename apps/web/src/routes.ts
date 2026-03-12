@@ -4,7 +4,6 @@ import {
   type RouteObject,
 } from "react-router";
 import { Layout } from "./layout/Layout";
-import { MainWithHeader } from "./layout/MainWithHeader";
 import { Changed } from "./pages/Changed";
 import { Deleted } from "./pages/Deleted";
 import { Home } from "./pages/Home";
@@ -17,33 +16,27 @@ export const routes: RouteObject[] = [
     Component: Layout,
     children: [
       {
-        Component: MainWithHeader,
-        children: [
-          {
-            index: true,
-            Component: Home,
-          },
-          {
-            path: "changed",
-            Component: Changed,
-          },
-          {
-            path: "deleted",
-            Component: Deleted,
-          },
-          {
-            path: "new",
-            Component: New,
-          },
-          {
-            path: "passed",
-            Component: Passed,
-          },
-        ],
+        index: true,
+        Component: Home,
+      },
+      {
+        path: "changed",
+        Component: Changed,
+      },
+      {
+        path: "deleted",
+        Component: Deleted,
+      },
+      {
+        path: "new",
+        Component: New,
+      },
+      {
+        path: "passed",
+        Component: Passed,
       },
     ],
   },
-
   {
     path: "screenshots/:id",
     Component: Screenshot,
