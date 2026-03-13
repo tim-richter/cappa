@@ -1,6 +1,6 @@
 {
   "name": "@cappa/cli",
-  "version": "0.7.6",
+  "version": "0.7.7",
   "description": "Command line interface for Cappa",
   "author": "Tim Richter",
   "license": "MIT",
