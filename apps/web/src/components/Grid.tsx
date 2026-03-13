@@ -1,7 +1,9 @@
 import type { Screenshot } from "@cappa/core";
+import { Badge } from "@ui/components/badge";
 import { Card } from "@ui/components/card";
 import { Checkbox } from "@ui/components/checkbox";
 import { cn } from "@ui/lib/utils";
+import { BadgeCheckIcon } from "lucide-react";
 import type { FC } from "react";
 import { Link } from "react-router";
 import { findPreviewScreenshot } from "@/util/screenshot";
@@ -78,6 +80,13 @@ export const Grid: FC<ScreenshotGridProps> = ({
                   category={category}
                   className="absolute top-2 right-2"
                 />
+
+                {screenshot.approved && (
+                  <Badge className="absolute bottom-2 right-2 text-green-100 bg-green-800 dark:bg-green-900/50 dark:text-green-300 gap-1">
+                    <BadgeCheckIcon className="h-3 w-3" />
+                    Approved
+                  </Badge>
+                )}
               </div>
 
               <div className="p-4">

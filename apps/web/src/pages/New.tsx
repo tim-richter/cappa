@@ -30,7 +30,10 @@ export const New: FC = () => {
   const handleApproveSelected = useCallback(
     (names: string[]) => {
       approveBatch(names, {
-        onSuccess: () => setSelectedIds(new Set()),
+        onSuccess: () => {
+          setSelectedIds(new Set());
+          setIsSelectMode(false);
+        },
       });
     },
     [approveBatch],
@@ -39,7 +42,12 @@ export const New: FC = () => {
     if (!data?.length) return;
     approveBatch(
       data.map((s) => s.name),
-      { onSuccess: () => setSelectedIds(new Set()) },
+      {
+        onSuccess: () => {
+          setSelectedIds(new Set());
+          setIsSelectMode(false);
+        },
+      },
     );
   }, [data, approveBatch]);
 
