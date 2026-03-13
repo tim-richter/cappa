@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.5.1
+
+### Patch Changes
+
+- 9c0b5e5: give feedback when approving in batch
+
 ## 0.5.0
 
 ### Minor Changes
