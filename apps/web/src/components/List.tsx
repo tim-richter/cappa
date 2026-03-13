@@ -4,9 +4,7 @@ import type {
   RowSelectionState,
   Updater,
 } from "@tanstack/react-table";
-import { Badge } from "@ui/components/badge";
 import { cva } from "class-variance-authority";
-import { BadgeCheckIcon } from "lucide-react";
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { DataTable } from "./DataTable";
@@ -61,23 +59,15 @@ export const List = ({
         });
 
         return (
-          <div className="flex items-center gap-2">
-            <Link
-              className={className({
-                canSelect: !!canSelect,
-              })}
-              to={`/screenshots/${row.original.id}`}
-              onClick={handleClick}
-            >
-              {row.original.name}
-            </Link>
-            {row.original.approved && (
-              <Badge className="text-green-100 bg-green-800 dark:bg-green-900/50 dark:text-green-300 gap-1 shrink-0">
-                <BadgeCheckIcon className="h-3 w-3" />
-                Approved
-              </Badge>
-            )}
-          </div>
+          <Link
+            className={className({
+              canSelect: !!canSelect,
+            })}
+            to={`/screenshots/${row.original.id}`}
+            onClick={handleClick}
+          >
+            {row.original.name}
+          </Link>
         );
       },
     },

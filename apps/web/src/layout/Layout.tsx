@@ -1,5 +1,6 @@
 import type { Screenshot } from "@cappa/core";
 import { SidebarProvider } from "@ui/components/sidebar";
+import { Toaster } from "@ui/components/sonner";
 import { type FC, useState } from "react";
 import { Outlet } from "react-router";
 import { AppSidebar } from "./Sidebar";
@@ -18,6 +19,8 @@ export const Layout: FC = () => {
           <Outlet context={{ activeCategory, setActiveCategory }} />
         </div>
       </SidebarProvider>
+
+      <Toaster />
     </div>
   );
 };
