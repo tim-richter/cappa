@@ -1,5 +1,6 @@
 import type { Screenshot } from "@cappa/core";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "@ui/lib/utils";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
@@ -31,7 +32,18 @@ export const Deleted: FC = () => {
   const handleApproveSelected = useCallback(
     (names: string[]) => {
       approveBatch(names, {
-        onSuccess: () => setSelectedIds(new Set()),
+        onSuccess: ({ approved, errors }) => {
+          if (errors.length > 0) {
+            toast.error(
+              `Failed to approve ${errors.length} screenshots: ${errors.join(", ")}`,
+            );
+            return;
+          }
+
+          setSelectedIds(new Set());
+          setIsSelectMode(false);
+          toast.success(`${approved.length} screenshots approved`);
+        },
       });
     },
     [approveBatch],
@@ -40,7 +52,12 @@ export const Deleted: FC = () => {
     if (!data?.length) return;
     approveBatch(
       data.map((s) => s.name),
-      { onSuccess: () => setSelectedIds(new Set()) },
+      {
+        onSuccess: () => {
+          setSelectedIds(new Set());
+          setIsSelectMode(false);
+        },
+      },
     );
   }, [data, approveBatch]);
 
