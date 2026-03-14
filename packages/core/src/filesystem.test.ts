@@ -85,12 +85,12 @@ describe("ScreenshotFileSystem", () => {
     actualPng.data[2] = 30;
     actualPng.data[3] = 255;
 
-    fs.writeFileSync(actualPath, actualPng.toBuffer());
+    fs.writeFileSync(actualPath, await actualPng.toBuffer());
 
     const diffPng = PNG.create(1, 1);
     diffPng.setMetadata("cappa.diff.algorithm", "pixel");
     diffPng.setMetadata("cappa.diff.threshold", "0.2");
-    fs.writeFileSync(diffPath, diffPng.toBuffer());
+    fs.writeFileSync(diffPath, await diffPng.toBuffer());
 
     fileSystem.approveFromActualPath(actualPath);
 

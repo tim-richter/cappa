@@ -477,7 +477,7 @@ class ScreenshotTool {
 
         const diffFilename = options.diffImageFilename || filename;
         diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
-        const diffBuffer = createDiffSizePngImage(200, 200);
+        const diffBuffer = await createDiffSizePngImage(200, 200);
 
         await this.filesystem.writeDiffFile(diffFilename, diffBuffer);
 

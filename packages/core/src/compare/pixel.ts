@@ -41,6 +41,7 @@ export async function compareImages(
   withDiff: boolean = false,
   options: DiffConfig = {},
 ): Promise<CompareResult> {
+  // Load both PNGs in parallel with sharp for better performance
   const [png1, png2] = await Promise.all([loadPNG(image1), loadPNG(image2)]);
 
   const { width, height } = png1;
@@ -72,7 +73,7 @@ export async function compareImages(
 
     // Convert diff image to buffer
     const diffBuffer = diff
-      ? annotateDiffImage(diff, options).toBuffer()
+      ? await annotateDiffImage(diff, options).toBuffer()
       : undefined;
 
     return {
@@ -183,7 +184,10 @@ const isPassed = (
  * Create different size png image with all pixels red
  * @returns
  */
-export function createDiffSizePngImage(width: number, height: number): Buffer {
+export async function createDiffSizePngImage(
+  width: number,
+  height: number,
+): Promise<Buffer> {
   const png = PNG.create(width, height);
 
   for (let y = 0; y < height; y++) {

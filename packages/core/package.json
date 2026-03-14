@@ -43,12 +43,11 @@
     "@blazediff/core": "^1.9.1",
     "@blazediff/gmsd": "^1.7.1",
     "@cappa/logger": "workspace:*",
-    "pngjs": "^7.0.0"
+    "sharp": "^0.34.5"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
-    "@types/pngjs": "^6.0.5",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "playwright-core": "^1.58.2",

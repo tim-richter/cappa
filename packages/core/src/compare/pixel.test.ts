@@ -11,11 +11,11 @@ import {
 } from "./pixel";
 
 // Test utilities
-function createSolidColorPNG(
+async function createSolidColorPNG(
   width: number,
   height: number,
   color: [number, number, number, number] = [255, 0, 0, 255],
-): Buffer {
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -31,7 +31,10 @@ function createSolidColorPNG(
   return png.toBuffer();
 }
 
-function createGradientPNG(width: number, height: number): Buffer {
+async function createGradientPNG(
+  width: number,
+  height: number,
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -47,11 +50,11 @@ function createGradientPNG(width: number, height: number): Buffer {
   return png.toBuffer();
 }
 
-function createCheckerboardPNG(
+async function createCheckerboardPNG(
   width: number,
   height: number,
   squareSize: number = 10,
-): Buffer {
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -75,18 +78,21 @@ function createCheckerboardPNG(
 describe("compare", () => {
   const testDir = path.join(__dirname, "__test-images__");
 
-  beforeAll(() => {
+  beforeAll(async () => {
     // Create test directory
     if (!fs.existsSync(testDir)) {
       fs.mkdirSync(testDir, { recursive: true });
     }
 
     // Create test image files
-    const redImage = createSolidColorPNG(100, 100, [255, 0, 0, 255]);
-    const blueImage = createSolidColorPNG(100, 100, [0, 0, 255, 255]);
-    const gradientImage = createGradientPNG(100, 100);
-    const checkerImage = createCheckerboardPNG(100, 100);
-    const smallImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+    const [redImage, blueImage, gradientImage, checkerImage, smallImage] =
+      await Promise.all([
+        createSolidColorPNG(100, 100, [255, 0, 0, 255]),
+        createSolidColorPNG(100, 100, [0, 0, 255, 255]),
+        createGradientPNG(100, 100),
+        createCheckerboardPNG(100, 100),
+        createSolidColorPNG(50, 50, [255, 0, 0, 255]),
+      ]);
 
     fs.writeFileSync(path.join(testDir, "red.png"), redImage);
     fs.writeFileSync(path.join(testDir, "blue.png"), blueImage);
@@ -104,7 +110,7 @@ describe("compare", () => {
 
   describe("compareImages", () => {
     it("should return 0% difference for identical images", async () => {
-      const image = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const image = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       const result = await compareImages(image, image);
 
@@ -116,8 +122,8 @@ describe("compare", () => {
     });
 
     it("should return 100% difference for completely different images", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const result = await compareImages(redImage, blueImage);
 
@@ -141,7 +147,7 @@ describe("compare", () => {
 
     it("should work with mixed file path and buffer", async () => {
       const redPath = path.join(testDir, "red.png");
-      const blueBuffer = createSolidColorPNG(100, 100, [0, 0, 255, 255]);
+      const blueBuffer = await createSolidColorPNG(100, 100, [0, 0, 255, 255]);
 
       const result = await compareImages(redPath, blueBuffer);
 
@@ -150,8 +156,8 @@ describe("compare", () => {
     });
 
     it("should respect maxDiffPercentage parameter", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const result1 = await compareImages(redImage, blueImage, false, {
         maxDiffPercentage: 50,
@@ -166,8 +172,8 @@ describe("compare", () => {
 
     it("should apply threshold option correctly", async () => {
       // Create two slightly different images
-      const image1 = createSolidColorPNG(50, 50, [100, 100, 100, 255]);
-      const image2 = createSolidColorPNG(50, 50, [105, 105, 105, 255]); // Slightly lighter
+      const image1 = await createSolidColorPNG(50, 50, [100, 100, 100, 255]);
+      const image2 = await createSolidColorPNG(50, 50, [105, 105, 105, 255]); // Slightly lighter
 
       const strictResult = await compareImages(image1, image2, false, {
         threshold: 0.01,
@@ -182,8 +188,8 @@ describe("compare", () => {
     });
 
     it("should throw error for mismatched dimensions", async () => {
-      const largeImage = createSolidColorPNG(100, 100, [255, 0, 0, 255]);
-      const smallImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const largeImage = await createSolidColorPNG(100, 100, [255, 0, 0, 255]);
+      const smallImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       const result = await compareImages(largeImage, smallImage);
 
@@ -195,8 +201,8 @@ describe("compare", () => {
     });
 
     it("should handle custom compare options", async () => {
-      const image1 = createCheckerboardPNG(50, 50, 5);
-      const image2 = createCheckerboardPNG(50, 50, 6); // Slightly different pattern
+      const image1 = await createCheckerboardPNG(50, 50, 5);
+      const image2 = await createCheckerboardPNG(50, 50, 6); // Slightly different pattern
 
       const options: CompareOptions = {
         threshold: 0.2,
@@ -226,7 +232,7 @@ describe("compare", () => {
 
   describe("imagesMatch", () => {
     it("should return true for identical images", async () => {
-      const image = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const image = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       const matches = await imagesMatch(image, image);
 
@@ -234,8 +240,8 @@ describe("compare", () => {
     });
 
     it("should return false for completely different images", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const matches = await imagesMatch(redImage, blueImage);
 
@@ -243,8 +249,8 @@ describe("compare", () => {
     });
 
     it("should respect maxDifferencePercent", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const strictMatch = await imagesMatch(redImage, blueImage, {
         maxDiffPercentage: 50,
@@ -267,8 +273,8 @@ describe("compare", () => {
     });
 
     it("should pass through compare options", async () => {
-      const image1 = createSolidColorPNG(50, 50, [100, 100, 100, 255]);
-      const image2 = createSolidColorPNG(50, 50, [105, 105, 105, 255]);
+      const image1 = await createSolidColorPNG(50, 50, [100, 100, 100, 255]);
+      const image2 = await createSolidColorPNG(50, 50, [105, 105, 105, 255]);
 
       const strictMatch = await imagesMatch(image1, image2, {
         maxDiffPercentage: 50,
@@ -287,8 +293,8 @@ describe("compare", () => {
 
   describe("saveDiffImage", () => {
     it("should embed diff algorithm and options as PNG metadata", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const result = await compareImages(redImage, blueImage, true, {
         threshold: 0.2,
@@ -313,8 +319,8 @@ describe("compare", () => {
     });
 
     it("should save diff image to file", async () => {
-      const redImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
 
       const result = await compareImages(redImage, blueImage, true);
       const outputPath = path.join(testDir, "diff-output.png");
@@ -350,7 +356,7 @@ describe("compare", () => {
   describe("error handling", () => {
     it("should handle non-existent file paths", async () => {
       const nonExistentPath = path.join(testDir, "does-not-exist.png");
-      const validImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const validImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       await expect(
         compareImages(nonExistentPath, validImage),
@@ -359,7 +365,7 @@ describe("compare", () => {
 
     it("should handle invalid image buffers", async () => {
       const invalidBuffer = Buffer.from("not a png");
-      const validImage = createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const validImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
 
       await expect(compareImages(invalidBuffer, validImage)).rejects.toThrow();
     });
@@ -367,8 +373,8 @@ describe("compare", () => {
 
   describe("edge cases", () => {
     it("should handle 1x1 pixel images", async () => {
-      const image1 = createSolidColorPNG(1, 1, [255, 0, 0, 255]);
-      const image2 = createSolidColorPNG(1, 1, [0, 0, 255, 255]);
+      const image1 = await createSolidColorPNG(1, 1, [255, 0, 0, 255]);
+      const image2 = await createSolidColorPNG(1, 1, [0, 0, 255, 255]);
 
       const result = await compareImages(image1, image2);
 
@@ -378,8 +384,8 @@ describe("compare", () => {
     });
 
     it("should handle very large difference percentages", async () => {
-      const redImage = createSolidColorPNG(10, 10, [255, 0, 0, 255]);
-      const blueImage = createSolidColorPNG(10, 10, [0, 0, 255, 255]);
+      const redImage = await createSolidColorPNG(10, 10, [255, 0, 0, 255]);
+      const blueImage = await createSolidColorPNG(10, 10, [0, 0, 255, 255]);
 
       const result = await compareImages(redImage, blueImage, false);
 
@@ -388,7 +394,7 @@ describe("compare", () => {
     });
 
     it("should handle zero difference threshold", async () => {
-      const image = createSolidColorPNG(10, 10, [255, 0, 0, 255]);
+      const image = await createSolidColorPNG(10, 10, [255, 0, 0, 255]);
 
       const result = await compareImages(image, image, false, {
         maxDiffPercentage: 0,

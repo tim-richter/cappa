@@ -3,11 +3,11 @@ import { PNG as CappaPNG } from "../features/png/png";
 import { compareImagesGMSD } from "./gmsd";
 
 // Test utilities
-function createSolidColorPNG(
+async function createSolidColorPNG(
   width: number,
   height: number,
   color: [number, number, number, number] = [255, 0, 0, 255],
-): Buffer {
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -23,7 +23,10 @@ function createSolidColorPNG(
   return png.toBuffer();
 }
 
-function createGradientPNG(width: number, height: number): Buffer {
+async function createGradientPNG(
+  width: number,
+  height: number,
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -39,11 +42,11 @@ function createGradientPNG(width: number, height: number): Buffer {
   return png.toBuffer();
 }
 
-function createCheckerboardPNG(
+async function createCheckerboardPNG(
   width: number,
   height: number,
   squareSize: number = 10,
-): Buffer {
+): Promise<Buffer> {
   const png = CappaPNG.create(width, height);
 
   for (let y = 0; y < height; y++) {
@@ -66,29 +69,29 @@ function createCheckerboardPNG(
 
 describe("compareImages", () => {
   it("should return 0 difference for identical images", async () => {
-    const image = createGradientPNG(100, 100);
+    const image = await createGradientPNG(100, 100);
     const result = await compareImagesGMSD(image, image);
     expect(result.gmsd).toBeLessThan(0.01);
   });
 
   it("should return high difference for images with different gradients", async () => {
-    const gradientImage = createGradientPNG(100, 100);
-    const checkerImage = createCheckerboardPNG(100, 100);
+    const gradientImage = await createGradientPNG(100, 100);
+    const checkerImage = await createCheckerboardPNG(100, 100);
     const result = await compareImagesGMSD(gradientImage, checkerImage);
     expect(result.gmsd).toBeGreaterThan(0.01);
   });
 
   it("should return 0 for solid color images (no gradients)", async () => {
-    const redImage = createSolidColorPNG(100, 100, [255, 0, 0, 255]);
-    const blueImage = createSolidColorPNG(100, 100, [0, 0, 255, 255]);
+    const redImage = await createSolidColorPNG(100, 100, [255, 0, 0, 255]);
+    const blueImage = await createSolidColorPNG(100, 100, [0, 0, 255, 255]);
     const result = await compareImagesGMSD(redImage, blueImage);
     // Both have zero gradients, so GMSD = 0
     expect(result.gmsd).toBe(0);
   });
 
   it("should embed diff algorithm and options as PNG metadata", async () => {
-    const gradientImage = createGradientPNG(100, 100);
-    const checkerImage = createCheckerboardPNG(100, 100);
+    const gradientImage = await createGradientPNG(100, 100);
+    const checkerImage = await createCheckerboardPNG(100, 100);
 
     const result = await compareImagesGMSD(gradientImage, checkerImage, true, {
       threshold: 0.15,

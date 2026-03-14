@@ -1,79 +1,92 @@
 import { readFile, writeFile } from "node:fs/promises";
-import { type PackerOptions, PNG as PngjsPNG } from "pngjs";
-import type { MetadataEntries, PngWithMetadata } from "./types";
+import sharp from "sharp";
+import type { MetadataEntries } from "./types";
 import { extractTextMetadata, injectTextMetadata } from "./util";
 
 /**
- * A wrapper around `pngjs` that adds support for reading and writing
- * textual metadata (tEXt chunks).
+ * A wrapper around `sharp` that adds support for reading and writing
+ * textual metadata (tEXt chunks). Used for fast PNG decode/encode.
  */
 export class PNG {
-  private image: PngWithMetadata;
+  private width_: number;
+  private height_: number;
+  private data_: Buffer;
   private sourcePath?: string;
   private metadataEntries: MetadataEntries;
 
   private constructor(
-    image: PngWithMetadata,
+    width: number,
+    height: number,
+    data: Buffer,
     sourcePath?: string,
     metadata?: MetadataEntries,
   ) {
-    this.image = image;
+    this.width_ = width;
+    this.height_ = height;
+    this.data_ = data;
     this.sourcePath = sourcePath;
     this.metadataEntries = { ...(metadata ?? {}) };
   }
 
-  static create(width: number, height: number) {
-    return new PNG(new PngjsPNG({ width, height }) as PngWithMetadata);
+  static create(width: number, height: number): PNG {
+    const data = Buffer.alloc(width * height * 4, 0);
+    return new PNG(width, height, data);
   }
 
-  static async load(source: string | Buffer) {
+  static async load(source: string | Buffer): Promise<PNG> {
     const buffer = typeof source === "string" ? await readFile(source) : source;
-    const png = PngjsPNG.sync.read(buffer) as PngWithMetadata;
-
     const metadata = extractTextMetadata(buffer);
 
-    return new PNG(
-      png,
-      typeof source === "string" ? source : undefined,
-      metadata,
-    );
+    const pipeline = sharp(buffer).ensureAlpha();
+    const { data: raw, info } = await pipeline
+      .raw()
+      .toBuffer({ resolveWithObject: true });
+
+    const data = Buffer.from(raw);
+    const sourcePath = typeof source === "string" ? source : undefined;
+
+    return new PNG(info.width, info.height, data, sourcePath, metadata);
   }
 
-  get width() {
-    return this.image.width;
+  get width(): number {
+    return this.width_;
   }
 
-  get height() {
-    return this.image.height;
+  get height(): number {
+    return this.height_;
   }
 
-  get data() {
-    return this.image.data;
+  get data(): Buffer {
+    return this.data_;
   }
 
   get metadata(): MetadataEntries {
     return { ...this.metadataEntries };
   }
 
-  setMetadata(key: string, value: string) {
+  setMetadata(key: string, value: string): void {
     this.metadataEntries = { ...this.metadataEntries, [key]: value };
   }
 
-  replaceMetadata(metadata: MetadataEntries) {
+  replaceMetadata(metadata: MetadataEntries): void {
     this.metadataEntries = { ...metadata };
   }
 
-  removeMetadata(key: string) {
+  removeMetadata(key: string): void {
     const { [key]: _, ...remaining } = this.metadataEntries;
     this.metadataEntries = remaining;
   }
 
-  clearMetadata() {
+  clearMetadata(): void {
     this.metadataEntries = {};
   }
 
-  toBuffer(options?: PackerOptions) {
-    const baseBuffer = PngjsPNG.sync.write(this.image, options);
+  async toBuffer(): Promise<Buffer> {
+    const baseBuffer = await sharp(this.data_, {
+      raw: { width: this.width_, height: this.height_, channels: 4 },
+    })
+      .png()
+      .toBuffer();
 
     if (Object.keys(this.metadataEntries).length === 0) {
       return baseBuffer;
@@ -82,13 +95,13 @@ export class PNG {
     return injectTextMetadata(baseBuffer, this.metadataEntries);
   }
 
-  async save(filepath?: string, options?: PackerOptions) {
+  async save(filepath?: string): Promise<void> {
     const targetPath = filepath ?? this.sourcePath;
 
     if (!targetPath) {
       throw new Error("No filepath provided for saving PNG");
     }
 
-    await writeFile(targetPath, this.toBuffer(options));
+    await writeFile(targetPath, await this.toBuffer());
   }
 }

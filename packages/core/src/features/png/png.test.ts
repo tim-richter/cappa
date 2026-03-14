@@ -2,15 +2,12 @@ import { mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
-import { PNG as PngjsPNG } from "pngjs";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { PNG as CappaPNG } from "./png";
 
-type PngWithMetadata = PngjsPNG & { text?: Record<string, string> };
-
-function createPngBuffer(metadata?: Record<string, string>) {
-  const png = new PngjsPNG({ width: 2, height: 2 }) as PngWithMetadata;
+async function createPngBuffer(metadata?: Record<string, string>) {
+  const png = CappaPNG.create(2, 2);
 
   // Fill with opaque black pixels
   for (let i = 0; i < png.data.length; i += 4) {
@@ -21,14 +18,14 @@ function createPngBuffer(metadata?: Record<string, string>) {
   }
 
   if (metadata) {
-    png.text = metadata;
+    png.replaceMetadata(metadata);
   }
 
-  return PngjsPNG.sync.write(png);
+  return png.toBuffer();
 }
 
 async function createPngBufferWithMetadata(metadata: Record<string, string>) {
-  const png = await CappaPNG.load(createPngBuffer());
+  const png = await CappaPNG.load(await createPngBuffer());
   png.replaceMetadata(metadata);
 
   return png.toBuffer();
@@ -60,7 +57,7 @@ describe("PNG", () => {
     temporaryDirectories.push(directory);
     const filepath = path.join(directory, "image.png");
 
-    await writeFile(filepath, createPngBuffer());
+    await writeFile(filepath, await createPngBuffer());
 
     const png = await CappaPNG.load(filepath);
 
@@ -77,7 +74,7 @@ describe("PNG", () => {
     png.setMetadata("author", "updated");
     png.setMetadata("branch", "main");
 
-    const reloaded = await CappaPNG.load(png.toBuffer());
+    const reloaded = await CappaPNG.load(await png.toBuffer());
 
     expect(reloaded.metadata).toEqual({ author: "updated", branch: "main" });
   });
@@ -93,7 +90,7 @@ describe("PNG", () => {
 
     png.removeMetadata("branch");
 
-    const reloaded = await CappaPNG.load(png.toBuffer());
+    const reloaded = await CappaPNG.load(await png.toBuffer());
 
     expect(reloaded.metadata).toEqual({ author: "cappa", version: "1.0" });
   });
@@ -106,9 +103,9 @@ describe("PNG", () => {
     png.clearMetadata();
 
     expect(png.metadata).toEqual({});
-    expect(await CappaPNG.load(png.toBuffer()).then((p) => p.metadata)).toEqual(
-      {},
-    );
+    expect(
+      await CappaPNG.load(await png.toBuffer()).then((p) => p.metadata),
+    ).toEqual({});
   });
 
   it("saves to a provided filepath with updated metadata", async () => {
@@ -116,7 +113,7 @@ describe("PNG", () => {
     temporaryDirectories.push(directory);
     const filepath = path.join(directory, "image.png");
 
-    const png = await CappaPNG.load(createPngBuffer());
+    const png = await CappaPNG.load(await createPngBuffer());
     png.setMetadata("commit", "abc123");
 
     await png.save(filepath);

@@ -38,6 +38,7 @@ export async function compareImagesGMSD(
   withDiff: boolean = false,
   options: DiffConfigGMSD = {},
 ): Promise<CompareResult> {
+  // Load both PNGs in parallel with sharp for better performance
   const [png1, png2] = await Promise.all([loadPNG(image1), loadPNG(image2)]);
 
   const { width, height } = png1;
@@ -56,7 +57,7 @@ export async function compareImagesGMSD(
 
     // Convert diff image to buffer
     const diffBuffer = diff
-      ? annotateDiffImage(diff, options).toBuffer()
+      ? await annotateDiffImage(diff, options).toBuffer()
       : undefined;
 
     return {
