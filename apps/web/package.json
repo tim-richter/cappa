@@ -33,7 +33,7 @@
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
-    "@vitejs/plugin-react": "5.1.4",
+    "@vitejs/plugin-react": "5.2.0",
     "msw": "^2.12.10",
     "msw-storybook-addon": "^2.0.6",
     "nuqs": "^2.8.9",
