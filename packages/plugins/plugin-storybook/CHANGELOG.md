@@ -1,5 +1,12 @@
 # @cappa/plugin-storybook
 
+## 0.6.2
+
+### Patch Changes
+
+- Updated dependencies [a7b0539]
+  - @cappa/core@0.7.2
+
 ## 0.6.1
 
 ### Patch Changes

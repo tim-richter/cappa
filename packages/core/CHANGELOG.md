@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.7.2
+
+### Patch Changes
+
+- a7b0539: Use sharp instead of pngjs for PNG load/encode in the core package for improved performance. PNG.toBuffer() and PNG.save() are now async; createDiffSizePngImage() is now async.
+
 ## 0.7.1
 
 ### Patch Changes
