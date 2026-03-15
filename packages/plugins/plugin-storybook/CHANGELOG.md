@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.6.3
+
+### Patch Changes
+
+- 288b81c: feat(plugin-storybook): add storybook-addon keyword and catalog metadata
+
 ## 0.6.2
 
 ### Patch Changes
