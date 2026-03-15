@@ -48,11 +48,16 @@
     "attw": "attw --pack --profile node16 ."
   },
   "keywords": [
+    "storybook-addon",
     "screenshot",
     "plugin",
     "storybook",
     "visual-testing"
   ],
+  "storybook": {
+    "displayName": "Cappa",
+    "unsupportedFrameworks": []
+  },
   "peerDependencies": {
     "storybook": "^9 || ^10"
   },
