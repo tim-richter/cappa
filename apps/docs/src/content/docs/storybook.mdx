@@ -35,10 +35,32 @@ export default defineConfig({
 
 You can add additional plugin options to filter the stories that are captured:
 
-- **`includeStories`** – Array of glob patterns to include stories. Stories matching any of these patterns will be included. Patterns can match against story ID, title, name, or full story path (e.g., `["button--*"]`, `["*--primary"]`, `["Button/*"]`).
-- **`excludeStories`** – Array of glob patterns to exclude stories. Stories matching any of these patterns will be excluded. Uses the same pattern matching as `includeStories`.
+- **`includeStories`** – Optional predicate `(story) => boolean`. If provided, only stories for which it returns `true` are included. The argument is a `StoryFilterContext` with `id`, `title`, `name`, and `filePath` (the path `"title/name"`, e.g. `"Button/Primary"`).
+- **`excludeStories`** – Optional predicate `(story) => boolean`. If provided, stories for which it returns `true` are excluded (applied after `includeStories`).
 - **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
   own settings.
+
+You can use `minimatch` or regex inside your predicates for glob-like behavior:
+
+```ts
+import { defineConfig } from '@cappa/core';
+import {
+  cappaPluginStorybook,
+  type StoryFilterContext,
+} from '@cappa/plugin-storybook';
+import { minimatch } from 'minimatch';
+
+export default defineConfig({
+  outputDir: 'screenshots',
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006',
+      includeStories: (s: StoryFilterContext) => minimatch(s.id, 'button--*'),
+      excludeStories: (s: StoryFilterContext) => s.filePath.startsWith('Input/'),
+    }),
+  ],
+});
+```
 
 To quiet noisy console output while the plugin runs, toggle the global
 `logConsoleEvents` option inside `cappa.config.ts`:

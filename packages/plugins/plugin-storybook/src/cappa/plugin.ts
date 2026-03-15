@@ -4,7 +4,6 @@ import type {
   ScreenshotVariantWithUrl,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
-import { minimatch } from "minimatch";
 import type { Page } from "playwright-core";
 import type {
   DiffOptionsStorybook,
@@ -65,39 +64,24 @@ export interface StorybookStory {
 }
 
 /**
- * Matches a story against glob patterns
- * @param story - The story to match
- * @param patterns - Array of glob patterns to match against
- * @returns true if the story matches any of the patterns
+ * Context passed to includeStories and excludeStories predicate functions.
+ * Use these fields to decide which stories to include or exclude.
  */
-function matchesGlobPatterns(
-  story: StorybookStory,
-  patterns: string[],
-): boolean {
-  return patterns.some((pattern) => {
-    // Match against story id (e.g., "button--primary")
-    if (minimatch(story.id, pattern)) {
-      return true;
-    }
+export interface StoryFilterContext {
+  id: string;
+  title: string;
+  name: string;
+  /** Full story path: `${title}/${name}` (e.g. "Button/Primary") */
+  filePath: string;
+}
 
-    // Match against story title (e.g., "Button")
-    if (minimatch(story.title, pattern)) {
-      return true;
-    }
-
-    // Match against story name (e.g., "Primary")
-    if (minimatch(story.name, pattern)) {
-      return true;
-    }
-
-    // Match against full story path (e.g., "Button/Primary")
-    const fullPath = `${story.title}/${story.name}`;
-    if (minimatch(fullPath, pattern)) {
-      return true;
-    }
-
-    return false;
-  });
+function toFilterContext(story: StorybookStory): StoryFilterContext {
+  return {
+    id: story.id,
+    title: story.title,
+    name: story.name,
+    filePath: `${story.title}/${story.name}`,
+  };
 }
 
 interface StorybookStoriesResponse {
@@ -107,34 +91,17 @@ interface StorybookStoriesResponse {
 export interface StorybookPluginOptions {
   storybookUrl: string;
   /**
-   * Array of glob patterns to include stories. Stories matching any of these patterns will be included.
-   * Patterns can match against:
-   * - Story ID (e.g., "button--primary")
-   * - Story title (e.g., "Button")
-   * - Story name (e.g., "Primary")
-   * - Full story path (e.g., "Button/Primary")
-   *
-   * Examples:
-   * - ["button--*"] - Include all button stories
-   * - ["*--primary"] - Include all primary stories
-   * - ["Button/*"] - Include all stories under Button title
-   * - ["*--*"] - Include all stories
+   * Optional predicate to include stories. If provided, only stories for which
+   * it returns true are included. Example: (s) => s.id === 'button--primary'
+   * or (s) => s.title === 'Button'.
    */
-  includeStories?: string[];
+  includeStories?: (story: StoryFilterContext) => boolean;
   /**
-   * Array of glob patterns to exclude stories. Stories matching any of these patterns will be excluded.
-   * Patterns can match against:
-   * - Story ID (e.g., "button--primary")
-   * - Story title (e.g., "Button")
-   * - Story name (e.g., "Primary")
-   * - Full story path (e.g., "Button/Primary")
-   *
-   * Examples:
-   * - ["button--*"] - Exclude all button stories
-   * - ["*--secondary"] - Exclude all secondary stories
-   * - ["Input/*"] - Exclude all stories under Input title
+   * Optional predicate to exclude stories. If provided, stories for which it
+   * returns true are excluded (applied after includeStories). Example:
+   * (s) => s.title === 'Input'.
    */
-  excludeStories?: string[];
+  excludeStories?: (story: StoryFilterContext) => boolean;
   defaultViewport?: { width: number; height: number };
   waitForSelector?: string;
   waitForTimeout?: number;
@@ -157,7 +124,7 @@ function createLatch<T>() {
 /**
  * Storybook Plugin for Cappa
  * Fetches stories from a running Storybook server and takes screenshots of each story.
- * Supports glob pattern matching for includeStories and excludeStories options.
+ * Supports includeStories and excludeStories predicate functions for filtering.
  */
 export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
   options,
@@ -179,8 +146,8 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
       const {
         storybookUrl,
-        includeStories = [],
-        excludeStories = [],
+        includeStories,
+        excludeStories,
         storybook: defaultStorybookOptions,
       } = options;
 
@@ -197,18 +164,17 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const data = (await response.json()) as StorybookStoriesResponse;
       const stories = Object.values(data.entries);
 
-      // Filter stories based on include/exclude glob patterns
       let filteredStories = stories;
 
-      if (includeStories.length > 0) {
+      if (includeStories) {
         filteredStories = filteredStories.filter((story) =>
-          matchesGlobPatterns(story, includeStories),
+          includeStories(toFilterContext(story)),
         );
       }
 
-      if (excludeStories.length > 0) {
+      if (excludeStories) {
         filteredStories = filteredStories.filter(
-          (story) => !matchesGlobPatterns(story, excludeStories),
+          (story) => !excludeStories(toFilterContext(story)),
         );
       }
 

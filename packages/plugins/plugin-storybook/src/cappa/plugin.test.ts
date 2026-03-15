@@ -26,7 +26,7 @@ vi.mock("./storybook-url", () => ({
 // Mock fetch
 global.fetch = vi.fn();
 
-describe("cappaPluginStorybook - Glob Pattern Matching", () => {
+describe("cappaPluginStorybook - includeStories / excludeStories predicates", () => {
   const mockStories: StorybookStory[] = [
     {
       id: "button--primary",
@@ -97,11 +97,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
     });
   });
 
-  describe("includeStories glob patterns", () => {
-    it("should include stories matching exact story id", async () => {
+  describe("includeStories predicate", () => {
+    it("should include stories when predicate returns true for exact id", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["button--primary"],
+        includeStories: (s) => s.id === "button--primary",
       });
 
       const result = await plugin.discover({} as any);
@@ -109,10 +109,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       expect(result[0]?.data.story.id).toBe("button--primary");
     });
 
-    it("should include stories matching wildcard patterns", async () => {
+    it("should include stories when predicate matches by id prefix", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["button--*"],
+        includeStories: (s) => s.id.startsWith("button--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -123,10 +123,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       ]);
     });
 
-    it("should include stories matching title patterns", async () => {
+    it("should include stories when predicate matches by title", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["Button"],
+        includeStories: (s) => s.title === "Button",
       });
 
       const result = await plugin.discover({} as any);
@@ -137,10 +137,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       ]);
     });
 
-    it("should include stories matching name patterns", async () => {
+    it("should include stories when predicate matches by name", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["Primary"],
+        includeStories: (s) => s.name === "Primary",
       });
 
       const result = await plugin.discover({} as any);
@@ -148,10 +148,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       expect(result[0]?.data.story.id).toBe("button--primary");
     });
 
-    it("should include stories matching full path patterns", async () => {
+    it("should include stories when predicate matches by filePath", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["Button/*"],
+        includeStories: (s) => s.filePath.startsWith("Button/"),
       });
 
       const result = await plugin.discover({} as any);
@@ -162,10 +162,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       ]);
     });
 
-    it("should include stories matching multiple patterns", async () => {
+    it("should include stories when predicate matches multiple", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["button--*", "input--*"],
+        includeStories: (s) =>
+          s.id.startsWith("button--") || s.id.startsWith("input--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -178,10 +179,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       ]);
     });
 
-    it("should include stories matching complex glob patterns", async () => {
+    it("should include stories when predicate uses multiple fields", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["*--primary", "*--default"],
+        includeStories: (s) => s.name === "Primary" || s.name === "Default",
       });
 
       const result = await plugin.discover({} as any);
@@ -193,11 +194,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
     });
   });
 
-  describe("excludeStories glob patterns", () => {
-    it("should exclude stories matching exact story id", async () => {
+  describe("excludeStories predicate", () => {
+    it("should exclude stories when predicate returns true for exact id", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["button--primary"],
+        excludeStories: (s) => s.id === "button--primary",
       });
 
       const result = await plugin.discover({} as any);
@@ -207,10 +208,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should exclude stories matching wildcard patterns", async () => {
+    it("should exclude stories when predicate matches by id prefix", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["button--*"],
+        excludeStories: (s) => s.id.startsWith("button--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -223,10 +224,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should exclude stories matching title patterns", async () => {
+    it("should exclude stories when predicate matches by title", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["Button"],
+        excludeStories: (s) => s.title === "Button",
       });
 
       const result = await plugin.discover({} as any);
@@ -239,10 +240,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should exclude stories matching name patterns", async () => {
+    it("should exclude stories when predicate matches by name", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["Primary"],
+        excludeStories: (s) => s.name === "Primary",
       });
 
       const result = await plugin.discover({} as any);
@@ -252,10 +253,10 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should exclude stories matching full path patterns", async () => {
+    it("should exclude stories when predicate matches by filePath", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["Button/*"],
+        excludeStories: (s) => s.filePath.startsWith("Button/"),
       });
 
       const result = await plugin.discover({} as any);
@@ -268,10 +269,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should exclude stories matching multiple patterns", async () => {
+    it("should exclude stories when predicate matches multiple", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        excludeStories: ["button--*", "input--*"],
+        excludeStories: (s) =>
+          s.id.startsWith("button--") || s.id.startsWith("input--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -284,11 +286,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
   });
 
   describe("combined includeStories and excludeStories", () => {
-    it("should apply include patterns first, then exclude patterns", async () => {
+    it("should apply include first, then exclude", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["*--*"], // Include all stories
-        excludeStories: ["button--*"], // Then exclude button stories
+        includeStories: () => true,
+        excludeStories: (s) => s.id.startsWith("button--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -301,11 +303,11 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
       );
     });
 
-    it("should work with overlapping patterns", async () => {
+    it("should work with overlapping include and exclude", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["*--primary", "*--default"], // Include primary and default stories
-        excludeStories: ["button--*"], // Exclude all button stories
+        includeStories: (s) => s.name === "Primary" || s.name === "Default",
+        excludeStories: (s) => s.id.startsWith("button--"),
       });
 
       const result = await plugin.discover({} as any);
@@ -315,48 +317,36 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
   });
 
   describe("edge cases", () => {
-    it("should handle empty includeStories array", async () => {
+    it("should include all stories when neither option is provided", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: [],
-      });
-
-      const result = await plugin.discover({} as any);
-      expect(result).toHaveLength(6); // All stories included
-    });
-
-    it("should handle empty excludeStories array", async () => {
-      const plugin = cappaPluginStorybook({
-        storybookUrl: "http://localhost:6006",
-        excludeStories: [],
       });
 
       const result = await plugin.discover({} as any);
       expect(result).toHaveLength(6);
     });
 
-    it("should handle patterns that match no stories", async () => {
+    it("should return no stories when include predicate matches none", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["nonexistent--*"],
+        includeStories: (s) => s.id === "nonexistent--story",
       });
 
       const result = await plugin.discover({} as any);
       expect(result).toHaveLength(0);
     });
 
-    it("should handle case-sensitive matching", async () => {
+    it("should respect case-sensitive matching in predicate", async () => {
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["button"], // lowercase
+        includeStories: (s) => s.title === "button",
       });
 
       const result = await plugin.discover({} as any);
-      expect(result).toHaveLength(0); // No matches because "Button" is capitalized
+      expect(result).toHaveLength(0);
     });
 
-    it("should handle special glob characters in story names", async () => {
-      // Add a story with special characters
+    it("should include story with special characters when predicate matches", async () => {
       const specialStory: StorybookStory = {
         id: "special--with-dots.and-brackets[test]",
         name: "With Dots.And Brackets[Test]",
@@ -380,7 +370,7 @@ describe("cappaPluginStorybook - Glob Pattern Matching", () => {
 
       const plugin = cappaPluginStorybook({
         storybookUrl: "http://localhost:6006",
-        includeStories: ["special--*"],
+        includeStories: (s) => s.id.startsWith("special--"),
       });
 
       const result = await plugin.discover({} as any);
