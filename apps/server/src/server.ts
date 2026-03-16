@@ -50,7 +50,7 @@ export async function createServer(opts: StartServerOptions) {
       // security: disable dotfiles and traversal
       decorateReply: false,
       serveDotFiles: false,
-      maxAge: "1d",
+      maxAge: 0,
     });
   }
 
