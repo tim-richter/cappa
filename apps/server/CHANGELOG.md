@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.5.3
+
+### Patch Changes
+
+- dd34818: Fix: caching of screenshots
+
 ## 0.5.2
 
 ### Patch Changes
