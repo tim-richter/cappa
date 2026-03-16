@@ -107,8 +107,8 @@ export const Split = ({ screenshot }: SplitProps) => {
               {!screenshot.expectedPath && !screenshot.actualPath
                 ? "No images available"
                 : !screenshot.actualPath
-                  ? "No before image available"
-                  : "No after image available"}
+                  ? "No after image available"
+                  : "No before image available"}
             </div>
           )}
         </div>

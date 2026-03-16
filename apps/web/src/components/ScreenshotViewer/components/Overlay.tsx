@@ -66,8 +66,8 @@ export function Overlay({
             {!screenshot.actualPath && !screenshot.expectedPath
               ? "No images available"
               : !screenshot.actualPath
-                ? "No before image available"
-                : "No after image available"}
+                ? "No after image available"
+                : "No before image available"}
           </div>
         )}
       </div>
