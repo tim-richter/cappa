@@ -1,5 +1,12 @@
 # @cappa/core
 
+## 0.7.3
+
+### Patch Changes
+
+- feff10a: fix deletion in ui
+- 6a21106: update dependencies
+
 ## 0.7.2
 
 ### Patch Changes

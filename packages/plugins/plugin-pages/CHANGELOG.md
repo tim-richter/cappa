@@ -1,5 +1,13 @@
 # @cappa/plugin-pages
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [feff10a]
+- Updated dependencies [6a21106]
+  - @cappa/core@0.7.3
+
 ## 0.1.2
 
 ### Patch Changes
