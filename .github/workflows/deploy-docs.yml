@@ -30,12 +30,11 @@ jobs:
         uses: actions/checkout@v6
 
       - name: Deploy Astro docs site
-        uses: withastro/action@v5
+        uses: withastro/action@v6
         with:
           path: apps/docs
           node-version: 24.x
-          package-manager: pnpm@10.20.0
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          package-manager: pnpm@latest
 
   deploy:
     needs: build
