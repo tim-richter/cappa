@@ -1,6 +1,11 @@
-import { type Screenshot, ScreenshotFileSystem } from "@cappa/core";
+import {
+  type DiffOptions,
+  type Screenshot,
+  ScreenshotFileSystem,
+} from "@cappa/core";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod/mini";
+import { screenshotPathsForFilesystem } from "./util";
 
 /**
  * Fastify plugin for screenshots routes
@@ -16,7 +21,9 @@ const approveBatchBodySchema = z.object({
   names: z.array(z.string()),
 });
 
-export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
+export const screenshotsPlugin: FastifyPluginAsync<{
+  diff: DiffOptions;
+}> = async (fastify, opts) => {
   // GET /api/screenshots - Get all screenshots with optional search and category filters
   fastify.get("/", async (request) => {
     const { search, category } = request.query as {
@@ -76,7 +83,10 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
         continue;
       }
       try {
-        fileSystem.approveByName(name);
+        await fileSystem.approveScreenshots(
+          [screenshotPathsForFilesystem(screenshot)],
+          opts.diff,
+        );
       } catch (err) {
         errors.push({
           name,
@@ -147,7 +157,10 @@ export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
 
     if (updatedScreenshot.approved) {
       const fileSystem = new ScreenshotFileSystem(fastify.outputDir);
-      fileSystem.approveByName(updatedScreenshot.name);
+      await fileSystem.approveScreenshots(
+        [screenshotPathsForFilesystem(updatedScreenshot)],
+        opts.diff,
+      );
     }
 
     reply.code(200).send(updatedScreenshot);

@@ -40,6 +40,7 @@ export const review = async () => {
     screenshots: groupedScreenshots,
     logger: getLogger().level >= 4,
     theme: config.review.theme,
+    diff: config.diff,
   });
 
   logger.success("Review UI available at http://localhost:3000");

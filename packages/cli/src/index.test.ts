@@ -1,4 +1,5 @@
 import path from "node:path";
+import type { DiffConfig, DiffOptions, Screenshot } from "@cappa/core";
 import {
   afterEach,
   beforeAll,
@@ -38,6 +39,7 @@ const screenshotFileSystemInstances: Array<{
   clearActual: ReturnType<typeof vi.fn>;
   clearDiff: ReturnType<typeof vi.fn>;
   approveFromActualPath: ReturnType<typeof vi.fn>;
+  approveScreenshots: ReturnType<typeof vi.fn>;
   getActualScreenshots: ReturnType<typeof vi.fn>;
   getDiffScreenshots: ReturnType<typeof vi.fn>;
   getExpectedScreenshots: ReturnType<typeof vi.fn>;
@@ -45,45 +47,94 @@ const screenshotFileSystemInstances: Array<{
 
 const imagesMatchMock = vi.fn();
 
-vi.mock("@cappa/core", () => ({
-  ScreenshotTool: class {
-    options: unknown;
-    close: ReturnType<typeof vi.fn>;
-    init: ReturnType<typeof vi.fn>;
-    concurrency: number;
-    getPageFromPool: ReturnType<typeof vi.fn>;
+vi.mock("@cappa/core", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@cappa/core")>();
 
-    constructor(options: unknown) {
-      this.options = options;
-      this.close = vi.fn();
-      this.init = vi.fn();
-      this.concurrency = 1;
-      this.getPageFromPool = vi.fn();
-      screenshotToolInstances.push(this);
-    }
-  },
-  ScreenshotFileSystem: class {
-    outputDir: string;
-    clearActual: ReturnType<typeof vi.fn>;
-    clearDiff: ReturnType<typeof vi.fn>;
-    approveFromActualPath: ReturnType<typeof vi.fn>;
-    getActualScreenshots: ReturnType<typeof vi.fn>;
-    getDiffScreenshots: ReturnType<typeof vi.fn>;
-    getExpectedScreenshots: ReturnType<typeof vi.fn>;
+  return {
+    ...actual,
+    ScreenshotTool: class {
+      options: unknown;
+      close: ReturnType<typeof vi.fn>;
+      init: ReturnType<typeof vi.fn>;
+      concurrency: number;
+      getPageFromPool: ReturnType<typeof vi.fn>;
 
-    constructor(outputDir: string) {
-      this.outputDir = outputDir;
-      this.clearActual = vi.fn();
-      this.clearDiff = vi.fn();
-      this.approveFromActualPath = vi.fn();
-      this.getActualScreenshots = vi.fn();
-      this.getDiffScreenshots = vi.fn();
-      this.getExpectedScreenshots = vi.fn();
-      screenshotFileSystemInstances.push(this);
-    }
-  },
-  imagesMatch: imagesMatchMock,
-}));
+      constructor(options: unknown) {
+        this.options = options;
+        this.close = vi.fn();
+        this.init = vi.fn();
+        this.concurrency = 1;
+        this.getPageFromPool = vi.fn();
+        screenshotToolInstances.push(this);
+      }
+    },
+    ScreenshotFileSystem: class {
+      outputDir: string;
+      clearActual: ReturnType<typeof vi.fn>;
+      clearDiff: ReturnType<typeof vi.fn>;
+      approveFromActualPath: ReturnType<typeof vi.fn>;
+      approveScreenshots: ReturnType<typeof vi.fn>;
+      getActualScreenshots: ReturnType<typeof vi.fn>;
+      getDiffScreenshots: ReturnType<typeof vi.fn>;
+      getExpectedScreenshots: ReturnType<typeof vi.fn>;
+
+      constructor(outputDir: string) {
+        this.outputDir = outputDir;
+        this.clearActual = vi.fn();
+        this.clearDiff = vi.fn();
+        const approveFromActualPath = vi.fn().mockResolvedValue({
+          actualPath: "",
+          expectedPath: "",
+          diffPath: "",
+        });
+        this.approveFromActualPath = approveFromActualPath;
+        this.getActualScreenshots = vi.fn();
+        this.getDiffScreenshots = vi.fn();
+        this.getExpectedScreenshots = vi.fn();
+        this.approveScreenshots = vi.fn(
+          async (screenshots: Screenshot[], diff: DiffOptions) => {
+            const root = path.dirname(path.join(outputDir, "actual"));
+            for (const screenshot of screenshots) {
+              if (screenshot.category === "new") {
+                await approveFromActualPath(
+                  path.resolve(root, screenshot.actualPath),
+                );
+              } else if (screenshot.category === "deleted") {
+                fsMock.unlinkSync(path.resolve(root, screenshot.expectedPath));
+              } else if (screenshot.category === "changed") {
+                fsMock.unlinkSync(path.resolve(root, screenshot.diffPath));
+                await approveFromActualPath(
+                  path.resolve(root, screenshot.actualPath),
+                );
+              } else if (screenshot.category === "passed") {
+                if (!screenshot.expectedPath) {
+                  throw new Error(
+                    "Expected path is required for passed screenshots",
+                  );
+                }
+
+                const matches = await imagesMatchMock(
+                  path.resolve(root, screenshot.actualPath),
+                  path.resolve(root, screenshot.expectedPath),
+                  diff.type === "gmsd"
+                    ? { threshold: diff.threshold }
+                    : (diff as DiffConfig),
+                );
+
+                if (!matches) {
+                  await approveFromActualPath(
+                    path.resolve(root, screenshot.actualPath),
+                  );
+                }
+              }
+            }
+          },
+        );
+        screenshotFileSystemInstances.push(this);
+      }
+    },
+  };
+});
 
 const createLoggerInstance = () => ({
   level: 4,
@@ -549,7 +600,14 @@ describe("cappa CLI", () => {
     getConfigMock.mockResolvedValue({
       outputDir: "/tmp/screens",
       plugins: [],
-      diff: {},
+      diff: {
+        type: "pixel",
+        threshold: 0.1,
+        includeAA: false,
+        fastBufferCheck: true,
+        maxDiffPixels: 0,
+        maxDiffPercentage: 0,
+      },
       review: { theme: "light" },
     });
 
@@ -584,6 +642,14 @@ describe("cappa CLI", () => {
       screenshots: grouped,
       logger: true,
       theme: "light",
+      diff: {
+        type: "pixel",
+        threshold: 0.1,
+        includeAA: false,
+        fastBufferCheck: true,
+        maxDiffPixels: 0,
+        maxDiffPercentage: 0,
+      },
     });
 
     expect(serverInstances).toHaveLength(1);
@@ -644,7 +710,7 @@ describe("cappa CLI", () => {
     ).toHaveBeenCalledTimes(1);
     expect(
       screenshotFileSystemInstances[0]?.approveFromActualPath,
-    ).toHaveBeenCalledWith("foo.png");
+    ).toHaveBeenCalledWith("/tmp/screens/actual/foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );
@@ -786,7 +852,7 @@ describe("cappa CLI", () => {
     ).toHaveBeenCalledTimes(1);
     expect(
       screenshotFileSystemInstances[0]?.approveFromActualPath,
-    ).toHaveBeenCalledWith("foo.png");
+    ).toHaveBeenCalledWith("/tmp/screens/actual/foo.png");
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "1 screenshot(s) approved (filtered)",
     );

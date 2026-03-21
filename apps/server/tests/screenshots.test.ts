@@ -283,14 +283,14 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "deleted",
           approved: false,
-          expectedPath: "/screenshots/expected/Screenshot 2.png",
+          expectedPath: "expected/Screenshot 2.png",
         },
       ],
     });
@@ -309,7 +309,7 @@ describe("PATCH /:id", () => {
       id: "1",
       category: "new",
       approved: true,
-      actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
+      actualPath: "/assets/screenshots/actual/Screenshot 1.png",
       next: "2",
     });
   });
@@ -328,7 +328,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
       ],
     });
@@ -361,7 +361,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
       ],
     });
@@ -399,7 +399,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
       ],
     });
@@ -434,7 +434,7 @@ describe("PATCH /:id", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
       ],
     });
@@ -452,6 +452,37 @@ describe("PATCH /:id", () => {
       "/screenshots/actual/Screenshot 1.png": "actual screenshot",
       "/screenshots/expected/Screenshot 1.png": "actual screenshot",
     });
+  });
+
+  it("should remove expected file when approving a deleted screenshot", async () => {
+    vol.fromJSON({
+      "/screenshots/expected/Gone.png": "old baseline",
+    });
+
+    const app = await createServer({
+      outputDir: "/screenshots",
+      logger: false,
+      screenshots: [
+        {
+          name: "Gone",
+          id: "del-1",
+          category: "deleted",
+          approved: false,
+          expectedPath: "expected/Gone.png",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/del-1",
+      body: {
+        approved: true,
+      },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(vol.toJSON()["/screenshots/expected/Gone.png"]).toBeUndefined();
   });
 });
 
@@ -471,14 +502,14 @@ describe("POST /approve-batch", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 2.png",
+          actualPath: "actual/Screenshot 2.png",
         },
       ],
     });
@@ -539,21 +570,21 @@ describe("POST /approve-batch", () => {
           id: "1",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 1.png",
+          actualPath: "actual/Screenshot 1.png",
         },
         {
           name: "Screenshot 2",
           id: "2",
           category: "new",
           approved: true,
-          actualPath: "/screenshots/actual/Screenshot 2.png",
+          actualPath: "actual/Screenshot 2.png",
         },
         {
           name: "Screenshot 3",
           id: "3",
           category: "new",
           approved: false,
-          actualPath: "/screenshots/actual/Screenshot 3.png",
+          actualPath: "actual/Screenshot 3.png",
         },
       ],
     });
@@ -573,5 +604,38 @@ describe("POST /approve-batch", () => {
     expect(body.errors.length).toBe(1);
     expect(body.errors[0].name).toBe("Screenshot 3");
     expect(body.errors[0].error).toBeDefined();
+  });
+
+  it("should remove expected file when approving a deleted screenshot", async () => {
+    vol.fromJSON({
+      "/screenshots/expected/Removed.png": "old baseline",
+    });
+
+    const app = await createServer({
+      outputDir: "/screenshots",
+      logger: false,
+      screenshots: [
+        {
+          name: "Removed",
+          id: "1",
+          category: "deleted",
+          approved: false,
+          expectedPath: "expected/Removed.png",
+        },
+      ],
+    });
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/screenshots/approve-batch",
+      payload: { names: ["Removed"] },
+    });
+
+    expect(response.statusCode).toBe(200);
+    const body = response.json() as { approved: string[]; errors: unknown[] };
+    expect(body.approved).toEqual(["Removed"]);
+    expect(body.errors).toEqual([]);
+
+    expect(vol.toJSON()["/screenshots/expected/Removed.png"]).toBeUndefined();
   });
 });

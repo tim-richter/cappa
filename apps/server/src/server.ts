@@ -1,6 +1,6 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { Screenshot } from "@cappa/core";
+import type { DiffOptions, DiffOptionsPixel, Screenshot } from "@cappa/core";
 import compress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
@@ -8,6 +8,15 @@ import { screenshotsPlugin } from "./screenshots";
 import { resolveFromHere, transform } from "./util";
 
 // Extend FastifyInstance to include our decorated properties
+const defaultPixelDiff: DiffOptionsPixel = {
+  type: "pixel",
+  threshold: 0.1,
+  includeAA: false,
+  fastBufferCheck: true,
+  maxDiffPixels: 0,
+  maxDiffPercentage: 0,
+};
+
 declare module "fastify" {
   interface FastifyInstance {
     screenshots: Screenshot[];
@@ -23,10 +32,14 @@ interface StartServerOptions {
   logger?: boolean;
   /** Theme for the review UI: 'light' or 'dark' */
   theme?: "light" | "dark";
+  /** Diff options for approval (pixel/GMSD); defaults match CLI `getConfig` pixel defaults */
+  diff?: DiffOptions;
 }
 
 export async function createServer(opts: StartServerOptions) {
   const app = Fastify({ logger: opts.logger ?? true });
+
+  const resolvedDiff: DiffOptions = opts.diff ?? defaultPixelDiff;
 
   // Add screenshots data to the app instance for use in plugins
   app.decorate("screenshots", transform(opts.screenshots));
@@ -41,7 +54,10 @@ export async function createServer(opts: StartServerOptions) {
   }));
 
   // Register the screenshots plugin with the /api/screenshots prefix
-  app.register(screenshotsPlugin, { prefix: "/api/screenshots" });
+  await app.register(screenshotsPlugin, {
+    prefix: "/api/screenshots",
+    diff: resolvedDiff,
+  });
 
   if (fs.existsSync(opts.outputDir)) {
     app.register(fastifyStatic, {

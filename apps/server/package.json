@@ -37,6 +37,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
+    "@cappa/logger": "workspace:*",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",

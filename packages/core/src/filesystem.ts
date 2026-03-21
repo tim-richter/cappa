@@ -1,7 +1,13 @@
 import fs from "node:fs";
 import fsp, { glob } from "node:fs/promises";
 import path from "node:path";
+import { getLogger } from "@cappa/logger";
+import { imagesMatch } from "./compare/pixel";
 import { extractTextMetadata, injectTextMetadata } from "./features/png/util";
+import { mapWithConcurrency } from "./mapWithConcurrency";
+import type { DiffConfig, DiffOptions, Screenshot } from "./types";
+
+const APPROVE_SCREENSHOTS_CONCURRENCY = 8;
 
 /**
  * Class for interacting with the local file system to store the screenshots.
@@ -51,7 +57,7 @@ export class ScreenshotFileSystem {
    * @param actualFilePath - The path to the actual screenshot file.
    * @returns The paths to the actual, expected, and diff screenshot files.
    */
-  approveFromActualPath(actualFilePath: string) {
+  async approveFromActualPath(actualFilePath: string) {
     const actualAbsolute = this.resolveActualPath(actualFilePath);
     const relativePath = path.relative(this.actual, actualAbsolute);
 
@@ -65,11 +71,80 @@ export class ScreenshotFileSystem {
   }
 
   /**
+   * Apply baseline updates for grouped screenshots (same rules as `cappa approve`).
+   */
+  async approveScreenshots(
+    screenshots: Screenshot[],
+    diff: DiffOptions,
+  ): Promise<void> {
+    const outputDir = path.dirname(this.actual);
+
+    await mapWithConcurrency(
+      APPROVE_SCREENSHOTS_CONCURRENCY,
+      screenshots,
+      (screenshot) => this.approveOneScreenshot(screenshot, outputDir, diff),
+    );
+  }
+
+  private async approveOneScreenshot(
+    screenshot: Screenshot,
+    outputDir: string,
+    diff: DiffOptions,
+  ): Promise<void> {
+    const logger = getLogger();
+
+    logger.debug(`Approving screenshot with category: ${screenshot.category}`);
+
+    if (screenshot.category === "new") {
+      logger.debug(`Approving new screenshot: ${screenshot.actualPath}`);
+      await this.approveFromActualPath(
+        path.resolve(outputDir, screenshot.actualPath),
+      );
+      return;
+    }
+
+    if (screenshot.category === "deleted") {
+      logger.debug(`Deleting expected screenshot: ${screenshot.expectedPath}`);
+      await fsp.unlink(path.resolve(outputDir, screenshot.expectedPath));
+      return;
+    }
+
+    if (screenshot.category === "changed") {
+      logger.debug(`Deleting diff screenshot: ${screenshot.diffPath}`);
+      await fsp.unlink(path.resolve(outputDir, screenshot.diffPath));
+      await this.approveFromActualPath(
+        path.resolve(outputDir, screenshot.actualPath),
+      );
+      return;
+    }
+
+    if (screenshot.category === "passed") {
+      if (!screenshot.expectedPath) {
+        throw new Error("Expected path is required for passed screenshots");
+      }
+
+      const matches = await imagesMatch(
+        path.resolve(outputDir, screenshot.actualPath),
+        path.resolve(outputDir, screenshot.expectedPath),
+        diff.type === "gmsd"
+          ? { threshold: diff.threshold }
+          : (diff as DiffConfig),
+      );
+
+      if (!matches) {
+        await this.approveFromActualPath(
+          path.resolve(outputDir, screenshot.actualPath),
+        );
+      }
+    }
+  }
+
+  /**
    * Approve a screenshot based on its name.
    * @param name - The name of the screenshot. Can include '.png' extension.
    * @returns The paths to the actual, expected, and diff screenshot files.
    */
-  approveByName(name: string) {
+  async approveByName(name: string) {
     const relativeWithExtension = name.endsWith(".png") ? name : `${name}.png`;
 
     return this.approveRelative(relativeWithExtension);
@@ -80,19 +155,27 @@ export class ScreenshotFileSystem {
    * @param relativePath - The relative path to the screenshot.
    * @returns The paths to the actual, expected, and diff screenshot files.
    */
-  private approveRelative(relativePath: string) {
+  private async approveRelative(relativePath: string) {
     const actualPath = path.resolve(this.actual, relativePath);
     const expectedPath = path.resolve(this.expected, relativePath);
     const diffPath = path.resolve(this.diff, relativePath);
 
-    this.ensureParentDirSync(expectedPath);
+    await this.ensureParentDir(expectedPath);
 
-    fs.copyFileSync(actualPath, expectedPath);
+    await fsp.copyFile(actualPath, expectedPath);
 
-    if (fs.existsSync(diffPath)) {
-      this.copyDiffMetadataToExpected(diffPath, expectedPath);
-      fs.unlinkSync(diffPath);
+    try {
+      await fsp.access(diffPath);
+    } catch {
+      return {
+        actualPath,
+        expectedPath,
+        diffPath,
+      };
     }
+
+    await this.copyDiffMetadataToExpected(diffPath, expectedPath);
+    await fsp.unlink(diffPath);
 
     return {
       actualPath,
@@ -101,7 +184,10 @@ export class ScreenshotFileSystem {
     };
   }
 
-  private copyDiffMetadataToExpected(diffPath: string, expectedPath: string) {
+  private async copyDiffMetadataToExpected(
+    diffPath: string,
+    expectedPath: string,
+  ): Promise<void> {
     const diffExtension = path.extname(diffPath).toLowerCase();
     const expectedExtension = path.extname(expectedPath).toLowerCase();
 
@@ -110,14 +196,14 @@ export class ScreenshotFileSystem {
     }
 
     try {
-      const diffBuffer = fs.readFileSync(diffPath);
+      const diffBuffer = await fsp.readFile(diffPath);
       const diffMetadata = extractTextMetadata(diffBuffer);
 
       if (Object.keys(diffMetadata).length === 0) {
         return;
       }
 
-      const expectedBuffer = fs.readFileSync(expectedPath);
+      const expectedBuffer = await fsp.readFile(expectedPath);
       const expectedMetadata = extractTextMetadata(expectedBuffer);
 
       const mergedMetadata = {
@@ -129,7 +215,7 @@ export class ScreenshotFileSystem {
         expectedBuffer,
         mergedMetadata,
       );
-      fs.writeFileSync(expectedPath, expectedWithMetadata);
+      await fsp.writeFile(expectedPath, expectedWithMetadata);
     } catch {
       // Ignore metadata transfer errors to keep approval resilient.
     }
