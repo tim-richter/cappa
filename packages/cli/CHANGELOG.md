@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.7.10
+
+### Patch Changes
+
+- feff10a: fix deletion in ui
+- Updated dependencies [feff10a]
+- Updated dependencies [6a21106]
+  - @cappa/core@0.7.3
+  - @cappa/server@0.5.4
+
 ## 0.7.9
 
 ### Patch Changes
