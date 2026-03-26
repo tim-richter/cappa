@@ -42,6 +42,6 @@
     "tsup": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:",
-    "vite": "8.0.1"
+    "vite": "8.0.3"
   }
 }
