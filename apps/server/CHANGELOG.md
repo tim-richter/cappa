@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.5.5
+
+### Patch Changes
+
+- f5e5977: fix(deps): update dependency fastify to v5.8.3 [security]
+
 ## 0.5.4
 
 ### Patch Changes
