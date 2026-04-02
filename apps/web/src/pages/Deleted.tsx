@@ -24,7 +24,10 @@ export const Deleted: FC = () => {
   const { data, isPending, isError } = useQuery<Screenshot[]>({
     queryKey: ["screenshots", "deleted"],
     queryFn: () =>
-      fetch("/api/screenshots?category=deleted").then((res) => res.json()),
+      fetch("/api/screenshots?category=deleted").then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      }),
   });
   const { mutate: approveBatch, isPending: isApprovePending } =
     useApproveBatch();

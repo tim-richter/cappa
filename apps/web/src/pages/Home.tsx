@@ -27,11 +27,15 @@ export const Home: FC = () => {
     queryKey: ["screenshots", search],
     queryFn: () => {
       if (!search) {
-        return fetch("/api/screenshots").then((res) => res.json());
+        return fetch("/api/screenshots").then((res) => {
+          if (!res.ok) throw new Error(res.statusText);
+          return res.json();
+        });
       }
-      return fetch(`/api/screenshots?search=${search}`).then((res) =>
-        res.json(),
-      );
+      return fetch(`/api/screenshots?search=${search}`).then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      });
     },
   });
 

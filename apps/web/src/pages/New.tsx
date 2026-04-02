@@ -23,7 +23,10 @@ export const New: FC = () => {
   const { data, isPending, isError } = useQuery<Screenshot[]>({
     queryKey: ["screenshots", "new"],
     queryFn: () =>
-      fetch("/api/screenshots?category=new").then((res) => res.json()),
+      fetch("/api/screenshots?category=new").then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      }),
   });
   const { mutate: approveBatch, isPending: isApprovePending } =
     useApproveBatch();
