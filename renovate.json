@@ -2,6 +2,8 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
   "minimumReleaseAge": "2 days",
+  "automerge": true,
+  "automergeType": "pr",
   "prHourlyLimit": 2,
   "prConcurrentLimit": 5,
   "packageRules": [
