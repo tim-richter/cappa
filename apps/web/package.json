@@ -13,8 +13,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
-    "test": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers vitest",
-    "test:run": "PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers vitest run",
+    "test": "vitest",
+    "test:run": "vitest run",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "tsc": "tsc"
