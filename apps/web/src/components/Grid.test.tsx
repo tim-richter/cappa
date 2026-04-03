@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/core";
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -85,8 +84,7 @@ describe("Grid", () => {
       onSelectionChange,
     };
     const screen = renderGrid({ showCheckboxes: true, selection });
-    const checkboxes = await screen.getByRole("checkbox").elements();
-    await userEvent.click(checkboxes[0]);
+    await screen.getByRole("checkbox").first().click();
     expect(onSelectionChange).toHaveBeenCalled();
   });
 

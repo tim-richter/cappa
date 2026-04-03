@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/core";
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { describe, expect, it, vi } from "vitest";
 import { BatchApproveBar } from "./BatchApproveBar";
@@ -57,7 +56,7 @@ describe("BatchApproveBar", () => {
     const screen = render(
       <BatchApproveBar {...defaultProps} onSelectModeChange={onSelectModeChange} />,
     );
-    await userEvent.click(screen.getByText("Select"));
+    await screen.getByText("Select").click();
     expect(onSelectModeChange).toHaveBeenCalledWith(true);
   });
 
@@ -80,7 +79,7 @@ describe("BatchApproveBar", () => {
     const screen = render(
       <BatchApproveBar {...defaultProps} isSelectMode onSelectModeChange={onSelectModeChange} />,
     );
-    await userEvent.click(screen.getByText("Cancel"));
+    await screen.getByText("Cancel").click();
     expect(onSelectModeChange).toHaveBeenCalledWith(false);
   });
 
@@ -103,9 +102,7 @@ describe("BatchApproveBar", () => {
         onApproveSelected={onApproveSelected}
       />,
     );
-    await userEvent.click(
-      screen.getByRole("button", { name: /Approve selected/ }),
-    );
+    await screen.getByRole("button", { name: /Approve selected/ }).click();
     expect(onApproveSelected).toHaveBeenCalledWith([
       "screenshot-1",
       "screenshot-2",
@@ -131,7 +128,7 @@ describe("BatchApproveBar", () => {
     const screen = render(
       <BatchApproveBar {...defaultProps} isSelectMode onSelectAll={onSelectAll} />,
     );
-    await userEvent.click(screen.getByText("Select all"));
+    await screen.getByText("Select all").click();
     expect(onSelectAll).toHaveBeenCalled();
   });
 });

@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/core";
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
@@ -57,9 +56,8 @@ describe("List", () => {
       selectedIds: new Set<string>(),
       onSelectionChange,
     };
-    const { container } = renderList({ showCheckboxes: true, selection });
-    const links = container.querySelectorAll("a[href]");
-    await userEvent.click(links[0] as HTMLElement);
+    const screen = renderList({ showCheckboxes: true, selection });
+    await screen.getByRole("link").first().click();
     expect(onSelectionChange).toHaveBeenCalled();
   });
 

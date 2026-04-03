@@ -1,5 +1,4 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
@@ -61,7 +60,7 @@ describe("useApproveBatch", () => {
       </Wrapper>,
     );
 
-    await userEvent.click(screen.getByText("Approve"));
+    await screen.getByText("Approve").click();
 
     await expect.poll(() => capturedBody).toEqual({
       names: ["screenshot-1", "screenshot-2"],
@@ -76,7 +75,7 @@ describe("useApproveBatch", () => {
       </Wrapper>,
     );
 
-    await userEvent.click(screen.getByText("Approve"));
+    await screen.getByText("Approve").click();
 
     await expect
       .element(screen.getByText("approved:screenshot-1,screenshot-2"))
@@ -100,7 +99,7 @@ describe("useApproveBatch", () => {
       </Wrapper>,
     );
 
-    await userEvent.click(screen.getByText("Approve"));
+    await screen.getByText("Approve").click();
 
     await expect.element(screen.getByText(/error:/)).toBeVisible();
   });
@@ -115,7 +114,7 @@ describe("useApproveBatch", () => {
       </Wrapper>,
     );
 
-    await userEvent.click(screen.getByText("Approve"));
+    await screen.getByText("Approve").click();
 
     await expect.poll(() => onSuccess.mock.calls.length).toBeGreaterThan(0);
     const [data] = onSuccess.mock.calls[0] as [

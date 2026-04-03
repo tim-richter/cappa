@@ -1,4 +1,3 @@
-import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
 import { useRef } from "react";
 import { describe, expect, it } from "vitest";
@@ -184,7 +183,7 @@ describe("usePanZoom", () => {
 
     const initialScale = stateRef.current!.scale;
 
-    await userEvent.dblClick(screen.getByTestId("container"));
+    await screen.getByTestId("container").dblClick();
 
     await expect
       .poll(() => stateRef.current!.scale, { timeout: 2000 })

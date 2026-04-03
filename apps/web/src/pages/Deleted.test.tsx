@@ -1,4 +1,3 @@
-import { userEvent } from "vitest/browser";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { server } from "../test/server";
@@ -33,7 +32,7 @@ describe("Deleted page", () => {
   it("activating select mode shows Cancel and Select all buttons", async () => {
     const screen = renderPage(<Deleted />, { route: "/deleted" });
 
-    await userEvent.click(screen.getByText("Select"));
+    await screen.getByText("Select").click();
 
     await expect.element(screen.getByText("Cancel")).toBeVisible();
     await expect.element(screen.getByText("Select all")).toBeVisible();
@@ -52,9 +51,9 @@ describe("Deleted page", () => {
 
     const screen = renderPage(<Deleted />, { route: "/deleted" });
 
-    await userEvent.click(screen.getByText("Select"));
-    await userEvent.click(screen.getByText("Select all"));
-    await userEvent.click(screen.getByRole("button", { name: /Approve selected/ }));
+    await screen.getByText("Select").click();
+    await screen.getByText("Select all").click();
+    await screen.getByRole("button", { name: /Approve selected/ }).click();
 
     await expect.poll(() => capturedNames).toEqual(["Screenshot 2"]);
   });
