@@ -1,7 +1,7 @@
 import { userEvent } from "vitest/browser";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { server } from "../test/setup";
+import { server } from "../test/server";
 import { renderPage } from "../test/utils";
 import { Changed } from "./Changed";
 

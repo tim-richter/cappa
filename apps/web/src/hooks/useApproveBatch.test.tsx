@@ -4,7 +4,7 @@ import { render } from "vitest-browser-react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
-import { server } from "../test/setup";
+import { server } from "../test/server";
 import { useApproveBatch } from "./useApproveBatch";
 
 function createWrapper() {
