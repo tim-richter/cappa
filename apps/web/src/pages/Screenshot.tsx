@@ -8,7 +8,11 @@ export const Screenshot: FC = () => {
   const navigate = useNavigate();
   const { data, isPending, isError } = useQuery({
     queryKey: ["screenshot", id],
-    queryFn: () => fetch(`/api/screenshots/${id}`).then((res) => res.json()),
+    queryFn: () =>
+      fetch(`/api/screenshots/${id}`).then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      }),
   });
 
   if (isPending) {

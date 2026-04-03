@@ -18,7 +18,10 @@ export const Passed: FC = () => {
   const { data, isPending, isError } = useQuery<Screenshot[]>({
     queryKey: ["screenshots", "passed"],
     queryFn: () =>
-      fetch("/api/screenshots?category=passed").then((res) => res.json()),
+      fetch("/api/screenshots?category=passed").then((res) => {
+        if (!res.ok) throw new Error(res.statusText);
+        return res.json();
+      }),
   });
 
   if (isPending) {

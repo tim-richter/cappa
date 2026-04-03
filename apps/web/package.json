@@ -13,6 +13,8 @@
     "dev": "vite",
     "build": "vite build",
     "typecheck": "tsc --noEmit",
+    "test": "vitest",
+    "test:run": "vitest run",
     "storybook": "storybook dev -p 6006",
     "build-storybook": "storybook build",
     "tsc": "tsc"
@@ -34,14 +36,19 @@
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "6.0.1",
+    "@vitest/browser": "catalog:",
+    "@vitest/browser-playwright": "catalog:",
     "msw": "^2.12.14",
     "msw-storybook-addon": "^2.0.6",
     "nuqs": "^2.8.9",
+    "playwright": "^1.55.0",
     "storybook": "^10.3.1",
     "tailwindcss": "catalog:",
     "tsup": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:",
+    "vitest": "catalog:",
+    "vitest-browser-react": "catalog:",
     "vite": "8.0.1"
   }
 }
