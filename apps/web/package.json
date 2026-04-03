@@ -32,8 +32,6 @@
     "@storybook/react-vite": "^10.3.1",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "^8.21.3",
-    "@testing-library/react": "catalog:",
-    "@testing-library/user-event": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
@@ -50,6 +48,7 @@
     "tsx": "4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:",
+    "vitest-browser-react": "catalog:",
     "vite": "8.0.1"
   }
 }

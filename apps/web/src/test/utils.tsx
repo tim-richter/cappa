@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render } from "@testing-library/react";
+import { render } from "vitest-browser-react";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactElement, ReactNode } from "react";
 import {

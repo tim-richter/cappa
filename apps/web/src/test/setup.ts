@@ -1,4 +1,3 @@
-import { cleanup } from "@testing-library/react";
 import { setupWorker } from "msw/browser";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { handlers } from "../mocks/screenshots";
@@ -10,7 +9,6 @@ beforeAll(async () => {
 });
 
 afterEach(() => {
-  cleanup();
   server.resetHandlers();
 });
 

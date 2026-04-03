@@ -1,6 +1,6 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
@@ -45,7 +45,6 @@ function TestComponent({
 
 describe("useApproveBatch", () => {
   it("calls POST /api/screenshots/approve-batch with correct body", async () => {
-    const user = userEvent.setup();
     let capturedBody: unknown;
 
     server.use(
@@ -56,43 +55,35 @@ describe("useApproveBatch", () => {
     );
 
     const Wrapper = createWrapper();
-    const { getByText } = render(
+    const screen = render(
       <Wrapper>
         <TestComponent />
       </Wrapper>,
     );
 
-    await user.click(getByText("Approve"));
+    await userEvent.click(screen.getByText("Approve"));
 
-    await waitFor(() => {
-      expect(capturedBody).toEqual({
-        names: ["screenshot-1", "screenshot-2"],
-      });
+    await expect.poll(() => capturedBody).toEqual({
+      names: ["screenshot-1", "screenshot-2"],
     });
   });
 
   it("returns approved screenshots on success", async () => {
-    const user = userEvent.setup();
-    const onSuccess = vi.fn();
-
     const Wrapper = createWrapper();
-    const { getByText } = render(
+    const screen = render(
       <Wrapper>
-        <TestComponent onSuccess={onSuccess} />
+        <TestComponent />
       </Wrapper>,
     );
 
-    await user.click(getByText("Approve"));
+    await userEvent.click(screen.getByText("Approve"));
 
-    await waitFor(() => {
-      expect(
-        getByText("approved:screenshot-1,screenshot-2"),
-      ).toBeTruthy();
-    });
+    await expect
+      .element(screen.getByText("approved:screenshot-1,screenshot-2"))
+      .toBeVisible();
   });
 
   it("shows error state when request fails", async () => {
-    const user = userEvent.setup();
     server.use(
       http.post("/api/screenshots/approve-batch", () => {
         return HttpResponse.json(
@@ -103,39 +94,34 @@ describe("useApproveBatch", () => {
     );
 
     const Wrapper = createWrapper();
-    const { getByText } = render(
+    const screen = render(
       <Wrapper>
         <TestComponent />
       </Wrapper>,
     );
 
-    await user.click(getByText("Approve"));
+    await userEvent.click(screen.getByText("Approve"));
 
-    await waitFor(() => {
-      expect(getByText(/error:/)).toBeTruthy();
-    });
+    await expect.element(screen.getByText(/error:/)).toBeVisible();
   });
 
   it("calls onSuccess callback after successful mutation", async () => {
-    const user = userEvent.setup();
     const onSuccess = vi.fn();
 
     const Wrapper = createWrapper();
-    const { getByText } = render(
+    const screen = render(
       <Wrapper>
         <TestComponent onSuccess={onSuccess} />
       </Wrapper>,
     );
 
-    await user.click(getByText("Approve"));
+    await userEvent.click(screen.getByText("Approve"));
 
-    await waitFor(() => {
-      expect(onSuccess).toHaveBeenCalled();
-      const [data] = onSuccess.mock.calls[0] as [
-        { approved: string[]; errors: unknown[] },
-      ];
-      expect(data.approved).toEqual(["screenshot-1", "screenshot-2"]);
-      expect(data.errors).toEqual([]);
-    });
+    await expect.poll(() => onSuccess.mock.calls.length).toBeGreaterThan(0);
+    const [data] = onSuccess.mock.calls[0] as [
+      { approved: string[]; errors: unknown[] },
+    ];
+    expect(data.approved).toEqual(["screenshot-1", "screenshot-2"]);
+    expect(data.errors).toEqual([]);
   });
 });

@@ -1,5 +1,4 @@
-import { waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { userEvent } from "vitest/browser";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
 import { server } from "../test/setup";
@@ -7,43 +6,40 @@ import { renderPage } from "../test/utils";
 import { Deleted } from "./Deleted";
 
 describe("Deleted page", () => {
-  it("shows loading state initially", () => {
-    const { getByText } = renderPage(<Deleted />, { route: "/deleted" });
-    expect(getByText("Loading...")).toBeTruthy();
+  it("shows loading state initially", async () => {
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders deleted screenshots after data loads", async () => {
-    const { findByText } = renderPage(<Deleted />, { route: "/deleted" });
-    expect(await findByText("Screenshot 2")).toBeTruthy();
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    await expect.element(screen.getByText("Screenshot 2")).toBeVisible();
   });
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const { findByText } = renderPage(<Deleted />, { route: "/deleted" });
-    expect(await findByText("Error fetching screenshots")).toBeTruthy();
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    await expect
+      .element(screen.getByText("Error fetching screenshots"))
+      .toBeVisible();
     vi.restoreAllMocks();
   });
 
   it("renders batch approve controls", async () => {
-    const { findByText } = renderPage(<Deleted />, { route: "/deleted" });
-    expect(await findByText("Select")).toBeTruthy();
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("activating select mode shows Cancel and Select all buttons", async () => {
-    const user = userEvent.setup();
-    const { findByText } = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
 
-    const selectBtn = await findByText("Select");
-    await user.click(selectBtn);
+    await userEvent.click(screen.getByText("Select"));
 
-    await waitFor(async () => {
-      expect(await findByText("Cancel")).toBeTruthy();
-      expect(await findByText("Select all")).toBeTruthy();
-    });
+    await expect.element(screen.getByText("Cancel")).toBeVisible();
+    await expect.element(screen.getByText("Select all")).toBeVisible();
   });
 
   it("approving deleted screenshots calls the approve API", async () => {
-    const user = userEvent.setup();
     let capturedNames: string[] | undefined;
 
     server.use(
@@ -54,19 +50,12 @@ describe("Deleted page", () => {
       }),
     );
 
-    const { findByText } = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = renderPage(<Deleted />, { route: "/deleted" });
 
-    const selectBtn = await findByText("Select");
-    await user.click(selectBtn);
+    await userEvent.click(screen.getByText("Select"));
+    await userEvent.click(screen.getByText("Select all"));
+    await userEvent.click(screen.getByRole("button", { name: /Approve selected/ }));
 
-    const selectAllBtn = await findByText("Select all");
-    await user.click(selectAllBtn);
-
-    const approveBtn = await findByText(/Approve selected/);
-    await user.click(approveBtn);
-
-    await waitFor(() => {
-      expect(capturedNames).toEqual(["Screenshot 2"]);
-    });
+    await expect.poll(() => capturedNames).toEqual(["Screenshot 2"]);
   });
 });

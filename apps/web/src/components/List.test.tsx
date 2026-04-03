@@ -1,6 +1,6 @@
 import type { Screenshot } from "@cappa/core";
-import { render } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { List } from "./List";
@@ -31,49 +31,46 @@ function renderList(props: Partial<React.ComponentProps<typeof List>> = {}) {
 }
 
 describe("List", () => {
-  it("renders all screenshot names", () => {
-    const { getByText } = renderList();
-    expect(getByText("Screenshot One")).toBeTruthy();
-    expect(getByText("Screenshot Two")).toBeTruthy();
+  it("renders all screenshot names", async () => {
+    const screen = renderList();
+    await expect.element(screen.getByText("Screenshot One")).toBeVisible();
+    await expect.element(screen.getByText("Screenshot Two")).toBeVisible();
   });
 
-  it("renders links to screenshot detail pages", () => {
-    const { getAllByRole } = renderList();
-    const links = getAllByRole("link");
-    expect(links.some((l) => l.getAttribute("href") === "/screenshots/1")).toBe(
-      true,
-    );
-    expect(links.some((l) => l.getAttribute("href") === "/screenshots/2")).toBe(
-      true,
-    );
+  it("renders links to screenshot detail pages", async () => {
+    const { container } = renderList();
+    const links = container.querySelectorAll("a[href]");
+    const hrefs = Array.from(links).map((l) => l.getAttribute("href"));
+    expect(hrefs).toContain("/screenshots/1");
+    expect(hrefs).toContain("/screenshots/2");
   });
 
-  it("renders a header row with Name column", () => {
-    const { getByRole } = renderList();
-    expect(getByRole("columnheader", { name: "Name" })).toBeTruthy();
+  it("renders a header row with Name column", async () => {
+    const { container } = renderList();
+    const th = container.querySelector("th");
+    expect(th?.textContent?.trim()).toBe("Name");
   });
 
   it("in select mode clicking a row link calls onSelectionChange", async () => {
-    const user = userEvent.setup();
     const onSelectionChange = vi.fn();
     const selection = {
       selectedIds: new Set<string>(),
       onSelectionChange,
     };
-    const { getAllByRole } = renderList({ showCheckboxes: true, selection });
-    const links = getAllByRole("link");
-    await user.click(links[0]);
+    const { container } = renderList({ showCheckboxes: true, selection });
+    const links = container.querySelectorAll("a[href]");
+    await userEvent.click(links[0] as HTMLElement);
     expect(onSelectionChange).toHaveBeenCalled();
   });
 
-  it("renders 'No results.' for empty screenshots array", () => {
-    const { getByText } = renderList({ screenshots: [] });
-    expect(getByText("No results.")).toBeTruthy();
+  it("renders 'No results.' for empty screenshots array", async () => {
+    const screen = renderList({ screenshots: [] });
+    await expect.element(screen.getByText("No results.")).toBeVisible();
   });
 
-  it("table has expected number of rows for screenshots", () => {
-    const { getAllByRole } = renderList();
-    const rows = getAllByRole("row");
+  it("table has expected number of rows for screenshots", async () => {
+    const screen = renderList();
+    const rows = await screen.getByRole("row").elements();
     // header row + one row per screenshot
     expect(rows.length).toBe(screenshots.length + 1);
   });

@@ -1,5 +1,5 @@
-import { render, waitFor } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { useRef } from "react";
 import { describe, expect, it } from "vitest";
 import { type PanZoomApi, type PanZoomState, usePanZoom } from "./usePanZoom";
@@ -57,14 +57,11 @@ function SimplePanZoomComponent({
 async function waitForContainerMeasured(
   capturedStateRef: { current: PanZoomState | undefined },
 ) {
-  await waitFor(
-    () => {
-      // When container (400x400) measures the content (200x200),
-      // clampTranslate centers it: translateX = 100, translateY = 100
-      expect(capturedStateRef.current?.translateX).toBeGreaterThan(0);
-    },
-    { timeout: 3000 },
-  );
+  // When container (400x400) measures the content (200x200),
+  // clampTranslate centers it: translateX = 100, translateY = 100
+  await expect
+    .poll(() => capturedStateRef.current?.translateX, { timeout: 3000 })
+    .toBeGreaterThan(0);
 }
 
 describe("usePanZoom", () => {
@@ -77,18 +74,16 @@ describe("usePanZoom", () => {
         }}
       />,
     );
-    await waitFor(() => {
-      expect(capturedState?.scale).toBe(1);
-    });
+    await expect.poll(() => capturedState?.scale).toBe(1);
   });
 
-  it("getTransformStyle returns a transform string", () => {
+  it("getTransformStyle returns a transform string", async () => {
     const { container } = render(<SimplePanZoomComponent initialScale={1} />);
     const content = container.querySelector("[data-testid='content']");
     expect(content?.getAttribute("style")).toContain("transform");
   });
 
-  it("getTransformStyle includes transformOrigin", () => {
+  it("getTransformStyle includes transformOrigin", async () => {
     const { container } = render(<SimplePanZoomComponent />);
     const content = container.querySelector("[data-testid='content']");
     expect(content?.getAttribute("style")).toContain("transform-origin");
@@ -113,12 +108,9 @@ describe("usePanZoom", () => {
 
     apiRef.current!.setScale(2);
 
-    await waitFor(
-      () => {
-        expect(stateRef.current?.scale).toBe(2);
-      },
-      { timeout: 2000 },
-    );
+    await expect
+      .poll(() => stateRef.current?.scale, { timeout: 2000 })
+      .toBe(2);
   });
 
   it("reset() returns scale to initialScale after setScale", async () => {
@@ -140,14 +132,10 @@ describe("usePanZoom", () => {
     await waitForContainerMeasured(stateRef);
 
     apiRef.current!.setScale(2);
-    await waitFor(() => expect(stateRef.current?.scale).toBe(2), {
-      timeout: 2000,
-    });
+    await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(2);
 
     apiRef.current!.reset();
-    await waitFor(() => expect(stateRef.current?.scale).toBe(1), {
-      timeout: 2000,
-    });
+    await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(1);
   });
 
   it("fit() adjusts scale so large content fits within container", async () => {
@@ -169,27 +157,22 @@ describe("usePanZoom", () => {
     );
 
     // For large content (800>400), content won't be centered but it will be measured
-    await waitFor(
-      () => expect(apiRef.current).toBeDefined(),
-      { timeout: 3000 },
-    );
+    await expect
+      .poll(() => apiRef.current, { timeout: 3000 })
+      .toBeDefined();
 
     // Trigger fit
     apiRef.current!.fit();
 
-    await waitFor(
-      () => {
-        expect(stateRef.current?.scale).toBeLessThanOrEqual(1);
-      },
-      { timeout: 2000 },
-    );
+    await expect
+      .poll(() => stateRef.current?.scale, { timeout: 2000 })
+      .toBeLessThanOrEqual(1);
   });
 
   it("double-click on container zooms in", async () => {
-    const user = userEvent.setup();
     const stateRef = { current: undefined as PanZoomState | undefined };
 
-    const { getByTestId } = render(
+    const screen = render(
       <SimplePanZoomComponent
         onState={(s) => {
           stateRef.current = s;
@@ -201,13 +184,10 @@ describe("usePanZoom", () => {
 
     const initialScale = stateRef.current!.scale;
 
-    await user.dblClick(getByTestId("container"));
+    await userEvent.dblClick(screen.getByTestId("container"));
 
-    await waitFor(
-      () => {
-        expect(stateRef.current!.scale).toBeGreaterThan(initialScale);
-      },
-      { timeout: 2000 },
-    );
+    await expect
+      .poll(() => stateRef.current!.scale, { timeout: 2000 })
+      .toBeGreaterThan(initialScale);
   });
 });

@@ -1,6 +1,6 @@
 import type { Screenshot } from "@cappa/core";
-import { render } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { describe, expect, it, vi } from "vitest";
 import { BatchApproveBar } from "./BatchApproveBar";
 
@@ -40,84 +40,62 @@ const defaultProps = {
 };
 
 describe("BatchApproveBar", () => {
-  it("renders Select button when not in select mode", () => {
-    const { getByText } = render(<BatchApproveBar {...defaultProps} />);
-    expect(getByText("Select")).toBeTruthy();
+  it("renders Select button when not in select mode", async () => {
+    const screen = render(<BatchApproveBar {...defaultProps} />);
+    await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
-  it("returns null when all screenshots are passed (no approvable items)", () => {
+  it("returns null when all screenshots are passed (no approvable items)", async () => {
     const { container } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        screenshots={[passedScreenshot]}
-      />,
+      <BatchApproveBar {...defaultProps} screenshots={[passedScreenshot]} />,
     );
     expect(container.firstChild).toBeNull();
   });
 
   it("clicking Select button activates select mode", async () => {
-    const user = userEvent.setup();
     const onSelectModeChange = vi.fn();
-    const { getByText } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        onSelectModeChange={onSelectModeChange}
-      />,
+    const screen = render(
+      <BatchApproveBar {...defaultProps} onSelectModeChange={onSelectModeChange} />,
     );
-    await user.click(getByText("Select"));
+    await userEvent.click(screen.getByText("Select"));
     expect(onSelectModeChange).toHaveBeenCalledWith(true);
   });
 
-  it("shows Cancel, Select all, and Approve buttons when in select mode", () => {
-    const { getByText } = render(
-      <BatchApproveBar {...defaultProps} isSelectMode />,
-    );
-    expect(getByText("Cancel")).toBeTruthy();
-    expect(getByText("Select all")).toBeTruthy();
-    expect(getByText(/Approve selected/)).toBeTruthy();
+  it("shows Cancel, Select all, and Approve buttons when in select mode", async () => {
+    const screen = render(<BatchApproveBar {...defaultProps} isSelectMode />);
+    await expect.element(screen.getByText("Cancel")).toBeVisible();
+    await expect.element(screen.getByText("Select all")).toBeVisible();
+    await expect.element(screen.getByText(/Approve selected/)).toBeVisible();
   });
 
-  it("shows selected count when items are selected", () => {
-    const { getByText } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        isSelectMode
-        selectedIds={new Set(["1"])}
-      />,
+  it("shows selected count when items are selected", async () => {
+    const screen = render(
+      <BatchApproveBar {...defaultProps} isSelectMode selectedIds={new Set(["1"])} />,
     );
-    expect(getByText("1 selected")).toBeTruthy();
+    await expect.element(screen.getByText("1 selected")).toBeVisible();
   });
 
   it("clicking Cancel deactivates select mode", async () => {
-    const user = userEvent.setup();
     const onSelectModeChange = vi.fn();
-    const { getByText } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        isSelectMode
-        onSelectModeChange={onSelectModeChange}
-      />,
+    const screen = render(
+      <BatchApproveBar {...defaultProps} isSelectMode onSelectModeChange={onSelectModeChange} />,
     );
-    await user.click(getByText("Cancel"));
+    await userEvent.click(screen.getByText("Cancel"));
     expect(onSelectModeChange).toHaveBeenCalledWith(false);
   });
 
-  it("Approve selected button is disabled when no approvable items selected", () => {
-    const { getByRole } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        isSelectMode
-        selectedIds={new Set()}
-      />,
+  it("Approve selected button is disabled when no approvable items selected", async () => {
+    const screen = render(
+      <BatchApproveBar {...defaultProps} isSelectMode selectedIds={new Set()} />,
     );
-    const approveBtn = getByRole("button", { name: /Approve selected/ });
-    expect(approveBtn).toBeDisabled();
+    await expect
+      .element(screen.getByRole("button", { name: /Approve selected/ }))
+      .toBeDisabled();
   });
 
   it("clicking Approve selected calls onApproveSelected with correct names", async () => {
-    const user = userEvent.setup();
     const onApproveSelected = vi.fn();
-    const { getByRole } = render(
+    const screen = render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -125,16 +103,17 @@ describe("BatchApproveBar", () => {
         onApproveSelected={onApproveSelected}
       />,
     );
-    const approveBtn = getByRole("button", { name: /Approve selected/ });
-    await user.click(approveBtn);
+    await userEvent.click(
+      screen.getByRole("button", { name: /Approve selected/ }),
+    );
     expect(onApproveSelected).toHaveBeenCalledWith([
       "screenshot-1",
       "screenshot-2",
     ]);
   });
 
-  it("Approve selected is disabled when isPending=true", () => {
-    const { getByRole } = render(
+  it("Approve selected is disabled when isPending=true", async () => {
+    const screen = render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -142,21 +121,17 @@ describe("BatchApproveBar", () => {
         isPending
       />,
     );
-    const approveBtn = getByRole("button", { name: /Approve selected/ });
-    expect(approveBtn).toBeDisabled();
+    await expect
+      .element(screen.getByRole("button", { name: /Approve selected/ }))
+      .toBeDisabled();
   });
 
   it("clicking Select all calls onSelectAll", async () => {
-    const user = userEvent.setup();
     const onSelectAll = vi.fn();
-    const { getByText } = render(
-      <BatchApproveBar
-        {...defaultProps}
-        isSelectMode
-        onSelectAll={onSelectAll}
-      />,
+    const screen = render(
+      <BatchApproveBar {...defaultProps} isSelectMode onSelectAll={onSelectAll} />,
     );
-    await user.click(getByText("Select all"));
+    await userEvent.click(screen.getByText("Select all"));
     expect(onSelectAll).toHaveBeenCalled();
   });
 });

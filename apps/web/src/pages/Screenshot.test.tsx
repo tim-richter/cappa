@@ -5,45 +5,53 @@ import { renderPageWithRoute } from "../test/utils";
 import { Screenshot } from "./Screenshot";
 
 describe("Screenshot page", () => {
-  it("shows loading state initially", () => {
-    const { getByText } = renderPageWithRoute(
+  it("shows loading state initially", async () => {
+    const screen = renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
     );
-    expect(getByText("Loading...")).toBeTruthy();
+    await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders screenshot viewer after data loads for new screenshot", async () => {
-    const { findAllByRole } = renderPageWithRoute(
+    const screen = renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
     );
-    // The screenshot viewer renders at least one image
-    const imgs = await findAllByRole("img", {}, { timeout: 3000 });
-    expect(imgs.length).toBeGreaterThan(0);
+    await expect
+      .poll(
+        async () => (await screen.getByRole("img").elements()).length,
+        { timeout: 3000 },
+      )
+      .toBeGreaterThan(0);
   });
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const { findByText } = renderPageWithRoute(
+    const screen = renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
     );
-    expect(await findByText("Error fetching screenshot")).toBeTruthy();
+    await expect
+      .element(screen.getByText("Error fetching screenshot"))
+      .toBeVisible();
     vi.restoreAllMocks();
   });
 
   it("renders comparison viewer for a changed screenshot", async () => {
-    const { findAllByRole } = renderPageWithRoute(
+    const screen = renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/3",
       <Screenshot />,
     );
-    // Changed screenshot has actual, expected, and diff images
-    const imgs = await findAllByRole("img", {}, { timeout: 3000 });
-    expect(imgs.length).toBeGreaterThan(0);
+    await expect
+      .poll(
+        async () => (await screen.getByRole("img").elements()).length,
+        { timeout: 3000 },
+      )
+      .toBeGreaterThan(0);
   });
 });
