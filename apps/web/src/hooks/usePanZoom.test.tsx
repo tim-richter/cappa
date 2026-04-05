@@ -1,7 +1,7 @@
-import { userEvent } from "vitest/browser";
-import { render } from "vitest-browser-react";
 import { useRef } from "react";
 import { describe, expect, it } from "vitest";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { type PanZoomApi, type PanZoomState, usePanZoom } from "./usePanZoom";
 
 interface TestComponentProps {
@@ -54,9 +54,9 @@ function SimplePanZoomComponent({
 }
 
 /** Wait until the ResizeObserver inside usePanZoom fires and centers the content */
-async function waitForContainerMeasured(
-  capturedStateRef: { current: PanZoomState | undefined },
-) {
+async function waitForContainerMeasured(capturedStateRef: {
+  current: PanZoomState | undefined;
+}) {
   // When container (400x400) measures the content (200x200),
   // clampTranslate centers it: translateX = 100, translateY = 100
   await expect
@@ -108,9 +108,7 @@ describe("usePanZoom", () => {
 
     apiRef.current!.setScale(2);
 
-    await expect
-      .poll(() => stateRef.current?.scale, { timeout: 2000 })
-      .toBe(2);
+    await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(2);
   });
 
   it("reset() returns scale to initialScale after setScale", async () => {
@@ -157,9 +155,7 @@ describe("usePanZoom", () => {
     );
 
     // For large content (800>400), content won't be centered but it will be measured
-    await expect
-      .poll(() => apiRef.current, { timeout: 3000 })
-      .toBeDefined();
+    await expect.poll(() => apiRef.current, { timeout: 3000 }).toBeDefined();
 
     // Trigger fit
     apiRef.current!.fit();
@@ -187,7 +183,7 @@ describe("usePanZoom", () => {
     await userEvent.dblClick(screen.getByTestId("container"));
 
     await expect
-      .poll(() => stateRef.current!.scale, { timeout: 2000 })
+      .poll(() => stateRef.current?.scale, { timeout: 2000 })
       .toBeGreaterThan(initialScale);
   });
 });

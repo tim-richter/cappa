@@ -1,6 +1,6 @@
-import { userEvent } from "vitest/browser";
 import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
 import { server } from "../test/setup";
 import { renderPage } from "../test/utils";
 import { Deleted } from "./Deleted";
@@ -54,7 +54,9 @@ describe("Deleted page", () => {
 
     await userEvent.click(screen.getByText("Select"));
     await userEvent.click(screen.getByText("Select all"));
-    await userEvent.click(screen.getByRole("button", { name: /Approve selected/ }));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Approve selected/ }),
+    );
 
     await expect.poll(() => capturedNames).toEqual(["Screenshot 2"]);
   });

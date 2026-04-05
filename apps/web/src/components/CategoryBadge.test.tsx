@@ -1,5 +1,5 @@
-import { render } from "vitest-browser-react";
 import { describe, expect, it } from "vitest";
+import { render } from "vitest-browser-react";
 import { CategoryBadge } from "./CategoryBadge";
 
 describe("CategoryBadge", () => {

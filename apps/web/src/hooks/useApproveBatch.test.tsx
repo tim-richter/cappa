@@ -1,9 +1,9 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { userEvent } from "vitest/browser";
-import { render } from "vitest-browser-react";
 import { HttpResponse, http } from "msw";
 import type { ReactNode } from "react";
 import { describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { server } from "../test/setup";
 import { useApproveBatch } from "./useApproveBatch";
 
@@ -63,9 +63,11 @@ describe("useApproveBatch", () => {
 
     await userEvent.click(screen.getByText("Approve"));
 
-    await expect.poll(() => capturedBody).toEqual({
-      names: ["screenshot-1", "screenshot-2"],
-    });
+    await expect
+      .poll(() => capturedBody)
+      .toEqual({
+        names: ["screenshot-1", "screenshot-2"],
+      });
   });
 
   it("returns approved screenshots on success", async () => {

@@ -1,6 +1,4 @@
-import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { server } from "../test/setup";
 import { renderPageWithRoute } from "../test/utils";
 import { Screenshot } from "./Screenshot";
 
@@ -21,10 +19,9 @@ describe("Screenshot page", () => {
       <Screenshot />,
     );
     await expect
-      .poll(
-        async () => (await screen.getByRole("img").elements()).length,
-        { timeout: 3000 },
-      )
+      .poll(async () => (await screen.getByRole("img").elements()).length, {
+        timeout: 3000,
+      })
       .toBeGreaterThan(0);
   });
 
@@ -48,10 +45,9 @@ describe("Screenshot page", () => {
       <Screenshot />,
     );
     await expect
-      .poll(
-        async () => (await screen.getByRole("img").elements()).length,
-        { timeout: 3000 },
-      )
+      .poll(async () => (await screen.getByRole("img").elements()).length, {
+        timeout: 3000,
+      })
       .toBeGreaterThan(0);
   });
 });
