@@ -5,7 +5,7 @@ import { handlers } from "../mocks/screenshots";
 export const server = setupWorker(...handlers);
 
 beforeAll(async () => {
-  await server.start({ onUnhandledRequest: "warn" });
+  await server.start({ onUnhandledRequest: "warn", quiet: true });
 });
 
 afterEach(() => {

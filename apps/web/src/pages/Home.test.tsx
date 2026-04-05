@@ -1,6 +1,4 @@
-import { HttpResponse, http } from "msw";
 import { describe, expect, it, vi } from "vitest";
-import { server } from "../test/setup";
 import { renderPage } from "../test/utils";
 import { Home } from "./Home";
 
@@ -12,10 +10,18 @@ describe("Home page", () => {
 
   it("renders all category sections after data loads", async () => {
     const screen = renderPage(<Home />, { route: "/" });
-    await expect.element(screen.getByRole("heading", { name: "New" })).toBeVisible();
-    await expect.element(screen.getByRole("heading", { name: "Deleted" })).toBeVisible();
-    await expect.element(screen.getByRole("heading", { name: "Changed" })).toBeVisible();
-    await expect.element(screen.getByRole("heading", { name: "Passed" })).toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "New" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "Deleted" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "Changed" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("heading", { name: "Passed" }))
+      .toBeVisible();
   });
 
   it("renders screenshot names after data loads", async () => {

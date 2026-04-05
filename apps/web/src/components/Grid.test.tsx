@@ -1,8 +1,8 @@
 import type { Screenshot } from "@cappa/core";
-import { userEvent } from "vitest/browser";
-import { render } from "vitest-browser-react";
 import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
+import { render } from "vitest-browser-react";
 import { Grid } from "./Grid";
 
 const screenshots: Screenshot[] = [
