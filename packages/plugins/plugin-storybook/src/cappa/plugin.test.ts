@@ -104,7 +104,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.id === "button--primary",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(1);
       expect(result[0]?.data.story.id).toBe("button--primary");
     });
@@ -115,7 +115,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.id.startsWith("button--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -129,7 +129,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.title === "Button",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -143,7 +143,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.name === "Primary",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(1);
       expect(result[0]?.data.story.id).toBe("button--primary");
     });
@@ -154,7 +154,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.filePath.startsWith("Button/"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -169,7 +169,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
           s.id.startsWith("button--") || s.id.startsWith("input--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -185,7 +185,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.name === "Primary" || s.name === "Default",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "button--primary",
@@ -201,7 +201,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.id === "button--primary",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(5);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -214,7 +214,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.id.startsWith("button--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -230,7 +230,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.title === "Button",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -246,7 +246,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.name === "Primary",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(5);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -259,7 +259,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.filePath.startsWith("Button/"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -276,7 +276,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
           s.id.startsWith("button--") || s.id.startsWith("input--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(2);
       expect(result.map((r) => r.data.story.id)).toEqual([
         "card--basic",
@@ -293,7 +293,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.id.startsWith("button--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(4);
       expect(result.map((r) => r.data.story.id)).not.toContain(
         "button--primary",
@@ -310,7 +310,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         excludeStories: (s) => s.id.startsWith("button--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(1);
       expect(result[0]?.data.story.id).toBe("input--default");
     });
@@ -322,7 +322,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         storybookUrl: "http://localhost:6006",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(6);
     });
 
@@ -332,7 +332,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.id === "nonexistent--story",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(0);
     });
 
@@ -342,7 +342,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.title === "button",
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(0);
     });
 
@@ -373,7 +373,7 @@ describe("cappaPluginStorybook - includeStories / excludeStories predicates", ()
         includeStories: (s) => s.id.startsWith("special--"),
       });
 
-      const result = await plugin.discover({} as any);
+      const result = await plugin.discover({ connectionTimeout: 20000 } as any);
       expect(result).toHaveLength(1);
       expect(result[0]?.data.story.id).toBe(
         "special--with-dots.and-brackets[test]",
@@ -450,6 +450,7 @@ describe("console logging configuration", () => {
   const createScreenshotTool = () => ({
     viewport: { width: 1024, height: 768 },
     logConsoleEvents: true,
+    connectionTimeout: 20000,
     getVariantFilename: vi.fn(
       (filename: string, variant: { id: string }) =>
         `${filename}-${variant.id}.png`,
@@ -581,5 +582,60 @@ describe("console logging configuration", () => {
       threshold: 0.3,
       maxDiffPixels: 10,
     });
+  });
+});
+
+describe("connection timeout", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("should throw a timeout error when Storybook is unreachable", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new DOMException("Signal timed out.", "TimeoutError"),
+    );
+
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    await expect(
+      plugin.discover({ connectionTimeout: 20000 } as any),
+    ).rejects.toThrow(
+      "Connection to Storybook at http://localhost:6006 timed out after 20000ms",
+    );
+  });
+
+  it("should throw a connection error when fetch fails", async () => {
+    (global.fetch as ReturnType<typeof vi.fn>).mockRejectedValue(
+      new Error("fetch failed"),
+    );
+
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    await expect(
+      plugin.discover({ connectionTimeout: 20000 } as any),
+    ).rejects.toThrow(
+      "Failed to connect to Storybook at http://localhost:6006",
+    );
+  });
+
+  it("should pass connectionTimeout to AbortSignal.timeout", async () => {
+    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
+    (global.fetch as ReturnType<typeof vi.fn>).mockResolvedValue({
+      ok: true,
+      json: async () => ({ entries: {} }),
+    });
+
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    await plugin.discover({ connectionTimeout: 5000 } as any);
+
+    expect(timeoutSpy).toHaveBeenCalledWith(5000);
+    timeoutSpy.mockRestore();
   });
 });

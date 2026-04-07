@@ -129,6 +129,13 @@ export type UserConfig = {
    */
   logConsoleEvents?: boolean;
   /**
+   * Timeout in milliseconds for network connections (e.g. fetching stories,
+   * navigating to pages). If a connection does not respond within this time,
+   * the operation throws an error instead of waiting indefinitely.
+   * @default 20000
+   */
+  connectionTimeout?: number;
+  /**
    * An array of Cappa plugins used for generation.
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */

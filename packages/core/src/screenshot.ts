@@ -119,6 +119,7 @@ class ScreenshotTool {
   retries: number;
   filesystem: ScreenshotFileSystem;
   logConsoleEvents: boolean;
+  connectionTimeout: number;
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -130,6 +131,7 @@ class ScreenshotTool {
     retries?: number;
     concurrency?: number;
     logConsoleEvents?: boolean;
+    connectionTimeout?: number;
   }) {
     this.browserType = options.browserType || "chromium";
     this.headless = options.headless !== false; // Default to headless
@@ -139,6 +141,7 @@ class ScreenshotTool {
     this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
     this.logConsoleEvents = options.logConsoleEvents ?? true;
+    this.connectionTimeout = options.connectionTimeout ?? 20000;
 
     this.logger = getLogger();
     this.retries = options.retries || 2;
@@ -241,7 +244,10 @@ class ScreenshotTool {
     if (!this.context) {
       throw new Error("Browser not initialized");
     }
-    await page.goto(url, { waitUntil: "domcontentloaded" });
+    await page.goto(url, {
+      waitUntil: "domcontentloaded",
+      timeout: this.connectionTimeout,
+    });
   }
 
   /**
@@ -806,7 +812,7 @@ class ScreenshotTool {
     if (!extras.skipBaseNavigation) {
       baseStart = performance.now();
       getLogger().debug(`Going to base URL: ${baseUrl}`);
-      await page.goto(baseUrl);
+      await page.goto(baseUrl, { timeout: this.connectionTimeout });
       await this.applyScreenshotOptimizations(page);
       await extras.waitForStability?.(page);
     } else {
@@ -854,7 +860,7 @@ class ScreenshotTool {
       // Navigate to variant URL and apply optimizations
       const variantStart = performance.now();
       getLogger().debug(`Going to variant URL: ${variant.url}`);
-      await page.goto(variant.url);
+      await page.goto(variant.url, { timeout: this.connectionTimeout });
       await this.applyScreenshotOptimizations(page);
       await extras.waitForStability?.(page);
 
