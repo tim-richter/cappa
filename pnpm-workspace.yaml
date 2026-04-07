@@ -10,10 +10,10 @@ catalog:
   '@radix-ui/react-separator': 1.1.8
   '@vitest/browser': 4.1.2
   '@vitest/browser-playwright': 4.1.2
-  'vitest-browser-react': 0.1.1
-  '@tailwindcss/postcss': 4.2.1
+  'vitest-browser-react': 0.3.0
+  '@tailwindcss/postcss': 4.2.2
   '@tailwindcss/vite': 4.2.2
-  '@types/node': 25.5.0
+  '@types/node': 25.5.2
   '@types/react': 19.2.14
   '@types/react-dom': 19.2.3
   '@vitest/coverage-v8': 4.1.2
@@ -22,7 +22,7 @@ catalog:
   react: 19.2.4
   react-dom: 19.2.4
   tailwindcss: 4.2.2
-  tsdown: 0.21.4
+  tsdown: 0.21.7
   tsup: 8.5.1
   typescript: 5.9.3
   vitest: 4.1.2
