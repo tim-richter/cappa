@@ -1,5 +1,17 @@
 # @cappa/cli
 
+## 0.8.0
+
+### Minor Changes
+
+- eef23fa: Add `connectionTimeout` config option (default: 20s) to prevent indefinite hangs when targets like Storybook are unreachable
+
+### Patch Changes
+
+- Updated dependencies [eef23fa]
+  - @cappa/core@0.8.0
+  - @cappa/server@0.5.6
+
 ## 0.7.11
 
 ### Patch Changes
