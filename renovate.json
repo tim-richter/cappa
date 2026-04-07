@@ -14,8 +14,7 @@
     },
     {
       "matchUpdateTypes": ["major"],
-      "groupName": "{{depName}} major update",
-      "separateMajorMinor": true
+      "groupName": "{{depName}} major update"
     }
   ],
   "vulnerabilityAlerts": {
