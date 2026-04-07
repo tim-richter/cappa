@@ -29,6 +29,7 @@ test("return Config when config is set with defineConfig", async () => {
     retries: 3,
     concurrency: 2,
     logConsoleEvents: true,
+    connectionTimeout: 20000,
     diff: {
       type: "pixel",
       threshold: 0.1,
@@ -140,6 +141,7 @@ test("return Config when config is a function", async () => {
     retries: 5,
     concurrency: 1,
     logConsoleEvents: true,
+    connectionTimeout: 20000,
     diff: {
       type: "pixel",
       threshold: 0.1,
@@ -175,6 +177,7 @@ test("return Config when config is a promise", async () => {
     outputDir: "./async-screenshots",
     retries: 2,
     concurrency: 4,
+    connectionTimeout: 20000,
     logConsoleEvents: true,
     diff: {
       type: "pixel",
@@ -224,6 +227,7 @@ test("passes environment variables to config functions", async () => {
     retries: 1,
     concurrency: 1,
     logConsoleEvents: true,
+    connectionTimeout: 20000,
     diff: {
       type: "pixel",
       threshold: 0.1,
