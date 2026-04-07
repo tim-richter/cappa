@@ -134,7 +134,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
     description:
       "Takes screenshots of Storybook stories with configurable options",
 
-    discover: async () => {
+    discover: async (screenshotTool) => {
       if (!options) {
         throw new Error("Storybook plugin options are required");
       }
@@ -154,7 +154,23 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
       const storiesUrl = `${storybookUrl}/index.json`;
       logger.debug(`Fetching stories from: ${storiesUrl}`);
 
-      const response = await fetch(storiesUrl);
+      const timeout = screenshotTool.connectionTimeout;
+
+      let response: Response;
+      try {
+        response = await fetch(storiesUrl, {
+          signal: AbortSignal.timeout(timeout),
+        });
+      } catch (error) {
+        if (error instanceof DOMException && error.name === "TimeoutError") {
+          throw new Error(
+            `Connection to Storybook at ${storybookUrl} timed out after ${timeout}ms. Make sure Storybook is running and accessible.`,
+          );
+        }
+        throw new Error(
+          `Failed to connect to Storybook at ${storybookUrl}. Make sure Storybook is running and accessible. Error: ${(error as Error).message}`,
+        );
+      }
       if (!response.ok) {
         throw new Error(
           `Failed to fetch stories: ${response.status} ${response.statusText}`,
@@ -248,7 +264,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         // Navigate to story
         const captureStart = performance.now();
-        await page.goto(url);
+        await page.goto(url, { timeout: screenshotTool.connectionTimeout });
 
         // Get story parameters
         const storyParameters = await context.latchMap.get(story.id)?.p;

@@ -195,6 +195,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     logConsoleEvents: config.logConsoleEvents,
     fullPage: config.screenshot?.fullPage ?? true,
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
+    connectionTimeout: config.connectionTimeout,
   });
 
   let captureError: unknown;
