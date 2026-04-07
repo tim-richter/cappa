@@ -8,6 +8,16 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  optimizeDeps: {
+    include: [
+      "@radix-ui/react-dialog",
+      "@radix-ui/react-separator",
+      "next-themes",
+      "nuqs/adapters/react-router/v7",
+      "react-dom/client",
+      "react-router/dom",
+    ],
+  },
   test: {
     browser: {
       enabled: true,

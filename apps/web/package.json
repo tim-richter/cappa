@@ -21,9 +21,12 @@
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
+    "@radix-ui/react-dialog": "catalog:",
+    "@radix-ui/react-separator": "catalog:",
     "@tanstack/react-query": "^5.91.3",
     "class-variance-authority": "0.7.1",
     "lucide-react": "0.577.0",
+    "next-themes": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-router": "^7.13.1"
