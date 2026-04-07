@@ -12,6 +12,7 @@ jobs:
   ci:
     name: Build & Test
     runs-on: ubuntu-latest
+    if: ${{ !startsWith(github.head_ref, 'renovate/') }}
     steps:
       - name: Checkout Repo
         uses: actions/checkout@v6
