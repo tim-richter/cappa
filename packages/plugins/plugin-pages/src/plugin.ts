@@ -91,7 +91,10 @@ export const cappaPluginPages: Plugin<PagesPluginOptions> = (options) => {
         const captureStart = performance.now();
 
         // Navigate to the page
-        await page.goto(entry.url, { waitUntil: "domcontentloaded" });
+        await page.goto(entry.url, {
+          waitUntil: "domcontentloaded",
+          timeout: screenshotTool.connectionTimeout,
+        });
 
         // Freeze animations/transitions for deterministic screenshots
         await freezeUI(page);

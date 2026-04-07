@@ -80,6 +80,7 @@ export async function getConfig(
     review: {
       theme: userConfig.review?.theme ?? "light",
     },
+    connectionTimeout: userConfig.connectionTimeout ?? 20000,
   };
 
   getLogger().debug(

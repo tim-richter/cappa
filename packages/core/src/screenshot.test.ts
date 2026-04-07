@@ -380,3 +380,18 @@ describe("ScreenshotTool retryScreenshot", () => {
     expect(bufferSpy).toHaveBeenCalledTimes(3);
   });
 });
+
+describe("ScreenshotTool connectionTimeout", () => {
+  it("defaults to 20000ms", () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    expect(tool.connectionTimeout).toBe(20000);
+  });
+
+  it("uses the provided value", () => {
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      connectionTimeout: 5000,
+    });
+    expect(tool.connectionTimeout).toBe(5000);
+  });
+});
