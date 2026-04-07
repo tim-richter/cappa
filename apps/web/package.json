@@ -52,6 +52,6 @@
     "typescript": "catalog:",
     "vitest": "catalog:",
     "vitest-browser-react": "catalog:",
-    "vite": "8.0.5"
+    "vite": "8.0.7"
   }
 }
