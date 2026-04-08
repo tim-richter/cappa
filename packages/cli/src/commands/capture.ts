@@ -121,6 +121,17 @@ async function executeOnFailCallback(
   }
 }
 
+export function formatDuration(ms: number): string {
+  const seconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(seconds / 60);
+  const remainingSeconds = seconds % 60;
+
+  if (minutes > 0) {
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+  return `${(ms / 1000).toFixed(2)}s`;
+}
+
 function generateFailureReportMessage(
   failedScreenshots: FailedScreenshotInfo[],
 ): string {
@@ -179,6 +190,7 @@ type CaptureOptions = {
 
 const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const logger = getLogger();
+  const captureStart = performance.now();
 
   const config = await getConfig();
 
@@ -306,6 +318,8 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     await executeOnFailCallback(config);
   }
 
+  const duration = formatDuration(performance.now() - captureStart);
+
   if (hasScreenshotFailure) {
     const reportMessage = generateFailureReportMessage(failedScreenshots);
     logger.box({
@@ -313,11 +327,11 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
       message: reportMessage,
     });
     logger.error(
-      "One or more screenshots failed. See report above for details.",
+      `One or more screenshots failed in ${duration}. See report above for details.`,
     );
     process.exit(1);
   } else {
-    logger.success("All plugins completed successfully");
+    logger.success(`All plugins completed successfully in ${duration}`);
   }
 };
 
