@@ -15,24 +15,24 @@
   "license": "MIT",
   "author": "Tim Richter",
   "type": "module",
-  "main": "./dist/index.cjs",
-  "module": "./dist/index.js",
-  "types": "./dist/index.esm.d.ts",
+  "main": "./dist/index.cjs.cjs",
+  "module": "./dist/index.esm.mjs",
+  "types": "./dist/index.esm.d.mts",
   "exports": {
     ".": {
       "import": {
-        "types": "./dist/index.esm.d.ts",
-        "default": "./dist/index.js"
+        "types": "./dist/index.esm.d.mts",
+        "default": "./dist/index.esm.mjs"
       },
       "require": {
         "types": "./dist/index.cjs.d.cts",
-        "default": "./dist/index.cjs"
+        "default": "./dist/index.cjs.cjs"
       }
     },
     "./browser": {
       "import": {
-        "types": "./dist/browser.d.ts",
-        "default": "./dist/browser.js"
+        "types": "./dist/browser.d.mts",
+        "default": "./dist/browser.mjs"
       },
       "require": {
         "types": "./dist/browser.d.cts",
@@ -43,7 +43,7 @@
   },
   "scripts": {
     "test": "vitest",
-    "build": "tsup",
+    "build": "tsdown",
     "tsc": "tsc",
     "attw": "attw --pack --profile node16 ."
   },
@@ -79,7 +79,7 @@
     "@vitest/ui": "catalog:",
     "playwright-core": "^1.58.2",
     "storybook": "^10.3.1",
-    "tsup": "catalog:",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

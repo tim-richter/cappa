@@ -1,7 +1,6 @@
 {
   "extends": "../../config-ts/bundler.json",
   "compilerOptions": {
-    "baseUrl": ".",
     "types": ["vitest", "node"]
   },
   "include": ["src/**/*", "./tsdown.config.ts", "./vitest.config.ts"]

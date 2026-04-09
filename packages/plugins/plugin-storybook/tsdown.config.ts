@@ -1,27 +1,28 @@
-import { defineConfig } from "tsup";
+import { defineConfig } from "tsdown";
 
 export default defineConfig([
   {
-    entry: { index: "src/index.esm.ts" },
+    entry: ["src/index.esm.ts"],
     format: ["esm"],
-    dts: { entry: "src/index.esm.ts" },
-    splitting: false,
-    external: ["./preview.js"],
+    dts: true,
+    deps: {
+      neverBundle: ["./preview.js"],
+    },
     sourcemap: false,
   },
   {
-    entry: { index: "src/index.cjs.ts" },
+    entry: ["src/index.cjs.ts"],
     format: ["cjs"],
-    dts: { entry: "src/index.cjs.ts" },
-    splitting: false,
-    external: ["./preview.js"],
+    dts: true,
+    deps: {
+      neverBundle: ["./preview.js"],
+    },
     sourcemap: false,
   },
   {
     entry: ["src/storybook/addon/preview.ts"],
     target: "node16",
     format: ["esm"],
-    splitting: false,
     sourcemap: false,
   },
   {
@@ -29,7 +30,6 @@ export default defineConfig([
     target: "es2015",
     format: ["esm", "cjs"],
     dts: true,
-    splitting: false,
     sourcemap: false,
   },
 ]);

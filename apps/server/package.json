@@ -15,12 +15,12 @@
     "type": "git",
     "url": "https://github.com/tim-richter/cappa.git"
   },
-  "main": "dist/server.js",
-  "types": "dist/server.d.ts",
+  "main": "dist/server.mjs",
+  "types": "dist/server.d.mts",
   "scripts": {
     "dev": "NODE_ENV=development tsx watch src/server.ts",
     "build": "./bin/build.sh",
-    "build:ts": "tsup src/server.ts --format esm --target node20 --splitting false --dts",
+    "build:ts": "tsdown src/server.ts --format esm --target node20 --dts",
     "start": "NODE_ENV=production node dist/server.js",
     "typecheck": "tsc --noEmit",
     "test": "vitest",
@@ -42,8 +42,8 @@
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
     "memfs": "^4.56.11",
-    "tsup": "catalog:",
     "tsx": "4.21.0",
+    "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"
   }

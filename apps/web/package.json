@@ -47,7 +47,6 @@
     "playwright": "^1.55.0",
     "storybook": "^10.3.1",
     "tailwindcss": "catalog:",
-    "tsup": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:",
     "vitest": "catalog:",

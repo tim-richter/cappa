@@ -120,6 +120,9 @@ Cappa will fetch the list of stories, load each one in Playwright, and write scr
 reports to the configured output directory. Pair it with `cappa review` and `cappa approve` to follow
 the normal approval workflow.
 
+Keep in mind that the dev server of storybook might introduce delays in the story loading. It is therefore
+recommended to build storybook before running cappa capture, and then run cappa on the resulting static files.
+
 > You can use `start-server-and-test` to start Storybook and Cappa in one command.
 > 
 > ```bash
