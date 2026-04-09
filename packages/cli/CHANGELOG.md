@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.8.1
+
+### Patch Changes
+
+- 3c247a1: chore: upgrade deps
+- Updated dependencies [3c247a1]
+  - @cappa/server@0.5.7
+  - @cappa/core@0.8.1
+  - @cappa/logger@0.0.11
+
 ## 0.8.0
 
 ### Minor Changes
