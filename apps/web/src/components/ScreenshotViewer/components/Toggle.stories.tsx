@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from "@storybook/react-vite";
-import { Split } from "./Split";
+import { Toggle } from "./Toggle";
 
 const meta = {
-  title: "ScreenshotViewer/Split",
-  component: Split,
-} satisfies Meta<typeof Split>;
+  title: "ScreenshotViewer/Toggle",
+  component: Toggle,
+} satisfies Meta<typeof Toggle>;
 
 export default meta;
 type Story = StoryObj<typeof meta>;
@@ -18,7 +18,7 @@ const darkModeDecorator = (Story: React.ComponentType) => (
 const pageArgs = {
   screenshot: {
     id: "1",
-    name: "SideBySide",
+    name: "Toggle",
     category: "changed" as const,
     expectedPath: "/1b.jpeg",
     actualPath: "/1a.jpeg",
@@ -29,7 +29,7 @@ const pageArgs = {
 const smallArgs = {
   screenshot: {
     id: "1",
-    name: "SideBySide",
+    name: "Toggle",
     category: "changed" as const,
     expectedPath: "/4a.png",
     actualPath: "/4b.png",

@@ -1,7 +1,7 @@
-import type { Screenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/core";
 
 interface SideBySideProps {
-  screenshot: Screenshot;
+  screenshot: ChangedScreenshot;
 }
 
 export function SideBySide({ screenshot }: SideBySideProps) {

@@ -1,8 +1,8 @@
-import type { Screenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 
 interface SplitProps {
-  screenshot: Screenshot;
+  screenshot: ChangedScreenshot;
 }
 
 export const Split = ({ screenshot }: SplitProps) => {

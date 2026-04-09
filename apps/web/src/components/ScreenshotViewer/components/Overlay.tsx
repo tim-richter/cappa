@@ -1,9 +1,9 @@
-import type { Screenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/core";
 import { Slider } from "@ui/components/slider";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
 
 interface OverlayProps {
-  screenshot: Screenshot;
+  screenshot: ChangedScreenshot;
   opacity?: number;
   onOpacityChange?: (opacity: number) => void;
   defaultOpacity?: number;
@@ -28,7 +28,7 @@ export function Overlay({
           Overlay Comparison
         </h3>
         <div className="flex items-center gap-2">
-          <span className="text-sm text-muted-foreground">Opacity:</span>
+          Before
           <Slider
             min={0}
             max={100}
@@ -36,9 +36,7 @@ export function Overlay({
             onValueChange={(value) => setOverlayOpacity(value[0])}
             className="w-64"
           />
-          <span className="text-sm text-muted-foreground w-8">
-            {overlayOpacity}%
-          </span>
+          After
         </div>
       </div>
 

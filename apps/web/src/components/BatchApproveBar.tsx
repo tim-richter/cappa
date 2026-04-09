@@ -75,9 +75,6 @@ export const BatchApproveBar: FC<BatchApproveBarProps> = ({
       >
         Select all
       </Button>
-      <span className="text-sm text-muted-foreground px-1">
-        {selectedIds.size} selected
-      </span>
       <Button
         size="sm"
         className="h-7 gap-2 text-green-700 bg-green-100 hover:bg-green-200 dark:text-green-300 dark:bg-green-900/50 dark:hover:bg-green-800/50"

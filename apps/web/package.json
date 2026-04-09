@@ -32,7 +32,7 @@
     "react-router": "^7.13.1"
   },
   "devDependencies": {
-    "@storybook/react-vite": "^10.3.1",
+    "@storybook/react-vite": "10.3.1",
     "@tailwindcss/vite": "catalog:",
     "@tanstack/react-table": "^8.21.3",
     "@types/node": "catalog:",
@@ -41,16 +41,16 @@
     "@vitejs/plugin-react": "6.0.1",
     "@vitest/browser": "catalog:",
     "@vitest/browser-playwright": "catalog:",
-    "msw": "^2.12.14",
-    "msw-storybook-addon": "^2.0.6",
+    "msw": "2.13.2",
+    "msw-storybook-addon": "2.0.7",
     "nuqs": "^2.8.9",
     "playwright": "^1.55.0",
-    "storybook": "^10.3.1",
+    "storybook": "10.3.1",
     "tailwindcss": "catalog:",
     "tsx": "4.21.0",
     "typescript": "catalog:",
+    "vite": "8.0.7",
     "vitest": "catalog:",
-    "vitest-browser-react": "catalog:",
-    "vite": "8.0.7"
+    "vitest-browser-react": "catalog:"
   }
 }

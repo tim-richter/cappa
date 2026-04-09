@@ -5,6 +5,7 @@ import { Button } from "@ui/components/button";
 import {
   Tooltip,
   TooltipContent,
+  TooltipProvider,
   TooltipTrigger,
 } from "@ui/components/tooltip";
 import {
@@ -16,6 +17,7 @@ import {
   GitCompare,
   Layers,
   SplitSquareHorizontal,
+  ToggleRight,
 } from "lucide-react";
 import { useState } from "react";
 import { Link } from "react-router";
@@ -25,16 +27,23 @@ import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";
 import { Single } from "./components/Single";
 import { Split } from "./components/Split";
+import { Toggle } from "./components/Toggle";
 
 interface ScreenshotComparisonProps {
   screenshot: Screenshot & { next: string; prev: string };
   onBack: () => void;
 }
 
-type ViewMode = "side-by-side" | "overlay" | "split" | "diff-only";
+type ViewMode =
+  | "side-by-side"
+  | "toggle-view"
+  | "overlay"
+  | "split"
+  | "diff-only";
 
 const viewModes = [
   { id: "side-by-side", label: "Side by Side", icon: SplitSquareHorizontal },
+  { id: "toggle-view", label: "Toggle View", icon: ToggleRight },
   { id: "overlay", label: "Overlay", icon: Layers },
   { id: "split", label: "Split View", icon: GitCompare },
   { id: "diff-only", label: "Diff Only", icon: Eye },
@@ -152,26 +161,35 @@ export function ScreenshotComparison({
           {/* View Mode Controls */}
           {screenshot.category === "changed" && (
             <div className="flex items-center gap-2 flex-wrap">
-              {viewModes.map((mode) => {
-                const Icon = mode.icon;
-                const isSelected = viewMode === mode.id;
-                return (
-                  <Button
-                    key={mode.id}
-                    variant={isSelected ? "default" : "ghost"}
-                    size="sm"
-                    onClick={() => setViewMode(mode.id as ViewMode)}
-                    className={
-                      isSelected
-                        ? "gap-2"
-                        : "gap-2 text-card-foreground hover:bg-accent hover:text-accent-foreground"
-                    }
-                  >
-                    <Icon className="h-4 w-4" />
-                    <span className="hidden sm:inline">{mode.label}</span>
-                  </Button>
-                );
-              })}
+              <TooltipProvider>
+                {viewModes.map((mode) => {
+                  const Icon = mode.icon;
+                  const isSelected = viewMode === mode.id;
+
+                  return (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button
+                          key={mode.id}
+                          variant={isSelected ? "default" : "ghost"}
+                          size="sm"
+                          onClick={() => setViewMode(mode.id as ViewMode)}
+                          aria-label={mode.label}
+                          className={
+                            isSelected
+                              ? "gap-2"
+                              : "gap-2 text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                          }
+                        >
+                          <Icon className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+
+                      <TooltipContent>{mode.label}</TooltipContent>
+                    </Tooltip>
+                  );
+                })}
+              </TooltipProvider>
             </div>
           )}
         </div>
@@ -193,6 +211,8 @@ export function ScreenshotComparison({
             {viewMode === "side-by-side" && (
               <SideBySide screenshot={screenshot} />
             )}
+
+            {viewMode === "toggle-view" && <Toggle screenshot={screenshot} />}
 
             {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
 

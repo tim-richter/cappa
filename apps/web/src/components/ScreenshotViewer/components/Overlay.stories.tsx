@@ -19,9 +19,10 @@ const pageArgs = {
   screenshot: {
     id: "1",
     name: "Overlay",
-    category: "passed" as const,
+    category: "changed" as const,
     expectedPath: "/1b.jpeg",
     actualPath: "/1a.jpeg",
+    diffPath: "/1diff.png",
   },
 };
 
@@ -29,9 +30,10 @@ const smallArgs = {
   screenshot: {
     id: "1",
     name: "Overlay",
-    category: "passed" as const,
+    category: "changed" as const,
     expectedPath: "/4a.png",
     actualPath: "/4b.png",
+    diffPath: "/4diff.png",
   },
 };
 

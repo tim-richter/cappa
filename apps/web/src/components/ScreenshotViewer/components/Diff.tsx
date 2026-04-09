@@ -1,7 +1,7 @@
-import type { Screenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/core";
 
 interface DiffProps {
-  screenshot: Screenshot;
+  screenshot: ChangedScreenshot;
 }
 
 export const Diff = ({ screenshot }: DiffProps) => {

@@ -81,7 +81,9 @@ describe("BatchApproveBar", () => {
         selectedIds={new Set(["1"])}
       />,
     );
-    await expect.element(screen.getByText("1 selected")).toBeVisible();
+    await expect
+      .element(screen.getByText("Approve selected (1)"))
+      .toBeVisible();
   });
 
   it("clicking Cancel deactivates select mode", async () => {
