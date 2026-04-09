@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.6.0
+
+### Minor Changes
+
+- 26c55a9: feat: add toggle view
+
 ## 0.5.7
 
 ### Patch Changes
