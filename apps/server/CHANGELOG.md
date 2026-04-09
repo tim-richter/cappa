@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.5.7
+
+### Patch Changes
+
+- 3c247a1: chore: upgrade deps
+- Updated dependencies [3c247a1]
+  - @cappa/core@0.8.1
+
 ## 0.5.6
 
 ### Patch Changes

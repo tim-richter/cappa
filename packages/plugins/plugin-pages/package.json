@@ -1,6 +1,6 @@
 {
   "name": "@cappa/plugin-pages",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pages plugin for Cappa - takes screenshots of URLs",
   "publishConfig": {
     "access": "public"

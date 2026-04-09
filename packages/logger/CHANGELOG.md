@@ -1,5 +1,11 @@
 # @cappa/logger
 
+## 0.0.11
+
+### Patch Changes
+
+- 3c247a1: chore: upgrade deps
+
 ## 0.0.10
 
 ### Patch Changes
