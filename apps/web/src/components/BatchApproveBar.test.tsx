@@ -41,12 +41,12 @@ const defaultProps = {
 
 describe("BatchApproveBar", () => {
   it("renders Select button when not in select mode", async () => {
-    const screen = render(<BatchApproveBar {...defaultProps} />);
+    const screen = await render(<BatchApproveBar {...defaultProps} />);
     await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("returns null when all screenshots are passed (no approvable items)", async () => {
-    const { container } = render(
+    const { container } = await render(
       <BatchApproveBar {...defaultProps} screenshots={[passedScreenshot]} />,
     );
     expect(container.firstChild).toBeNull();
@@ -54,7 +54,7 @@ describe("BatchApproveBar", () => {
 
   it("clicking Select button activates select mode", async () => {
     const onSelectModeChange = vi.fn();
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         onSelectModeChange={onSelectModeChange}
@@ -65,14 +65,16 @@ describe("BatchApproveBar", () => {
   });
 
   it("shows Cancel, Select all, and Approve buttons when in select mode", async () => {
-    const screen = render(<BatchApproveBar {...defaultProps} isSelectMode />);
+    const screen = await render(
+      <BatchApproveBar {...defaultProps} isSelectMode />,
+    );
     await expect.element(screen.getByText("Cancel")).toBeVisible();
     await expect.element(screen.getByText("Select all")).toBeVisible();
     await expect.element(screen.getByText(/Approve selected/)).toBeVisible();
   });
 
   it("shows selected count when items are selected", async () => {
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -84,7 +86,7 @@ describe("BatchApproveBar", () => {
 
   it("clicking Cancel deactivates select mode", async () => {
     const onSelectModeChange = vi.fn();
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -96,7 +98,7 @@ describe("BatchApproveBar", () => {
   });
 
   it("Approve selected button is disabled when no approvable items selected", async () => {
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -110,7 +112,7 @@ describe("BatchApproveBar", () => {
 
   it("clicking Approve selected calls onApproveSelected with correct names", async () => {
     const onApproveSelected = vi.fn();
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -128,7 +130,7 @@ describe("BatchApproveBar", () => {
   });
 
   it("Approve selected is disabled when isPending=true", async () => {
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode
@@ -143,7 +145,7 @@ describe("BatchApproveBar", () => {
 
   it("clicking Select all calls onSelectAll", async () => {
     const onSelectAll = vi.fn();
-    const screen = render(
+    const screen = await render(
       <BatchApproveBar
         {...defaultProps}
         isSelectMode

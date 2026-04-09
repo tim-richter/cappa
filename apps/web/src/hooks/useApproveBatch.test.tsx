@@ -55,7 +55,7 @@ describe("useApproveBatch", () => {
     );
 
     const Wrapper = createWrapper();
-    const screen = render(
+    const screen = await render(
       <Wrapper>
         <TestComponent />
       </Wrapper>,
@@ -72,7 +72,7 @@ describe("useApproveBatch", () => {
 
   it("returns approved screenshots on success", async () => {
     const Wrapper = createWrapper();
-    const screen = render(
+    const screen = await render(
       <Wrapper>
         <TestComponent />
       </Wrapper>,
@@ -96,7 +96,7 @@ describe("useApproveBatch", () => {
     );
 
     const Wrapper = createWrapper();
-    const screen = render(
+    const screen = await render(
       <Wrapper>
         <TestComponent />
       </Wrapper>,
@@ -111,7 +111,7 @@ describe("useApproveBatch", () => {
     const onSuccess = vi.fn();
 
     const Wrapper = createWrapper();
-    const screen = render(
+    const screen = await render(
       <Wrapper>
         <TestComponent onSuccess={onSuccess} />
       </Wrapper>,

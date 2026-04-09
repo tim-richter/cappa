@@ -7,18 +7,18 @@ import { Changed } from "./Changed";
 
 describe("Changed page", () => {
   it("shows loading state initially", async () => {
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
     await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders changed screenshots after data loads", async () => {
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
     await expect.element(screen.getByText("Screenshot 3")).toBeVisible();
   });
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
     await expect
       .element(screen.getByText("Error fetching screenshots"))
       .toBeVisible();
@@ -26,12 +26,12 @@ describe("Changed page", () => {
   });
 
   it("renders batch approve controls", async () => {
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
     await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("activating select mode shows Cancel and Select all buttons", async () => {
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
 
     await userEvent.click(screen.getByText("Select"));
 
@@ -50,7 +50,7 @@ describe("Changed page", () => {
       }),
     );
 
-    const screen = renderPage(<Changed />, { route: "/changed" });
+    const screen = await renderPage(<Changed />, { route: "/changed" });
 
     await userEvent.click(screen.getByText("Select"));
     await userEvent.click(screen.getByText("Select all"));

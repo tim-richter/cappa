@@ -67,7 +67,7 @@ async function waitForContainerMeasured(capturedStateRef: {
 describe("usePanZoom", () => {
   it("returns correct initial state with scale=1", async () => {
     let capturedState: PanZoomState | undefined;
-    render(
+    await render(
       <SimplePanZoomComponent
         onState={(s) => {
           capturedState = s;
@@ -78,13 +78,15 @@ describe("usePanZoom", () => {
   });
 
   it("getTransformStyle returns a transform string", async () => {
-    const { container } = render(<SimplePanZoomComponent initialScale={1} />);
+    const { container } = await render(
+      <SimplePanZoomComponent initialScale={1} />,
+    );
     const content = container.querySelector("[data-testid='content']");
     expect(content?.getAttribute("style")).toContain("transform");
   });
 
   it("getTransformStyle includes transformOrigin", async () => {
-    const { container } = render(<SimplePanZoomComponent />);
+    const { container } = await render(<SimplePanZoomComponent />);
     const content = container.querySelector("[data-testid='content']");
     expect(content?.getAttribute("style")).toContain("transform-origin");
   });
@@ -93,7 +95,7 @@ describe("usePanZoom", () => {
     const stateRef = { current: undefined as PanZoomState | undefined };
     const apiRef = { current: undefined as PanZoomApi | undefined };
 
-    render(
+    await render(
       <SimplePanZoomComponent
         onApi={(a) => {
           apiRef.current = a;
@@ -115,7 +117,7 @@ describe("usePanZoom", () => {
     const stateRef = { current: undefined as PanZoomState | undefined };
     const apiRef = { current: undefined as PanZoomApi | undefined };
 
-    render(
+    await render(
       <SimplePanZoomComponent
         initialScale={1}
         onApi={(a) => {
@@ -141,7 +143,7 @@ describe("usePanZoom", () => {
     const apiRef = { current: undefined as PanZoomApi | undefined };
 
     // Content 800x800 in container 400x400 — fit scale should be 0.5
-    render(
+    await render(
       <SimplePanZoomComponent
         contentWidth={800}
         contentHeight={800}
@@ -168,7 +170,7 @@ describe("usePanZoom", () => {
   it("double-click on container zooms in", async () => {
     const stateRef = { current: undefined as PanZoomState | undefined };
 
-    const screen = render(
+    const screen = await render(
       <SimplePanZoomComponent
         onState={(s) => {
           stateRef.current = s;

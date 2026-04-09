@@ -4,7 +4,7 @@ import { Screenshot } from "./Screenshot";
 
 describe("Screenshot page", () => {
   it("shows loading state initially", async () => {
-    const screen = renderPageWithRoute(
+    const screen = await renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
@@ -13,7 +13,7 @@ describe("Screenshot page", () => {
   });
 
   it("renders screenshot viewer after data loads for new screenshot", async () => {
-    const screen = renderPageWithRoute(
+    const screen = await renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
@@ -27,7 +27,7 @@ describe("Screenshot page", () => {
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const screen = renderPageWithRoute(
+    const screen = await renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/1",
       <Screenshot />,
@@ -39,7 +39,7 @@ describe("Screenshot page", () => {
   });
 
   it("renders comparison viewer for a changed screenshot", async () => {
-    const screen = renderPageWithRoute(
+    const screen = await renderPageWithRoute(
       "/screenshots/:id",
       "/screenshots/3",
       <Screenshot />,

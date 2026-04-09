@@ -4,12 +4,12 @@ import { Home } from "./Home";
 
 describe("Home page", () => {
   it("shows loading state initially", async () => {
-    const screen = renderPage(<Home />, { route: "/" });
+    const screen = await renderPage(<Home />, { route: "/" });
     await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders all category sections after data loads", async () => {
-    const screen = renderPage(<Home />, { route: "/" });
+    const screen = await renderPage(<Home />, { route: "/" });
     await expect
       .element(screen.getByRole("heading", { name: "New" }))
       .toBeVisible();
@@ -25,7 +25,7 @@ describe("Home page", () => {
   });
 
   it("renders screenshot names after data loads", async () => {
-    const screen = renderPage(<Home />, { route: "/" });
+    const screen = await renderPage(<Home />, { route: "/" });
     await expect.element(screen.getByText("New Screenshot")).toBeVisible();
     await expect.element(screen.getByText("Deleted Screenshot")).toBeVisible();
     await expect.element(screen.getByText("Changed Screenshot")).toBeVisible();
@@ -34,7 +34,7 @@ describe("Home page", () => {
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const screen = renderPage(<Home />, { route: "/" });
+    const screen = await renderPage(<Home />, { route: "/" });
     await expect
       .element(screen.getByText("Error fetching screenshots"))
       .toBeVisible();
@@ -42,12 +42,12 @@ describe("Home page", () => {
   });
 
   it("renders Select button from BatchApproveBar", async () => {
-    const screen = renderPage(<Home />, { route: "/" });
+    const screen = await renderPage(<Home />, { route: "/" });
     await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("renders screenshots matching search when search param is set", async () => {
-    const screen = renderPage(<Home />, {
+    const screen = await renderPage(<Home />, {
       route: "/",
       searchParams: { search: "something" },
     });

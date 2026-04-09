@@ -32,13 +32,13 @@ function renderList(props: Partial<React.ComponentProps<typeof List>> = {}) {
 
 describe("List", () => {
   it("renders all screenshot names", async () => {
-    const screen = renderList();
+    const screen = await renderList();
     await expect.element(screen.getByText("Screenshot One")).toBeVisible();
     await expect.element(screen.getByText("Screenshot Two")).toBeVisible();
   });
 
   it("renders links to screenshot detail pages", async () => {
-    const { container } = renderList();
+    const { container } = await renderList();
     const links = container.querySelectorAll("a[href]");
     const hrefs = Array.from(links).map((l) => l.getAttribute("href"));
     expect(hrefs).toContain("/screenshots/1");
@@ -46,7 +46,7 @@ describe("List", () => {
   });
 
   it("renders a header row with Name column", async () => {
-    const { container } = renderList();
+    const { container } = await renderList();
     const th = container.querySelector("th");
     expect(th?.textContent?.trim()).toBe("Name");
   });
@@ -57,19 +57,19 @@ describe("List", () => {
       selectedIds: new Set<string>(),
       onSelectionChange,
     };
-    const { container } = renderList({ showCheckboxes: true, selection });
+    const { container } = await renderList({ showCheckboxes: true, selection });
     const links = container.querySelectorAll("a[href]");
     await userEvent.click(links[0] as HTMLElement);
     expect(onSelectionChange).toHaveBeenCalled();
   });
 
   it("renders 'No results.' for empty screenshots array", async () => {
-    const screen = renderList({ screenshots: [] });
+    const screen = await renderList({ screenshots: [] });
     await expect.element(screen.getByText("No results.")).toBeVisible();
   });
 
   it("table has expected number of rows for screenshots", async () => {
-    const screen = renderList();
+    const screen = await renderList();
     const rows = await screen.getByRole("row").elements();
     // header row + one row per screenshot
     expect(rows.length).toBe(screenshots.length + 1);

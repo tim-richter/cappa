@@ -7,18 +7,18 @@ import { Deleted } from "./Deleted";
 
 describe("Deleted page", () => {
   it("shows loading state initially", async () => {
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
     await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders deleted screenshots after data loads", async () => {
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
     await expect.element(screen.getByText("Screenshot 2")).toBeVisible();
   });
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
     await expect
       .element(screen.getByText("Error fetching screenshots"))
       .toBeVisible();
@@ -26,12 +26,12 @@ describe("Deleted page", () => {
   });
 
   it("renders batch approve controls", async () => {
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
     await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("activating select mode shows Cancel and Select all buttons", async () => {
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
 
     await userEvent.click(screen.getByText("Select"));
 
@@ -50,7 +50,7 @@ describe("Deleted page", () => {
       }),
     );
 
-    const screen = renderPage(<Deleted />, { route: "/deleted" });
+    const screen = await renderPage(<Deleted />, { route: "/deleted" });
 
     await userEvent.click(screen.getByText("Select"));
     await userEvent.click(screen.getByText("Select all"));

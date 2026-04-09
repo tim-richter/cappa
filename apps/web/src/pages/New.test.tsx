@@ -7,18 +7,18 @@ import { New } from "./New";
 
 describe("New page", () => {
   it("shows loading state initially", async () => {
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
     await expect.element(screen.getByText("Loading...")).toBeVisible();
   });
 
   it("renders new screenshots after data loads", async () => {
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
     await expect.element(screen.getByText("Screenshot 1")).toBeVisible();
   });
 
   it("shows error state when API fails", async () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
     await expect
       .element(screen.getByText("Error fetching screenshots"))
       .toBeVisible();
@@ -26,12 +26,12 @@ describe("New page", () => {
   });
 
   it("renders batch approve controls", async () => {
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
     await expect.element(screen.getByText("Select")).toBeVisible();
   });
 
   it("activating select mode shows Cancel and Select all buttons", async () => {
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
 
     await userEvent.click(screen.getByText("Select"));
 
@@ -50,7 +50,7 @@ describe("New page", () => {
       }),
     );
 
-    const screen = renderPage(<New />, { route: "/new" });
+    const screen = await renderPage(<New />, { route: "/new" });
 
     await userEvent.click(screen.getByText("Select"));
     await userEvent.click(screen.getByText("Select all"));

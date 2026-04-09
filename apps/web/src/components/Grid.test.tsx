@@ -30,13 +30,13 @@ function renderGrid(props: Partial<React.ComponentProps<typeof Grid>> = {}) {
 
 describe("Grid", () => {
   it("renders all screenshot names", async () => {
-    const screen = renderGrid();
+    const screen = await renderGrid();
     await expect.element(screen.getByText("Screenshot One")).toBeVisible();
     await expect.element(screen.getByText("Screenshot Two")).toBeVisible();
   });
 
   it("renders links to screenshot detail pages", async () => {
-    const { container } = renderGrid();
+    const { container } = await renderGrid();
     const links = container.querySelectorAll("a[href]");
     const hrefs = Array.from(links).map((l) => l.getAttribute("href"));
     expect(hrefs).toContain("/screenshots/1");
@@ -44,13 +44,13 @@ describe("Grid", () => {
   });
 
   it("renders a category badge for each screenshot", async () => {
-    const { container } = renderGrid();
+    const { container } = await renderGrid();
     const badges = container.querySelectorAll('[class*="bg-blue"]');
     expect(badges.length).toBe(2);
   });
 
   it("does not render checkboxes when showCheckboxes is false", async () => {
-    const screen = renderGrid({ showCheckboxes: false });
+    const screen = await renderGrid({ showCheckboxes: false });
     const checkboxes = await screen.getByRole("checkbox").elements();
     expect(checkboxes.length).toBe(0);
   });
@@ -60,7 +60,7 @@ describe("Grid", () => {
       selectedIds: new Set<string>(),
       onSelectionChange: vi.fn(),
     };
-    const screen = renderGrid({ showCheckboxes: true, selection });
+    const screen = await renderGrid({ showCheckboxes: true, selection });
     const checkboxes = await screen.getByRole("checkbox").elements();
     expect(checkboxes.length).toBe(2);
   });
@@ -70,7 +70,7 @@ describe("Grid", () => {
       selectedIds: new Set(["1"]),
       onSelectionChange: vi.fn(),
     };
-    const screen = renderGrid({ showCheckboxes: true, selection });
+    const screen = await renderGrid({ showCheckboxes: true, selection });
     const checkboxes = await screen.getByRole("checkbox").elements();
     const checkedCount = checkboxes.filter(
       (cb) => cb.getAttribute("aria-checked") === "true",
@@ -84,14 +84,14 @@ describe("Grid", () => {
       selectedIds: new Set<string>(),
       onSelectionChange,
     };
-    const screen = renderGrid({ showCheckboxes: true, selection });
+    const screen = await renderGrid({ showCheckboxes: true, selection });
     const checkboxes = await screen.getByRole("checkbox").elements();
     await userEvent.click(checkboxes[0]);
     expect(onSelectionChange).toHaveBeenCalled();
   });
 
   it("renders an empty grid for empty screenshots array", async () => {
-    const { container } = renderGrid({ screenshots: [] });
+    const { container } = await renderGrid({ screenshots: [] });
     const grid = container.querySelector(".grid");
     expect(grid?.children.length).toBe(0);
   });
