@@ -10,7 +10,7 @@ catalog:
   '@radix-ui/react-separator': 1.1.8
   '@tailwindcss/postcss': 4.2.2
   '@tailwindcss/vite': 4.2.2
-  '@types/node': 25.5.2
+  '@types/node': 25.6.0
   '@types/react': 19.2.14
   '@types/react-dom': 19.2.3
   '@vitest/browser': 4.1.4
