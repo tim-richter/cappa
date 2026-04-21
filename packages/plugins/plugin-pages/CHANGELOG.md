@@ -1,5 +1,12 @@
 # @cappa/plugin-pages
 
+## 0.2.2
+
+### Patch Changes
+
+- Updated dependencies [a14c04b]
+  - @cappa/core@0.9.0
+
 ## 0.2.1
 
 ### Patch Changes

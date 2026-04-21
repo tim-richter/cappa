@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.9.0
+
+### Minor Changes
+
+- a14c04b: use core-native instead of core to improve performance
+
 ## 0.8.1
 
 ### Patch Changes
