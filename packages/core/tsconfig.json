@@ -4,6 +4,6 @@
     "src/**/*",
     "./package.json",
     "./tsdown.config.ts",
-    "./vitest.config.ts"
+    "./vitest.config.mts"
   ]
 }

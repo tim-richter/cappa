@@ -40,7 +40,7 @@
     "playwright-core": "^1.55.0"
   },
   "dependencies": {
-    "@blazediff/core": "^1.9.1",
+    "@blazediff/core-native": "^4.2.0",
     "@blazediff/gmsd": "^1.7.1",
     "@cappa/logger": "workspace:*",
     "sharp": "^0.34.5"

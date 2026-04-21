@@ -40,7 +40,7 @@ The foundational library. Core exports:
 - `ScreenshotTool` — initialises Playwright browser, manages page pool, captures screenshots, compares them against baselines
 - `ScreenshotFileSystem` — manages `actual/`, `expected/`, and `diff/` directories inside `outputDir`
 - `defineConfig` — type helper for `cappa.config.ts`
-- `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core`)
+- `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`)
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 

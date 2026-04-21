@@ -1,10 +1,19 @@
 import fs from "node:fs";
-import blazediff, { type CoreOptions } from "@blazediff/core";
+import fsp from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
+import {
+  type BlazeDiffOptions,
+  type BlazeDiffResult,
+  compare as blazediffCompare,
+} from "@blazediff/core-native";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
 import type { DiffConfig } from "../types";
 
-export type CompareOptions = CoreOptions;
+/** Pixel diff options: Cappa `DiffConfig` plus optional native-only output tuning. */
+export type CompareOptions = DiffConfig &
+  Partial<Pick<BlazeDiffOptions, "diffMask" | "compression" | "quality">>;
 
 export interface CompareResult {
   numDiffPixels: number;
@@ -16,16 +25,51 @@ export interface CompareResult {
   differentSizes: boolean; // Whether the images have different sizes
 }
 
-const compare = (
-  image1: Uint8Array | Uint8ClampedArray,
-  image2: Uint8Array | Uint8ClampedArray,
-  diff: Uint8Array | Uint8ClampedArray | undefined,
-  width: number,
-  height: number,
-  options?: CoreOptions,
-) => {
-  return blazediff(image1, image2, diff, width, height, options);
-};
+type TempState = { tempRoot?: string };
+
+async function ensureTempRoot(state: TempState): Promise<string> {
+  if (!state.tempRoot) {
+    state.tempRoot = await fsp.mkdtemp(path.join(os.tmpdir(), "cappa-pxl-"));
+  }
+  return state.tempRoot;
+}
+
+async function resolveInputPath(
+  source: string | Buffer,
+  fileName: string,
+  state: TempState,
+): Promise<string> {
+  if (typeof source === "string") {
+    await fsp.access(source, fs.constants.R_OK);
+    return path.resolve(source);
+  }
+
+  await PNG.load(source);
+  const root = await ensureTempRoot(state);
+  const dest = path.join(root, fileName);
+  await fsp.writeFile(dest, source);
+  return dest;
+}
+
+function toNativeOptions(config: DiffConfig): BlazeDiffOptions {
+  const extra = config as CompareOptions;
+  const out: BlazeDiffOptions = {
+    threshold: extra.threshold,
+    antialiasing: extra.includeAA ?? false,
+  };
+
+  if (extra.diffMask !== undefined) {
+    out.diffMask = extra.diffMask;
+  }
+  if (extra.compression !== undefined) {
+    out.compression = extra.compression;
+  }
+  if (extra.quality !== undefined) {
+    out.quality = extra.quality;
+  }
+
+  return out;
+}
 
 /**
  * Compare two PNG images and return the difference
@@ -41,40 +85,79 @@ export async function compareImages(
   withDiff: boolean = false,
   options: DiffConfig = {},
 ): Promise<CompareResult> {
-  // Load both PNGs in parallel with sharp for better performance
-  const [png1, png2] = await Promise.all([loadPNG(image1), loadPNG(image2)]);
-
-  const { width, height } = png1;
-
-  if (width !== png2.width || height !== png2.height) {
-    return {
-      numDiffPixels: 0,
-      totalPixels: 0,
-      percentDifference: 0,
-      passed: false,
-      differentSizes: true,
-    };
-  }
-
-  const diff = withDiff ? PNG.create(width, height) : undefined;
+  const state: TempState = {};
+  let diffPath: string | undefined;
 
   try {
-    const numDiffPixels = compare(
-      png1.data,
-      png2.data,
-      diff?.data,
-      width,
-      height,
-      options,
-    );
+    const p1 = await resolveInputPath(image1, "expected.png", state);
+    const p2 = await resolveInputPath(image2, "actual.png", state);
 
+    if (withDiff) {
+      const root = await ensureTempRoot(state);
+      diffPath = path.join(root, "diff.png");
+    }
+
+    let nativeResult: BlazeDiffResult;
+
+    try {
+      nativeResult = await blazediffCompare(
+        p1,
+        p2,
+        withDiff ? diffPath : undefined,
+        toNativeOptions(options),
+      );
+    } catch (error) {
+      getLogger().error((error as Error).message || "Unknown error");
+
+      return {
+        numDiffPixels: 0,
+        totalPixels: 0,
+        percentDifference: 0,
+        passed: false,
+        differentSizes: false,
+        error: (error as Error).message || "Unknown error",
+      };
+    }
+
+    if (nativeResult.match === false) {
+      if (nativeResult.reason === "file-not-exists") {
+        throw new Error(`File not found: ${nativeResult.file}`);
+      }
+
+      if (nativeResult.reason === "layout-diff") {
+        return {
+          numDiffPixels: 0,
+          totalPixels: 0,
+          percentDifference: 0,
+          passed: false,
+          differentSizes: true,
+        };
+      }
+    }
+
+    const { width, height } = await PNG.load(p1);
     const totalPixels = width * height;
-    const percentDifference = (numDiffPixels / totalPixels) * 100;
 
-    // Convert diff image to buffer
-    const diffBuffer = diff
-      ? await annotateDiffImage(diff, options).toBuffer()
-      : undefined;
+    if (nativeResult.match) {
+      return {
+        numDiffPixels: 0,
+        totalPixels,
+        percentDifference: 0,
+        diffBuffer: undefined,
+        passed: isPassed(0, 0, options),
+        differentSizes: false,
+      };
+    }
+
+    let diffBuffer: Buffer | undefined;
+    if (withDiff && diffPath) {
+      const raw = await fsp.readFile(diffPath);
+      const diffPng = await PNG.load(raw);
+      diffBuffer = await annotateDiffImage(diffPng, options).toBuffer();
+    }
+
+    const numDiffPixels = nativeResult.diffCount;
+    const percentDifference = nativeResult.diffPercentage;
 
     return {
       numDiffPixels,
@@ -84,25 +167,15 @@ export async function compareImages(
       passed: isPassed(percentDifference, numDiffPixels, options),
       differentSizes: false,
     };
-  } catch (error) {
-    getLogger().error((error as Error).message || "Unknown error");
-
-    return {
-      numDiffPixels: 0,
-      totalPixels: 0,
-      percentDifference: 0,
-      passed: false,
-      differentSizes: false,
-      error: (error as Error).message || "Unknown error",
-    };
+  } finally {
+    if (state.tempRoot) {
+      await fsp
+        .rm(state.tempRoot, { recursive: true, force: true })
+        .catch(() => {
+          // ignore cleanup errors
+        });
+    }
   }
-}
-
-/**
- * Load a PNG image from file path or Buffer
- */
-async function loadPNG(source: string | Buffer): Promise<PNG> {
-  return PNG.load(source);
 }
 
 function annotateDiffImage(image: PNG, options: DiffConfig) {

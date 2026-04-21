@@ -427,9 +427,9 @@ importers:
 
   packages/core:
     dependencies:
-      '@blazediff/core':
-        specifier: ^1.9.1
-        version: 1.9.1
+      '@blazediff/core-native':
+        specifier: ^4.2.0
+        version: 4.2.0
       '@blazediff/gmsd':
         specifier: ^1.7.1
         version: 1.7.1
@@ -845,6 +845,45 @@ packages:
     engines: {node: '>=14.21.3'}
     cpu: [x64]
     os: [win32]
+
+  '@blazediff/core-native-darwin-arm64@4.2.0':
+    resolution: {integrity: sha512-FG1b00aZ301EeBTyFbPlGqkmcBvmSFXnJlPd+LjfDW14vGI8T5sOGqEglIZqzdHPtCEZOCa5H6Y8DXn4Wvm6mw==}
+    cpu: [arm64]
+    os: [darwin]
+    hasBin: true
+
+  '@blazediff/core-native-darwin-x64@4.2.0':
+    resolution: {integrity: sha512-f+IG1F0ECGOAc3/hpXfNs/O00pbCdhnPIhtq/7k75mVo8NRV7Da/Tif1vvAtsGCU4iY2RdEPOolt0XoXyCHgsg==}
+    cpu: [x64]
+    os: [darwin]
+    hasBin: true
+
+  '@blazediff/core-native-linux-arm64@4.2.0':
+    resolution: {integrity: sha512-5ianKM591Ry9VYjKUCQxSixzE5Jiybw7GtjjprItTpdwhZIA2QiphYwBfSMDrOv1EP5US9Ln8B/ebPMRBJpfkA==}
+    cpu: [arm64]
+    os: [linux]
+    hasBin: true
+
+  '@blazediff/core-native-linux-x64@4.2.0':
+    resolution: {integrity: sha512-E2r1h4aX2s6RzS3gIgmMHnBlHj95pjv3TxmjwXq6SE8e/DKWgg+4kWw0vfFBgyLxJQQYU2QloreKu7aGOhjE8g==}
+    cpu: [x64]
+    os: [linux]
+    hasBin: true
+
+  '@blazediff/core-native-win32-arm64@4.2.0':
+    resolution: {integrity: sha512-AHgtH4D0QDlPb7ACDh7EXTqLFFWMQAEcKVD1hT0FuUl/88pWfTN9iE3ghwyVsnER3WFPv87ZzMnz188JFUxqtA==}
+    cpu: [arm64]
+    os: [win32]
+    hasBin: true
+
+  '@blazediff/core-native-win32-x64@4.2.0':
+    resolution: {integrity: sha512-1s2XWIppBllQibCYvxWLeZqzm377M04NhfgArFI6vIhBYmx7N/YKzb6qr80bvjkRMac5NXgU3fYjFlHKF49JZg==}
+    cpu: [x64]
+    os: [win32]
+    hasBin: true
+
+  '@blazediff/core-native@4.2.0':
+    resolution: {integrity: sha512-G4i08d1LEcSlx4oDaroEYWS39xosXcS7thLZKLwirmYEX9huFSw5TFWLcwrmy/5VeRdvyeoNcwqnOBJyXJrYpg==}
 
   '@blazediff/core@1.9.1':
     resolution: {integrity: sha512-ehg3jIkYKulZh+8om/O25vkvSsXXwC+skXmyA87FFx6A/45eqOkZsBltMw/TVteb0mloiGT8oGRTcjRAz66zaA==}
@@ -7736,6 +7775,33 @@ snapshots:
 
   '@biomejs/cli-win32-x64@2.4.11':
     optional: true
+
+  '@blazediff/core-native-darwin-arm64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native-darwin-x64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native-linux-arm64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native-linux-x64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native-win32-arm64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native-win32-x64@4.2.0':
+    optional: true
+
+  '@blazediff/core-native@4.2.0':
+    optionalDependencies:
+      '@blazediff/core-native-darwin-arm64': 4.2.0
+      '@blazediff/core-native-darwin-x64': 4.2.0
+      '@blazediff/core-native-linux-arm64': 4.2.0
+      '@blazediff/core-native-linux-x64': 4.2.0
+      '@blazediff/core-native-win32-arm64': 4.2.0
+      '@blazediff/core-native-win32-x64': 4.2.0
 
   '@blazediff/core@1.9.1': {}
 

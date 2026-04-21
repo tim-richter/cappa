@@ -207,10 +207,6 @@ describe("compare", () => {
       const options: CompareOptions = {
         threshold: 0.2,
         includeAA: true,
-        alpha: 0.2,
-        aaColor: [0, 255, 0],
-        diffColor: [255, 0, 255],
-        diffColorAlt: [0, 255, 255],
       };
 
       const result = await compareImages(image1, image2, false, options);

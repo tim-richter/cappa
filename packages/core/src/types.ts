@@ -40,6 +40,9 @@ export interface DiffConfig {
   /**
    * Use fast buffer comparison for identical images
    * Default = true
+   *
+   * No effect for pixel diff: comparisons use `@blazediff/core-native`, which already
+   * applies block-based skipping internally.
    */
   fastBufferCheck?: boolean;
   /**
