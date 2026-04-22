@@ -5,24 +5,18 @@ export default defineConfig([
     entry: ["src/index.esm.ts"],
     format: ["esm"],
     dts: true,
-    deps: {
-      neverBundle: ["./preview.js"],
-    },
     sourcemap: false,
   },
   {
     entry: ["src/index.cjs.ts"],
     format: ["cjs"],
     dts: true,
-    deps: {
-      neverBundle: ["./preview.js"],
-    },
     sourcemap: false,
   },
   {
     entry: ["src/storybook/addon/preview.ts"],
     target: "node16",
-    format: ["esm"],
+    format: ["esm", "cjs"],
     sourcemap: false,
   },
   {

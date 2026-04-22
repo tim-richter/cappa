@@ -1,7 +1,7 @@
 import { fileURLToPath } from "node:url";
 
 export const previewAnnotations = [
-  fileURLToPath(new URL("./preview.js", import.meta.url)),
+  fileURLToPath(new URL("./preview.mjs", import.meta.url)),
 ];
 
 export type {

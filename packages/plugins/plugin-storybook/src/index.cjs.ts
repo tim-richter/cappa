@@ -1,4 +1,4 @@
-export const previewAnnotations = [require.resolve("./preview.js")];
+export const previewAnnotations = [require.resolve("./preview.cjs")];
 
 export type {
   StorybookPluginOptions,
