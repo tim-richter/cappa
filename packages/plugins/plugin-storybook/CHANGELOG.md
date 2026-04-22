@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.8.3
+
+### Patch Changes
+
+- acbb54d: fix build exports
+
 ## 0.8.2
 
 ### Patch Changes
