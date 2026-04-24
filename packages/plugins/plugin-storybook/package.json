@@ -69,7 +69,7 @@
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
-    "@swc/core": "^1.15.18",
+    "@swc/core": "^1.15.30",
     "chalk": "^5.6.2"
   },
   "devDependencies": {

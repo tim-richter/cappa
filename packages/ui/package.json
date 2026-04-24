@@ -11,7 +11,7 @@
   },
   "scripts": {},
   "dependencies": {
-    "@mantine/hooks": "^9.0.0",
+    "@mantine/hooks": "^9.1.0",
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@radix-ui/react-separator": "catalog:",
@@ -20,7 +20,7 @@
     "@radix-ui/react-tooltip": "^1.2.8",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
-    "lucide-react": "1.8.0",
+    "lucide-react": "1.9.0",
     "next-themes": "catalog:",
     "radix-ui": "^1.4.3",
     "react": "catalog:",
@@ -31,7 +31,7 @@
     "zod": "4.3.6"
   },
   "devDependencies": {
-    "@tailwindcss/postcss": "^4.2.2",
+    "@tailwindcss/postcss": "^4.2.4",
     "@turbo/gen": "2.9.6",
     "@types/node": "catalog:",
     "@types/react": "catalog:",

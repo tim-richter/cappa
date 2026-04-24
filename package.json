@@ -26,8 +26,8 @@
     "release": "pnpm -r build && pnpm --filter server build && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.8",
-    "@changesets/cli": "^2.30.0",
+    "@biomejs/biome": "^2.4.13",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "catalog:",
     "turbo": "^2.8.20",
     "typescript": "catalog:"
