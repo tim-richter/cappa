@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.6.2
+
+### Patch Changes
+
+- f13c5da: update deps
+
 ## 0.6.1
 
 ### Patch Changes

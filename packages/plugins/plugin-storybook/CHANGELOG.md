@@ -1,5 +1,11 @@
 # @cappa/plugin-storybook
 
+## 0.8.4
+
+### Patch Changes
+
+- f13c5da: update deps
+
 ## 0.8.3
 
 ### Patch Changes
