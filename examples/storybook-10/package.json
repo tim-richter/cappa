@@ -19,8 +19,8 @@
     "screenshot:status": "cappa status"
   },
   "dependencies": {
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6"
   },
   "devDependencies": {
     "@cappa/cli": "workspace:*",
@@ -31,7 +31,7 @@
     "@storybook/addon-a11y": "^10.0.2",
     "@storybook/addon-docs": "^10.0.2",
     "@storybook/addon-vitest": "^10.0.2",
-    "@storybook/react-vite": "^10.3.1",
+    "@storybook/react-vite": "^10.3.6",
     "@types/node": "^25.5.0",
     "@types/react": "^19.2.14",
     "@types/react-dom": "^19.2.3",
@@ -44,10 +44,10 @@
     "eslint-plugin-storybook": "^10.2.16",
     "globals": "^16.5.0",
     "playwright": "^1.58.2",
-    "storybook": "^10.3.1",
+    "storybook": "^10.3.6",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.0.10",
+    "vite": "8.0.11",
     "vitest": "catalog:"
   }
 }
