@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.8.4
+
+### Patch Changes
+
+- 079307b: update deps
+- Updated dependencies [079307b]
+- Updated dependencies [f13c5da]
+- Updated dependencies [dd02a52]
+  - @cappa/server@0.7.0
+
 ## 0.8.3
 
 ### Patch Changes
