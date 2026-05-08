@@ -22,21 +22,18 @@ export function Overlay({
   });
 
   return (
-    <div>
-      <div className="flex items-center gap-4 mb-2">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Overlay Comparison
-        </h3>
-        <div className="flex items-center gap-2">
-          Before
+    <div className="relative">
+      <div className="flex items-center gap-4 fixed bottom-6 left-1/2 -translate-x-1/2 shadow-xl py-2 px-8 rounded-lg bg-background backdrop-blur-lg z-10000">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-lg">Before</span>
           <Slider
             min={0}
             max={100}
             value={[overlayOpacity]}
             onValueChange={(value) => setOverlayOpacity(value[0])}
-            className="w-64"
+            className="w-64 h-2"
           />
-          After
+          <span className="text-lg">After</span>
         </div>
       </div>
 

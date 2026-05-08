@@ -27,13 +27,10 @@ export function Toggle({
   const hasBoth = Boolean(screenshot.expectedPath && screenshot.actualPath);
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center gap-4 mb-2">
-        <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide">
-          Toggle View
-        </h3>
-        <div className="flex items-center gap-2">
-          <span className="text-lg text-muted-foreground">Before</span>
+    <div className="relative">
+      <div className="flex items-center gap-4 fixed bottom-6 left-1/2 -translate-x-1/2 shadow-xl py-2 px-8 rounded-lg bg-background backdrop-blur-lg z-10000">
+        <div className="flex items-center justify-center gap-2">
+          <span className="text-lg">Before</span>
           <Switch
             checked={activeSide === "after"}
             onCheckedChange={(checked) =>
@@ -42,7 +39,7 @@ export function Toggle({
             disabled={!hasBoth}
             aria-label="Show after instead of before"
           />
-          <span className="text-lg text-muted-foreground">After</span>
+          <span className="text-lg">After</span>
         </div>
       </div>
 
