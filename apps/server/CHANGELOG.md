@@ -1,5 +1,16 @@
 # @cappa/server
 
+## 0.7.0
+
+### Minor Changes
+
+- dd02a52: improve ui controls and persist view mode between screenshot change
+
+### Patch Changes
+
+- 079307b: update deps
+- f13c5da: update deps
+
 ## 0.6.1
 
 ### Patch Changes
