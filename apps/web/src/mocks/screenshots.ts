@@ -104,6 +104,14 @@ export const handlers = [
         expectedPath: "https://picsum.photos/200/300",
         category: "passed",
       },
+      {
+        name: "Changed Screenshot",
+        id: "6",
+        actualPath: "https://picsum.photos/200/300",
+        expectedPath: "https://picsum.photos/200/300",
+        diffPath: "https://picsum.photos/200/300",
+        category: "changed",
+      },
     ]);
   }),
 

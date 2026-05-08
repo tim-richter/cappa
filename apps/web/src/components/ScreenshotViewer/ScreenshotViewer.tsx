@@ -28,18 +28,12 @@ import { SideBySide } from "./components/SideBySide";
 import { Single } from "./components/Single";
 import { Split } from "./components/Split";
 import { Toggle } from "./components/Toggle";
+import { getInitialViewMode, persistViewMode, type ViewMode } from "./viewMode";
 
 interface ScreenshotComparisonProps {
   screenshot: Screenshot & { next: string; prev: string };
   onBack: () => void;
 }
-
-type ViewMode =
-  | "side-by-side"
-  | "toggle-view"
-  | "overlay"
-  | "split"
-  | "diff-only";
 
 const viewModes = [
   { id: "side-by-side", label: "Side by Side", icon: SplitSquareHorizontal },
@@ -53,8 +47,15 @@ export function ScreenshotComparison({
   screenshot,
   onBack,
 }: ScreenshotComparisonProps) {
-  const [viewMode, setViewMode] = useState<ViewMode>("side-by-side");
+  const [viewMode, setViewMode] = useState<ViewMode>(() =>
+    getInitialViewMode(),
+  );
   const queryClient = useQueryClient();
+
+  const handleViewModeChange = (nextMode: ViewMode) => {
+    setViewMode(nextMode);
+    persistViewMode(nextMode);
+  };
 
   const { mutate: approveScreenshot } = useMutation({
     mutationFn: (approved: boolean) => {
@@ -167,13 +168,14 @@ export function ScreenshotComparison({
                   const isSelected = viewMode === mode.id;
 
                   return (
-                    <Tooltip>
+                    <Tooltip key={mode.id}>
                       <TooltipTrigger asChild>
                         <Button
-                          key={mode.id}
                           variant={isSelected ? "default" : "ghost"}
                           size="sm"
-                          onClick={() => setViewMode(mode.id as ViewMode)}
+                          onClick={() =>
+                            handleViewModeChange(mode.id as ViewMode)
+                          }
                           aria-label={mode.label}
                           className={
                             isSelected
