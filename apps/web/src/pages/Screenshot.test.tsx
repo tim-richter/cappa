@@ -1,4 +1,7 @@
+import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { userEvent } from "vitest/browser";
+import { server } from "../test/setup";
 import { renderPageWithRoute } from "../test/utils";
 import { Screenshot } from "./Screenshot";
 
@@ -83,6 +86,73 @@ describe("Screenshot page", () => {
     await expect
       .element(screen.getByRole("heading", { name: "Visual Differences" }))
       .toBeVisible();
+  });
+
+  it("navigates to the next screenshot when ArrowRight is pressed", async () => {
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/3",
+      <Screenshot />,
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { name: "3" }))
+      .toBeVisible();
+
+    await userEvent.keyboard("{ArrowRight}");
+
+    await expect
+      .element(screen.getByRole("heading", { name: "4" }))
+      .toBeVisible();
+  });
+
+  it("navigates to the previous screenshot when ArrowLeft is pressed", async () => {
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/3",
+      <Screenshot />,
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { name: "3" }))
+      .toBeVisible();
+
+    await userEvent.keyboard("{ArrowLeft}");
+
+    await expect
+      .element(screen.getByRole("heading", { name: "2" }))
+      .toBeVisible();
+  });
+
+  it("approves the screenshot when the 'a' key is pressed", async () => {
+    let capturedBody: unknown;
+
+    server.use(
+      http.patch("/api/screenshots/:id", async ({ request, params }) => {
+        capturedBody = await request.json();
+        return HttpResponse.json({
+          name: params.id,
+          id: params.id,
+          category: "new",
+          actualPath: "/images/4a.png",
+          approved: true,
+        });
+      }),
+    );
+
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/3",
+      <Screenshot />,
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { name: "3" }))
+      .toBeVisible();
+
+    await userEvent.keyboard("a");
+
+    await expect.poll(() => capturedBody).toEqual({ approved: true });
   });
 
   it("initializes changed screenshots from persisted view mode", async () => {

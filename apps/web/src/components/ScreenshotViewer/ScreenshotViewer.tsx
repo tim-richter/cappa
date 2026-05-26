@@ -19,8 +19,8 @@ import {
   SplitSquareHorizontal,
   ToggleRight,
 } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
@@ -51,6 +51,7 @@ export function ScreenshotComparison({
     getInitialViewMode(),
   );
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
@@ -73,6 +74,36 @@ export function ScreenshotComparison({
       });
     },
   });
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.metaKey || event.ctrlKey || event.altKey) return;
+      const target = event.target as HTMLElement | null;
+      if (target?.isContentEditable) return;
+      const tag = target?.tagName;
+      if (tag === "INPUT" || tag === "TEXTAREA" || tag === "SELECT") return;
+
+      if (event.key === "ArrowLeft" && screenshot.prev) {
+        event.preventDefault();
+        navigate(`/screenshots/${screenshot.prev}`);
+      } else if (event.key === "ArrowRight" && screenshot.next) {
+        event.preventDefault();
+        navigate(`/screenshots/${screenshot.next}`);
+      } else if (event.key === "a" && !screenshot.approved) {
+        event.preventDefault();
+        approveScreenshot(true);
+      }
+    }
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    screenshot.prev,
+    screenshot.next,
+    screenshot.approved,
+    navigate,
+    approveScreenshot,
+  ]);
 
   return (
     <div className="flex flex-col h-full bg-background">
