@@ -1,9 +1,14 @@
 import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { userEvent } from "vitest/browser";
 import { server } from "../test/setup";
 import { renderPageWithRoute } from "../test/utils";
 import { Screenshot } from "./Screenshot";
+
+function pressKey(key: string) {
+  window.dispatchEvent(
+    new KeyboardEvent("keydown", { key, bubbles: true, cancelable: true }),
+  );
+}
 
 describe("Screenshot page", () => {
   beforeEach(() => {
@@ -99,7 +104,7 @@ describe("Screenshot page", () => {
       .element(screen.getByRole("heading", { name: "3" }))
       .toBeVisible();
 
-    await userEvent.keyboard("{ArrowRight}");
+    pressKey("ArrowRight");
 
     await expect
       .element(screen.getByRole("heading", { name: "4" }))
@@ -117,7 +122,7 @@ describe("Screenshot page", () => {
       .element(screen.getByRole("heading", { name: "3" }))
       .toBeVisible();
 
-    await userEvent.keyboard("{ArrowLeft}");
+    pressKey("ArrowLeft");
 
     await expect
       .element(screen.getByRole("heading", { name: "2" }))
@@ -150,7 +155,7 @@ describe("Screenshot page", () => {
       .element(screen.getByRole("heading", { name: "3" }))
       .toBeVisible();
 
-    await userEvent.keyboard("a");
+    pressKey("a");
 
     await expect.poll(() => capturedBody).toEqual({ approved: true });
   });
