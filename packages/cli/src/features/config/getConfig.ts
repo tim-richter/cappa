@@ -79,6 +79,7 @@ export async function getConfig(
     },
     review: {
       theme: userConfig.review?.theme ?? "light",
+      port: userConfig.review?.port ?? 3000,
     },
     connectionTimeout: userConfig.connectionTimeout ?? 20000,
   };

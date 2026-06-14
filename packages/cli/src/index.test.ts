@@ -608,7 +608,7 @@ describe("cappa CLI", () => {
         maxDiffPixels: 0,
         maxDiffPercentage: 0,
       },
-      review: { theme: "light" },
+      review: { theme: "light", port: 4000 },
     });
 
     globMock.mockImplementation((pattern: string) => {
@@ -653,9 +653,9 @@ describe("cappa CLI", () => {
     });
 
     expect(serverInstances).toHaveLength(1);
-    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({ port: 3000 });
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({ port: 4000 });
     expect(loggerInstance.success).toHaveBeenCalledWith(
-      "Review UI available at http://localhost:3000",
+      "Review UI available at http://localhost:4000",
     );
   });
 

@@ -174,6 +174,11 @@ export type UserConfig = {
      * - `'dark'`: Dark mode
      */
     theme?: "light" | "dark";
+    /**
+     * Port for the review UI server.
+     * @default 3000
+     */
+    port?: number;
   };
 };
 

@@ -44,7 +44,7 @@ test("return Config when config is set with defineConfig", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light" },
+    review: { theme: "light", port: 3000 },
   });
 });
 
@@ -104,6 +104,22 @@ test("respects review.theme override", async () => {
   expect(cappaUserConfig.review.theme).toBe("dark");
 });
 
+test("respects review.port override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    retries: 2,
+    plugins: [],
+    review: { port: 5000 },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.review.port).toBe(5000);
+});
+
 test("respects logConsoleEvents override", async () => {
   const config: ConfigResult["config"] = defineConfig({
     outputDir: "./screenshots",
@@ -156,7 +172,7 @@ test("return Config when config is a function", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light" },
+    review: { theme: "light", port: 3000 },
   });
 });
 
@@ -193,7 +209,7 @@ test("return Config when config is a promise", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light" },
+    review: { theme: "light", port: 3000 },
   });
 });
 
@@ -242,7 +258,7 @@ test("passes environment variables to config functions", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light" },
+    review: { theme: "light", port: 3000 },
   });
 
   if (originalNodeEnv === undefined) {

@@ -185,6 +185,21 @@ export default defineConfig({
 });
 ```
 
+### review.port
+
+- **type**: `number`
+- **default**: `3000`
+
+Port for the review UI server. Set to a different value if port 3000 is already in use.
+
+```ts
+export default defineConfig({
+  review: {
+    port: 4000,
+  },
+});
+```
+
 ## onFail
 
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`
