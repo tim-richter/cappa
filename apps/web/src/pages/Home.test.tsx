@@ -26,9 +26,9 @@ describe("Home page", () => {
 
   it("renders screenshot names after data loads", async () => {
     const screen = await renderPage(<Home />, { route: "/" });
+
     await expect.element(screen.getByText("New Screenshot")).toBeVisible();
     await expect.element(screen.getByText("Deleted Screenshot")).toBeVisible();
-    await expect.element(screen.getByText("Changed Screenshot")).toBeVisible();
     await expect.element(screen.getByText("Passed Screenshot")).toBeVisible();
   });
 

@@ -1,0 +1,26 @@
+{
+  "name": "Cappa",
+  "image": "mcr.microsoft.com/devcontainers/typescript-node:24",
+
+  "onCreateCommand": {
+    "pnpm": "sudo corepack enable && corepack prepare pnpm@latest --activate"
+  },
+  "postCreateCommand": {
+    "playwright": "pnpm dlx playwright@1.61.0 install chromium --with-deps"
+  },
+
+  "features": {
+    "ghcr.io/devcontainers/features/git:1": {}
+  },
+
+  "remoteEnv": {
+    "PNPM_HOME": "/home/node/.local/share/pnpm",
+    "PATH": "${containerEnv:PATH}:/home/node/.local/share/pnpm"
+  },
+
+  "mounts": [
+    "source=${localEnv:HOME}/.local/share/pnpm,target=/home/node/.local/share/pnpm,type=bind,consistency=cached"
+  ],
+
+  "remoteUser": "node"
+}

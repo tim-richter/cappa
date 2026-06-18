@@ -44,7 +44,7 @@
     "msw": "2.14.4",
     "msw-storybook-addon": "2.0.7",
     "nuqs": "^2.8.9",
-    "playwright": "^1.55.0",
+    "playwright": "^1.61.0",
     "storybook": "10.3.6",
     "tailwindcss": "catalog:",
     "tsx": "4.21.0",

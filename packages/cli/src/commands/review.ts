@@ -43,6 +43,8 @@ export const review = async () => {
     diff: config.diff,
   });
 
-  logger.success(`Review UI available at http://localhost:${config.review.port}`);
+  logger.success(
+    `Review UI available at http://localhost:${config.review.port}`,
+  );
   await server.listen({ port: config.review.port });
 };
