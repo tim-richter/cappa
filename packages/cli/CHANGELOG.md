@@ -1,5 +1,17 @@
 # @cappa/cli
 
+## 0.9.0
+
+### Minor Changes
+
+- fdbc39e: Adding a configuration option to override the default port 3000 for the review UI.
+
+### Patch Changes
+
+- Updated dependencies [fdbc39e]
+  - @cappa/core@0.10.0
+  - @cappa/server@0.7.1
+
 ## 0.8.4
 
 ### Patch Changes

@@ -1,5 +1,12 @@
 # @cappa/plugin-storybook
 
+## 0.8.5
+
+### Patch Changes
+
+- Updated dependencies [fdbc39e]
+  - @cappa/core@0.10.0
+
 ## 0.8.4
 
 ### Patch Changes

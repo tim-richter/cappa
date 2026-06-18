@@ -1,5 +1,12 @@
 # @cappa/plugin-pages
 
+## 0.2.3
+
+### Patch Changes
+
+- Updated dependencies [fdbc39e]
+  - @cappa/core@0.10.0
+
 ## 0.2.2
 
 ### Patch Changes
