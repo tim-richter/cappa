@@ -7,9 +7,9 @@ Cappa is a Playwright-based screenshot capture and visual regression testing too
 - **Always use `pnpm`** — never npm or yarn
 - **Turborepo** orchestrates build/test pipelines (`turbo.json`)
 - **Biome** handles linting and formatting (replaces ESLint + Prettier): `pnpm lint` / `pnpm lint:fix`
-- **tsdown** is the primary build tool for library packages (ESM + CJS output); `tsup` is used for `@cappa/plugin-storybook`
+- **tsdown** is the build tool for every library package (ESM + CJS output); each has its own `tsdown.config.ts`
 - **Vitest** is used for all tests across all packages
-- **TypeScript** `5.9.x` with strict settings throughout
+- **TypeScript** `6.x` (catalog-pinned) with strict settings throughout
 - Shared dependency versions are pinned in `pnpm-workspace.yaml` under the `catalog:` key — always prefer catalog versions over custom version specs
 
 ## Monorepo Structure
@@ -27,10 +27,13 @@ cappa/
 │   ├── ui/            # @workspace/ui — shared React component library (Radix + Tailwind)
 │   ├── config-ts/     # @cappa/config-ts — shared TypeScript configs
 │   └── plugins/
-│       └── plugin-storybook/  # @cappa/plugin-storybook — Storybook integration plugin
+│       ├── plugin-storybook/  # @cappa/plugin-storybook — Storybook integration plugin
+│       └── plugin-pages/      # @cappa/plugin-pages — screenshot arbitrary URLs
 ├── examples/
 │   ├── storybook/     # Storybook v9 example
 │   └── storybook-10/  # Storybook v10 example
+├── openspec/          # spec-driven artifact tracking (proposals, tasks, changes)
+└── AGENTS.md          # short agent guidelines (companion to this file)
 ```
 
 ## Key Packages
@@ -67,7 +70,10 @@ Two-phase Storybook plugin:
 1. **discover** — queries the Storybook API to list all stories
 2. **execute** — navigates to each story URL and calls `ScreenshotTool.captureScreenshot`
 
-Also exports a Storybook addon entry (`./browser`) for in-browser usage.
+Also exports a Storybook addon entry (`./browser`) for in-browser usage. Built with tsdown; peer dep `storybook ^9 || ^10`.
+
+### `@cappa/plugin-pages`
+Captures screenshots of an arbitrary list of URLs. Exported as `cappaPluginPages({ pages: [...] })`. Supports per-page `name`, viewport overrides, masks, delays, and configurable wait strategies (e.g. wait for network/visual idle). Each page becomes a discover task; execute navigates, freezes UI animations, applies the wait strategy, and calls `ScreenshotTool.captureWithVariants`.
 
 ### `@cappa/logger`
 Thin wrapper around `consola`. Call `initLogger(level)` once (CLI does this in the `preAction` hook), then use `getLogger()` everywhere else.
@@ -89,6 +95,8 @@ type PluginDef<TResult, TContext, TData> = {
 ```
 
 The CLI runs plugins sequentially. Within each plugin, tasks are split into chunks and executed in parallel using the page pool (`concurrency` setting, default 1).
+
+`Plugin`, `PluginDef`, and `PluginTask` types live in `packages/core/src/plugin.ts` (re-exported from the package root). Shipped plugins: `@cappa/plugin-storybook` and `@cappa/plugin-pages`.
 
 ## Configuration
 
@@ -187,7 +195,7 @@ pnpm release      # builds all + changeset publish
 ### TypeScript
 - Strict mode across all packages
 - Use `type` imports for type-only imports (`import type { Foo } from '...'`)
-- Public API types are defined in `packages/core/src/types.ts` and re-exported from `packages/core/src/index.ts`
+- Public API types are defined in `packages/core/src/types.ts` (config/screenshot types) and `packages/core/src/plugin.ts` (plugin types), re-exported from `packages/core/src/index.ts`
 
 ### Tests
 - Test files are co-located with source: `foo.ts` → `foo.test.ts`
@@ -197,8 +205,8 @@ pnpm release      # builds all + changeset publish
 ### Changesets
 - Every change to a published package needs a changeset file
 - Run `pnpm changeset` to create one interactively
-- Packages excluded from changesets: `web`, `@workspace/ui`, `@cappa/example-*`, `@cappa/config-ts`, `@cappa/docs`
-- `@cappa/server` and `web` are version-linked in changeset config
+- Packages excluded from changesets (`.changeset/config.json` `ignore`): `web`, `@workspace/ui`, `@cappa/example-storybook`, `@cappa/example-storybook-10`, `@cappa/config-ts`, `@cappa/docs`
+- `@cappa/server` and `web` are version-linked (`linked`) in changeset config; `baseBranch` is `main`
 
 ### Documentation
 - Update `apps/docs` when making changes or adding features to any public package
@@ -214,7 +222,7 @@ pnpm release      # builds all + changeset publish
 
 ## Package Publishing
 
-Published packages: `@cappa/core`, `@cappa/cli`, `@cappa/logger`, `@cappa/server`, `@cappa/plugin-storybook`
+Published packages: `@cappa/core`, `@cappa/cli`, `@cappa/logger`, `@cappa/server`, `@cappa/plugin-storybook`, `@cappa/plugin-pages`
 
 All packages use dual ESM/CJS output and are validated with `attw --profile node16`.
 
