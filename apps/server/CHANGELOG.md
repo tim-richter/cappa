@@ -1,5 +1,12 @@
 # @cappa/server
 
+## 0.7.1
+
+### Patch Changes
+
+- Updated dependencies [fdbc39e]
+  - @cappa/core@0.10.0
+
 ## 0.7.0
 
 ### Minor Changes
