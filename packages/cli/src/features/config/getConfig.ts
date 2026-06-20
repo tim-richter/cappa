@@ -43,7 +43,7 @@ export async function getConfig(
   }
 
   const diffConfig: UserConfig["diff"] = (() => {
-    if (!userConfig.diff || userConfig.diff.type !== "gmsd") {
+    if (userConfig.diff?.type !== "gmsd") {
       return {
         type: "pixel",
         threshold: userConfig.diff?.threshold ?? 0.1,

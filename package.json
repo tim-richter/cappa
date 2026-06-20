@@ -26,10 +26,10 @@
     "release": "pnpm -r build && pnpm --filter server build && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.4.14",
+    "@biomejs/biome": "^2.5.0",
     "@changesets/cli": "^2.31.0",
     "@types/node": "catalog:",
-    "turbo": "^2.9.9",
+    "turbo": "^2.9.18",
     "typescript": "catalog:"
   },
   "packageManager": "pnpm@11.7.0",

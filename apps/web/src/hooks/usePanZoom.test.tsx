@@ -108,7 +108,7 @@ describe("usePanZoom", () => {
 
     await waitForContainerMeasured(stateRef);
 
-    apiRef.current!.setScale(2);
+    apiRef.current?.setScale(2);
 
     await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(2);
   });
@@ -131,10 +131,10 @@ describe("usePanZoom", () => {
 
     await waitForContainerMeasured(stateRef);
 
-    apiRef.current!.setScale(2);
+    apiRef.current?.setScale(2);
     await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(2);
 
-    apiRef.current!.reset();
+    apiRef.current?.reset();
     await expect.poll(() => stateRef.current?.scale, { timeout: 2000 }).toBe(1);
   });
 
@@ -160,7 +160,7 @@ describe("usePanZoom", () => {
     await expect.poll(() => apiRef.current, { timeout: 3000 }).toBeDefined();
 
     // Trigger fit
-    apiRef.current!.fit();
+    apiRef.current?.fit();
 
     await expect
       .poll(() => stateRef.current?.scale, { timeout: 2000 })
@@ -180,7 +180,7 @@ describe("usePanZoom", () => {
 
     await waitForContainerMeasured(stateRef);
 
-    const initialScale = stateRef.current!.scale;
+    const initialScale = stateRef.current?.scale;
 
     await userEvent.dblClick(screen.getByTestId("container"));
 

@@ -19,8 +19,8 @@
     "screenshot:status": "cappa status"
   },
   "dependencies": {
-    "react": "^19.2.6",
-    "react-dom": "^19.2.6"
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
   },
   "devDependencies": {
     "@cappa/cli": "workspace:*",
@@ -31,12 +31,12 @@
     "@storybook/addon-a11y": "^10.0.2",
     "@storybook/addon-docs": "^10.0.2",
     "@storybook/addon-vitest": "^10.0.2",
-    "@storybook/react-vite": "^10.3.6",
-    "@types/node": "^25.5.0",
-    "@types/react": "^19.2.14",
+    "@storybook/react-vite": "^10.4.6",
+    "@types/node": "^25.9.3",
+    "@types/react": "^19.2.17",
     "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^6.0.1",
-    "@vitest/browser-playwright": "^4.1.5",
+    "@vitejs/plugin-react": "^6.0.2",
+    "@vitest/browser-playwright": "^4.1.9",
     "@vitest/coverage-v8": "catalog:",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^5.2.0",
@@ -44,10 +44,10 @@
     "eslint-plugin-storybook": "^10.2.16",
     "globals": "^16.5.0",
     "playwright": "^1.61.0",
-    "storybook": "^10.3.6",
+    "storybook": "^10.4.6",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.56.1",
-    "vite": "8.0.11",
+    "vite": "8.0.16",
     "vitest": "catalog:"
   }
 }

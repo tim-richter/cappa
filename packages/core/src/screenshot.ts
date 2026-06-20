@@ -205,7 +205,7 @@ class ScreenshotTool {
     // Create N contexts and pages in parallel
     const results = await Promise.all(
       Array.from({ length: this.concurrency }, async () => {
-        const context = await this.browser!.newContext({
+        const context = await this.browser?.newContext({
           reducedMotion: "reduce",
           deviceScaleFactor: 2,
           userAgent: `${defaultUserAgent} CappaStorybook`,
