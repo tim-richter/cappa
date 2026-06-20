@@ -193,11 +193,16 @@ class ScreenshotTool {
       throw new Error(`Unsupported browser type: ${this.browserType}`);
     }
 
-    this.browser = await browserClass.launch({
+    const browser = await browserClass.launch({
       headless: this.headless,
     });
 
-    const tempCtx = await this.browser.newContext();
+    if (!browser)
+      throw new Error("Something went wrong with starting the browser.");
+
+    this.browser = browser;
+
+    const tempCtx = await browser.newContext();
     const tempPage = await tempCtx.newPage();
     const defaultUserAgent = await tempPage.evaluate(() => navigator.userAgent);
     await tempCtx.close();
@@ -205,7 +210,7 @@ class ScreenshotTool {
     // Create N contexts and pages in parallel
     const results = await Promise.all(
       Array.from({ length: this.concurrency }, async () => {
-        const context = await this.browser?.newContext({
+        const context = await browser.newContext({
           reducedMotion: "reduce",
           deviceScaleFactor: 2,
           userAgent: `${defaultUserAgent} CappaStorybook`,

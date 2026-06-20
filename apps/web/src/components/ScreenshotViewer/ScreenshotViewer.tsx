@@ -19,8 +19,8 @@ import {
   SplitSquareHorizontal,
   ToggleRight,
 } from "lucide-react";
-import { useState } from "react";
-import { Link } from "react-router";
+import { useEffect, useState } from "react";
+import { Link, useNavigate } from "react-router";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { Overlay } from "./components/Overlay";
@@ -51,6 +51,7 @@ export function ScreenshotComparison({
     getInitialViewMode(),
   );
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
@@ -73,6 +74,30 @@ export function ScreenshotComparison({
       });
     },
   });
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest("input, textarea, [contenteditable]")) return;
+
+      if (e.key === "ArrowLeft" && screenshot.prev) {
+        navigate(`/screenshots/${screenshot.prev}`);
+      } else if (e.key === "ArrowRight" && screenshot.next) {
+        navigate(`/screenshots/${screenshot.next}`);
+      } else if (e.key === "a" && !screenshot.approved) {
+        approveScreenshot(true);
+      }
+    };
+
+    window.addEventListener("keydown", handler);
+    return () => window.removeEventListener("keydown", handler);
+  }, [
+    screenshot.prev,
+    screenshot.next,
+    screenshot.approved,
+    navigate,
+    approveScreenshot,
+  ]);
 
   return (
     <div className="flex flex-col h-full bg-background">
@@ -115,29 +140,39 @@ export function ScreenshotComparison({
         <div className="flex items-center justify-center">
           <div className="flex items-center gap-2">
             {screenshot.prev && (
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <Link to={`/screenshots/${screenshot.prev}`}>
-                  <ArrowLeft className="h-4 w-4" />
-                  Prev
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Link to={`/screenshots/${screenshot.prev}`}>
+                      <ArrowLeft className="h-4 w-4" />
+                      Prev
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Previous (←)</TooltipContent>
+              </Tooltip>
             )}
             {screenshot.next && (
-              <Button
-                variant="ghost"
-                size="sm"
-                asChild
-                className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
-              >
-                <Link to={`/screenshots/${screenshot.next}`}>
-                  Next <ArrowRight className="h-4 w-4" />
-                </Link>
-              </Button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    asChild
+                    className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                  >
+                    <Link to={`/screenshots/${screenshot.next}`}>
+                      Next <ArrowRight className="h-4 w-4" />
+                    </Link>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Next (→)</TooltipContent>
+              </Tooltip>
             )}
           </div>
         </div>
@@ -155,7 +190,7 @@ export function ScreenshotComparison({
                   <Check className="size-8" />
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Approve</TooltipContent>
+              <TooltipContent>Approve (A)</TooltipContent>
             </Tooltip>
           )}
 
