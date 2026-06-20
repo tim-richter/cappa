@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.9.1
+
+### Patch Changes
+
+- 480735f: update deps
+- Updated dependencies [e4c8abc]
+- Updated dependencies [480735f]
+  - @cappa/core@0.11.0
+  - @cappa/server@0.8.0
+
 ## 0.9.0
 
 ### Minor Changes

@@ -1,5 +1,14 @@
 # @cappa/plugin-storybook
 
+## 0.8.6
+
+### Patch Changes
+
+- 480735f: update deps
+- Updated dependencies [e4c8abc]
+- Updated dependencies [480735f]
+  - @cappa/core@0.11.0
+
 ## 0.8.5
 
 ### Patch Changes
