@@ -1,5 +1,15 @@
 # @cappa/core
 
+## 0.11.0
+
+### Minor Changes
+
+- e4c8abc: add support for keyboard shortcuts for screenshot navigation + approval
+
+### Patch Changes
+
+- 480735f: update deps
+
 ## 0.10.0
 
 ### Minor Changes
