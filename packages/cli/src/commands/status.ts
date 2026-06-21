@@ -3,6 +3,7 @@ import path from "node:path";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import { getConfig } from "../features/config";
+import { describeChanges } from "../utils/describeChanges";
 import { groupScreenshots } from "../utils/groupScreenshots";
 
 export const status = async () => {
@@ -43,4 +44,12 @@ export const status = async () => {
     title: "Screenshot Status",
     message: `${chalk.yellow("New screenshots:")} ${groupedScreenshots.filter((r) => r.category === "new").length}\n${chalk.red("Deleted screenshots:")} ${groupedScreenshots.filter((r) => r.category === "deleted").length}\n${chalk.green("Changed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "changed").length}\n${chalk.blue("Passed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "passed").length}`,
   });
+
+  const changeLines = describeChanges(groupedScreenshots);
+  if (changeLines.length > 0) {
+    logger.box({
+      title: "Changed Screenshots",
+      message: changeLines.join("\n"),
+    });
+  }
 };

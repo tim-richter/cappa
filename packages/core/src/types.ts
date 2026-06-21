@@ -1,3 +1,4 @@
+import type { InterpretResult } from "@blazediff/core-native";
 import type { Locator } from "playwright-core";
 import type { Plugin, PluginDef } from "./plugin";
 
@@ -64,6 +65,15 @@ export interface DiffConfig {
    * this can mean that small changes still slip through.
    */
   maxDiffPercentage?: number;
+  /**
+   * Run structured interpretation after the raw pixel diff.
+   * Default = false
+   *
+   * When enabled, changed screenshots get a `diff/<name>.json` sidecar describing
+   * *what* changed (additions, deletions, color shifts) grouped into regions, with a
+   * human-readable summary and severity. Pixel diff only — ignored when `type: 'gmsd'`.
+   */
+  interpret?: boolean;
 }
 
 /**
@@ -222,11 +232,30 @@ export type DeletedScreenshot = {
   expectedPath: string;
 };
 
+/**
+ * Pixel-diff statistics and optional structured interpretation for a changed
+ * screenshot. Persisted as a `diff/<name>.json` sidecar next to the diff image
+ * and read back when the review UI / CLI rebuild state from disk.
+ */
+export interface DiffMetadata {
+  /** Number of differing pixels reported by the pixel diff. */
+  numDiffPixels: number;
+  /** Percentage of differing pixels (0-100). */
+  percentDifference: number;
+  /** Structured interpretation, present only when `diff.interpret` is enabled. */
+  interpretation?: InterpretResult;
+}
+
 export type ChangedScreenshot = {
   category: "changed";
   diffPath: string;
   actualPath: string;
   expectedPath: string;
+  /**
+   * Diff statistics and optional interpretation loaded from the
+   * `diff/<name>.json` sidecar. Absent if the sidecar was not written.
+   */
+  diffMeta?: DiffMetadata;
 };
 
 export type PassedScreenshot = {

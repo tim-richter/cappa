@@ -36,6 +36,10 @@ The review UI supports **batch approval**: in grid or list view you can select m
 in one action. On category pages (e.g. New or Changed), **Approve all in category** approves every
 screenshot in the current view at once.
 
+When [`diff.interpret`](/configuration#diffinterpret) is enabled, changed screenshots also show a
+severity badge, a summary banner and interactive, color-coded region overlays on the diff view so
+you can see at a glance what changed and where.
+
 ## `cappa approve`
 
 Promotes the currently reviewed screenshots to the baseline. This command is typically run after a
@@ -49,6 +53,10 @@ differences from needlessly churning in version control and keeps your baseline 
 
 Summarizes the state of your screenshot directory, showing how many files are pending approval and
 whether any captures are missing. This is useful for scripting custom checks or reporting in CI.
+
+When [`diff.interpret`](/configuration#diffinterpret) is enabled, `status` also prints a per-screenshot
+breakdown of the changed screenshots, including the diff percentage, severity, region count and a
+human-readable summary of what changed.
 
 Tip: combine the commands with npm scripts to make common workflows easy to discover for the rest of
 your team.

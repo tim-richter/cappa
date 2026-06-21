@@ -1,13 +1,13 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import type { Screenshot } from "@cappa/core";
+import { readDiffMeta, type Screenshot } from "@cappa/core";
 
-export const groupScreenshots = (
+export const groupScreenshots = async (
   actualScreenshots: string[],
   expectedScreenshots: string[],
   diffScreenshots: string[],
   outputDir: string,
-) => {
+): Promise<Screenshot[]> => {
   const screenshotRepresentations: Screenshot[] = [];
 
   // Build Maps for O(1) lookups instead of O(n) .find() calls
@@ -35,6 +35,12 @@ export const groupScreenshots = (
     const expectedScreenshot = expectedByRelativePath.get(relativePath);
     const diffScreenshot = diffByRelativePath.get(relativePath);
 
+    // Load the diff metadata sidecar (stats + interpretation) for changed
+    // screenshots so it can be surfaced in the review UI and CLI.
+    const diffMeta = diffScreenshot
+      ? await readDiffMeta(diffScreenshot)
+      : undefined;
+
     screenshotRepresentations.push({
       id: id,
       name: name,
@@ -46,6 +52,7 @@ export const groupScreenshots = (
         ? path.relative(outputDir, diffScreenshot)
         : undefined,
       actualPath: path.relative(outputDir, screenshot),
+      ...(diffMeta ? { diffMeta } : {}),
     } as Screenshot);
   }
 

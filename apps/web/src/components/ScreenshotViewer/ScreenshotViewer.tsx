@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
+import { SeverityBadge } from "./components/Interpretation";
 import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";
 import { Single } from "./components/Single";
@@ -123,6 +124,13 @@ export function ScreenshotComparison({
                 category={screenshot.category}
                 className="uppercase text-xs"
               />
+
+              {screenshot.category === "changed" &&
+                screenshot.diffMeta?.interpretation && (
+                  <SeverityBadge
+                    severity={screenshot.diffMeta.interpretation.severity}
+                  />
+                )}
 
               {screenshot.approved && (
                 <Badge

@@ -83,7 +83,7 @@ async function executeOnFailCallback(
       diffScreenshotsPromise,
     ]);
 
-  const groupedScreenshots = groupScreenshots(
+  const groupedScreenshots = await groupScreenshots(
     await Array.fromAsync(actualScreenshots),
     await Array.fromAsync(expectedScreenshots),
     await Array.fromAsync(diffScreenshots),

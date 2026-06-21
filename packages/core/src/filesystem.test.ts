@@ -4,8 +4,12 @@ import path from "node:path";
 import { initLogger } from "@cappa/logger";
 import { afterEach, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { PNG } from "./features/png/png";
-import { ScreenshotFileSystem } from "./filesystem";
-import type { Screenshot } from "./types";
+import {
+  readDiffMeta,
+  ScreenshotFileSystem,
+  toDiffMetaPath,
+} from "./filesystem";
+import type { DiffMetadata, Screenshot } from "./types";
 
 const pixelDiff = {
   type: "pixel" as const,
@@ -181,8 +185,10 @@ describe("ScreenshotFileSystem.approveScreenshots", () => {
     const fileSystem = new ScreenshotFileSystem(tempDir);
     const actualPath = path.join(tempDir, "actual", "c.png");
     const diffPath = path.join(tempDir, "diff", "c.png");
+    const diffMetaPath = path.join(tempDir, "diff", "c.json");
     fs.writeFileSync(actualPath, "new");
     fs.writeFileSync(diffPath, "diff");
+    fs.writeFileSync(diffMetaPath, "{}");
 
     const screenshots: Screenshot[] = [
       {
@@ -198,6 +204,7 @@ describe("ScreenshotFileSystem.approveScreenshots", () => {
     await fileSystem.approveScreenshots(screenshots, pixelDiff);
 
     expect(fs.existsSync(diffPath)).toBe(false);
+    expect(fs.existsSync(diffMetaPath)).toBe(false);
     expect(
       fs.readFileSync(path.join(tempDir, "expected", "c.png"), "utf-8"),
     ).toBe("new");
@@ -263,5 +270,44 @@ describe("ScreenshotFileSystem.approveScreenshots", () => {
     await fileSystem.approveScreenshots(screenshots, pixelDiff);
 
     expect(fs.readFileSync(expectedPath)).toEqual(fs.readFileSync(actualPath));
+  });
+});
+
+describe("diff metadata sidecar", () => {
+  it("maps a diff image path to its sidecar path", () => {
+    expect(toDiffMetaPath("/out/diff/a/b.png")).toBe("/out/diff/a/b.json");
+    expect(toDiffMetaPath("/out/diff/no-ext")).toBe("/out/diff/no-ext.json");
+  });
+
+  it("writes and reads back a diff metadata sidecar", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+    const meta: DiffMetadata = {
+      numDiffPixels: 42,
+      percentDifference: 1.87,
+      interpretation: {
+        summary: "Moderate visual change detected",
+        severity: "Medium",
+        diffCount: 42,
+        totalRegions: 1,
+        regions: [],
+        diffPercentage: 1.87,
+        width: 100,
+        height: 100,
+      },
+    };
+
+    await fileSystem.writeDiffMetaFile("nested/button.png", meta);
+
+    const diffImagePath = fileSystem.getDiffFilePath("nested/button.png");
+    expect(
+      fs.existsSync(path.join(tempDir, "diff", "nested", "button.json")),
+    ).toBe(true);
+    expect(await readDiffMeta(diffImagePath)).toEqual(meta);
+  });
+
+  it("returns undefined when no sidecar exists", async () => {
+    expect(
+      await readDiffMeta(path.join(tempDir, "diff", "missing.png")),
+    ).toBeUndefined();
   });
 });

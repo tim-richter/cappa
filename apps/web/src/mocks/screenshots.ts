@@ -1,5 +1,6 @@
 import type { Screenshot } from "@cappa/core";
 import { HttpResponse, http } from "msw";
+import { mockDiffMeta } from "./diffMeta";
 
 export const handlers = [
   http.get("/api/config", () => {
@@ -156,6 +157,7 @@ export const handlers = [
         expectedPath: "/images/4b.png",
         diffPath: "/images/4diff.png",
         category: "changed",
+        diffMeta: mockDiffMeta,
 
         next: "4",
         prev: "2",

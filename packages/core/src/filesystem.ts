@@ -5,9 +5,39 @@ import { getLogger } from "@cappa/logger";
 import { imagesMatch } from "./compare/pixel";
 import { extractTextMetadata, injectTextMetadata } from "./features/png/util";
 import { mapWithConcurrency } from "./mapWithConcurrency";
-import type { DiffConfig, DiffOptions, Screenshot } from "./types";
+import type {
+  DiffConfig,
+  DiffMetadata,
+  DiffOptions,
+  Screenshot,
+} from "./types";
 
 const APPROVE_SCREENSHOTS_CONCURRENCY = 8;
+
+/**
+ * Map a diff image path to its sidecar metadata path (`.png` -> `.json`).
+ */
+export function toDiffMetaPath(diffImagePath: string): string {
+  const ext = path.extname(diffImagePath);
+  return ext
+    ? `${diffImagePath.slice(0, -ext.length)}.json`
+    : `${diffImagePath}.json`;
+}
+
+/**
+ * Read a diff metadata sidecar, returning `undefined` when it is missing or
+ * cannot be parsed (so callers can degrade gracefully).
+ */
+export async function readDiffMeta(
+  diffImagePath: string,
+): Promise<DiffMetadata | undefined> {
+  try {
+    const raw = await fsp.readFile(toDiffMetaPath(diffImagePath), "utf8");
+    return JSON.parse(raw) as DiffMetadata;
+  } catch {
+    return undefined;
+  }
+}
 
 /**
  * Class for interacting with the local file system to store the screenshots.
@@ -111,7 +141,9 @@ export class ScreenshotFileSystem {
 
     if (screenshot.category === "changed") {
       logger.debug(`Deleting diff screenshot: ${screenshot.diffPath}`);
-      await fsp.unlink(path.resolve(outputDir, screenshot.diffPath));
+      const diffPath = path.resolve(outputDir, screenshot.diffPath);
+      await fsp.unlink(diffPath);
+      await fsp.rm(toDiffMetaPath(diffPath), { force: true });
       await this.approveFromActualPath(
         path.resolve(outputDir, screenshot.actualPath),
       );
@@ -176,6 +208,7 @@ export class ScreenshotFileSystem {
 
     await this.copyDiffMetadataToExpected(diffPath, expectedPath);
     await fsp.unlink(diffPath);
+    await fsp.rm(toDiffMetaPath(diffPath), { force: true });
 
     return {
       actualPath,
@@ -309,6 +342,22 @@ export class ScreenshotFileSystem {
     const filepath = this.getDiffFilePath(filename);
     await this.ensureParentDir(filepath);
     await fsp.writeFile(filepath, data);
+  }
+
+  /**
+   * Get the path to a diff metadata sidecar file (`<name>.json`)
+   */
+  getDiffMetaFilePath(filename: string): string {
+    return toDiffMetaPath(this.getDiffFilePath(filename));
+  }
+
+  /**
+   * Write a diff metadata sidecar (`diff/<name>.json`) next to the diff image.
+   */
+  async writeDiffMetaFile(filename: string, meta: DiffMetadata): Promise<void> {
+    const filepath = this.getDiffMetaFilePath(filename);
+    await this.ensureParentDir(filepath);
+    await fsp.writeFile(filepath, JSON.stringify(meta));
   }
 
   /**

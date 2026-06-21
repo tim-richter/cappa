@@ -20,7 +20,7 @@ export const approve = async (options: { filter?: string[] }) => {
       fileSystem.getExpectedScreenshots(),
     ]);
 
-  let screenshotsToApprove = groupScreenshots(
+  let screenshotsToApprove = await groupScreenshots(
     actualScreenshots,
     expectedScreenshots,
     diffScreenshots,

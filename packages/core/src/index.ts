@@ -1,7 +1,12 @@
+import type { ChangeRegion, InterpretResult } from "@blazediff/core-native";
 import { compareImagesGMSD, imagesMatchGMSD } from "./compare/gmsd";
 import { compareImages, imagesMatch } from "./compare/pixel";
 import { defineConfig } from "./config";
-import { ScreenshotFileSystem } from "./filesystem";
+import {
+  readDiffMeta,
+  ScreenshotFileSystem,
+  toDiffMetaPath,
+} from "./filesystem";
 import type { Plugin, PluginDef, PluginFunction } from "./plugin";
 import ScreenshotTool, {
   type ScreenshotCaptureDetails,
@@ -15,6 +20,7 @@ import type {
   DeletedScreenshot,
   DiffConfig,
   DiffConfigGMSD,
+  DiffMetadata,
   DiffOptions,
   DiffOptionsGMSD,
   DiffOptionsPixel,
@@ -32,17 +38,20 @@ import type {
 
 export {
   type ChangedScreenshot,
+  type ChangeRegion,
   type ConfigEnv,
   compareImages,
   compareImagesGMSD,
   type DeletedScreenshot,
   type DiffConfig,
   type DiffConfigGMSD,
+  type DiffMetadata,
   type DiffOptions,
   type DiffOptionsGMSD,
   type DiffOptionsPixel,
   defineConfig,
   type FailedScreenshot,
+  type InterpretResult,
   imagesMatch,
   imagesMatchGMSD,
   type NewScreenshot,
@@ -50,6 +59,7 @@ export {
   type Plugin,
   type PluginDef,
   type PluginFunction,
+  readDiffMeta,
   type Screenshot,
   type ScreenshotCaptureDetails,
   type ScreenshotCaptureExtras,
@@ -61,6 +71,7 @@ export {
   type ScreenshotVariant,
   type ScreenshotVariantCaptureDetails,
   type ScreenshotVariantWithUrl,
+  toDiffMetaPath,
   type UserConfig,
   type Viewport,
 };

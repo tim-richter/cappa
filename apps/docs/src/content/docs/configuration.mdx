@@ -139,6 +139,65 @@ so it is affected by the size of the images. A 100px image with a 10% difference
 but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
 this can mean that small changes still slip through.
 
+### diff.interpret
+
+- **type**: `boolean`
+- **default**: `false`
+
+Run a structured interpretation pass after the raw pixel diff. Instead of only telling you
+*where* pixels differ, interpretation describes *what* changed — additions, deletions, color
+shifts and content changes — grouped into regions, each with a position, a percentage and a
+confidence score, plus an overall severity (`Low` / `Medium` / `High`) and a human-readable
+summary.
+
+```ts
+export default defineConfig({
+  diff: {
+    type: 'pixel',
+    interpret: true,
+  },
+});
+```
+
+When enabled, each changed screenshot gets a `diff/<name>.json` sidecar next to its diff image:
+
+```json
+{
+  "numDiffPixels": 17904,
+  "percentDifference": 1.87,
+  "interpretation": {
+    "summary": "Moderate visual change detected (1.87% of image, 3 regions). Content changed: 1 region (center).",
+    "severity": "Medium",
+    "totalRegions": 3,
+    "diffPercentage": 1.87,
+    "width": 1200,
+    "height": 800,
+    "regions": [
+      {
+        "changeType": "ContentChange",
+        "position": "center",
+        "percentage": 0.9,
+        "bbox": { "x": 420, "y": 300, "width": 360, "height": 200 }
+      }
+    ]
+  }
+}
+```
+
+The sidecar is read back by `cappa status` and the review UI:
+
+- **`cappa status`** prints a per-screenshot breakdown of changed screenshots with severity,
+  region count and summary.
+- **The review UI** shows a severity badge, a summary banner and interactive, color-coded
+  region overlays on the diff view.
+
+The sidecar lives in the `diff` directory, so it is cleared before each capture and removed when
+a screenshot is approved.
+
+:::note
+Interpretation is pixel-diff only. It is ignored when `diff.type` is `"gmsd"`.
+:::
+
 ### GMSD-only options
 
 The following options apply when `diff.type` is `"gmsd"`.

@@ -475,6 +475,19 @@ class ScreenshotTool {
         );
 
         this.logger.debug(`Diff image saved: ${diffImagePath}`);
+
+        // When interpretation is enabled, persist diff stats + interpretation as
+        // a sidecar so the review UI and CLI can surface them after rebuilding
+        // state from disk. Skipped entirely otherwise so no extra files appear
+        // for users who have not opted in (pixel only).
+        const result = retryScreenshot.comparisonResult;
+        if ("numDiffPixels" in result && result.interpretation) {
+          await this.filesystem.writeDiffMetaFile(diffFilename, {
+            numDiffPixels: result.numDiffPixels,
+            percentDifference: result.percentDifference,
+            interpretation: result.interpretation,
+          });
+        }
       }
 
       // different sizes diff image

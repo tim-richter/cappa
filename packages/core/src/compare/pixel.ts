@@ -6,6 +6,7 @@ import {
   type BlazeDiffOptions,
   type BlazeDiffResult,
   compare as blazediffCompare,
+  type InterpretResult,
 } from "@blazediff/core-native";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
@@ -23,6 +24,7 @@ export interface CompareResult {
   passed: boolean; // Whether the comparison passed based on threshold
   error?: string; // Error message if the comparison failed
   differentSizes: boolean; // Whether the images have different sizes
+  interpretation?: InterpretResult; // Structured diff analysis (when `interpret` is enabled)
 }
 
 type TempState = { tempRoot?: string };
@@ -51,13 +53,22 @@ async function resolveInputPath(
   return dest;
 }
 
-function toNativeOptions(config: DiffConfig): BlazeDiffOptions {
+function toNativeOptions(
+  config: DiffConfig,
+  withDiff: boolean,
+): BlazeDiffOptions {
   const extra = config as CompareOptions;
   const out: BlazeDiffOptions = {
     threshold: extra.threshold,
     antialiasing: extra.includeAA ?? false,
   };
 
+  // Only run the interpretation pass when we are actually producing a diff. This
+  // avoids wasted work for pass/fail-only comparisons (e.g. `imagesMatch` during
+  // approval), where the interpretation result would be discarded anyway.
+  if (extra.interpret && withDiff) {
+    out.interpret = true;
+  }
   if (extra.diffMask !== undefined) {
     out.diffMask = extra.diffMask;
   }
@@ -104,7 +115,7 @@ export async function compareImages(
         p1,
         p2,
         withDiff ? diffPath : undefined,
-        toNativeOptions(options),
+        toNativeOptions(options, withDiff),
       );
     } catch (error) {
       getLogger().error((error as Error).message || "Unknown error");
@@ -166,6 +177,7 @@ export async function compareImages(
       diffBuffer,
       passed: isPassed(percentDifference, numDiffPixels, options),
       differentSizes: false,
+      interpretation: nativeResult.interpretation,
     };
   } finally {
     if (state.tempRoot) {
