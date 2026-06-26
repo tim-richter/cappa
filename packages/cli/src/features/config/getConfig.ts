@@ -51,6 +51,7 @@ export async function getConfig(
         fastBufferCheck: userConfig.diff?.fastBufferCheck ?? true,
         maxDiffPixels: userConfig.diff?.maxDiffPixels ?? 0,
         maxDiffPercentage: userConfig.diff?.maxDiffPercentage ?? 0,
+        interpret: userConfig.diff?.interpret ?? false,
       };
     }
 

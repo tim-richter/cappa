@@ -37,6 +37,7 @@ test("return Config when config is set with defineConfig", async () => {
       fastBufferCheck: true,
       maxDiffPixels: 0,
       maxDiffPercentage: 0,
+      interpret: false,
     },
     plugins: [],
     onFail: undefined,
@@ -165,6 +166,7 @@ test("return Config when config is a function", async () => {
       fastBufferCheck: true,
       maxDiffPixels: 0,
       maxDiffPercentage: 0,
+      interpret: false,
     },
     plugins: [],
     onFail: undefined,
@@ -202,6 +204,7 @@ test("return Config when config is a promise", async () => {
       fastBufferCheck: true,
       maxDiffPixels: 0,
       maxDiffPercentage: 0,
+      interpret: false,
     },
     plugins: [],
     onFail: undefined,
@@ -251,6 +254,7 @@ test("passes environment variables to config functions", async () => {
       fastBufferCheck: true,
       maxDiffPixels: 0,
       maxDiffPercentage: 0,
+      interpret: false,
     },
     plugins: [],
     onFail: undefined,
@@ -299,6 +303,32 @@ test("keeps explicit pixel diff values from config", async () => {
     fastBufferCheck: false,
     maxDiffPixels: 5,
     maxDiffPercentage: 1,
+    interpret: false,
+  });
+});
+
+test("enables interpret when set in the pixel diff config", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    plugins: [],
+    diff: {
+      type: "pixel",
+      interpret: true,
+    },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.diff).toEqual({
+    type: "pixel",
+    threshold: 0.1,
+    includeAA: false,
+    fastBufferCheck: true,
+    maxDiffPixels: 0,
+    maxDiffPercentage: 0,
+    interpret: true,
   });
 });
 
