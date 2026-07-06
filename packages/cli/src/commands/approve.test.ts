@@ -22,7 +22,9 @@ describe("filterScreenshots", () => {
   });
 
   it("matches actualPath case-insensitively", () => {
-    const screenshots = [newScreenshot("Button/Primary", "actual/Button/Primary.png")];
+    const screenshots = [
+      newScreenshot("Button/Primary", "actual/Button/Primary.png"),
+    ];
     expect(filterScreenshots(screenshots, ["button/primary"])).toEqual(
       screenshots,
     );

@@ -55,41 +55,47 @@ describe("didScreenshotFail", () => {
 
 describe("getDeletedScreenshots", () => {
   it("returns empty array when no expected screenshots exist", async () => {
-    vi.mocked(glob).mockImplementation(async function* () {});
+    vi.mocked(glob).mockImplementation(async function* () {} as any);
     expect(await getDeletedScreenshots("/output")).toEqual([]);
   });
 
   it("returns empty array when all expected screenshots have a matching actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (pattern) {
+    vi.mocked(glob).mockImplementation(async function* (
+      pattern: string | readonly string[],
+    ) {
       if ((pattern as string).includes("actual")) {
         yield "/output/actual/button.png";
       } else {
         yield "/output/expected/button.png";
       }
-    });
+    } as any);
     expect(await getDeletedScreenshots("/output")).toEqual([]);
   });
 
   it("returns the deleted relative path when an expected screenshot has no matching actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (pattern) {
+    vi.mocked(glob).mockImplementation(async function* (
+      pattern: string | readonly string[],
+    ) {
       if ((pattern as string).includes("actual")) {
         // no actual screenshots
       } else {
         yield "/output/expected/button.png";
       }
-    });
+    } as any);
     expect(await getDeletedScreenshots("/output")).toEqual(["button.png"]);
   });
 
   it("returns only the missing paths when some expected screenshots are absent from actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (pattern) {
+    vi.mocked(glob).mockImplementation(async function* (
+      pattern: string | readonly string[],
+    ) {
       if ((pattern as string).includes("actual")) {
         yield "/output/actual/button.png";
       } else {
         yield "/output/expected/button.png";
         yield "/output/expected/card.png";
       }
-    });
+    } as any);
     expect(await getDeletedScreenshots("/output")).toEqual(["card.png"]);
   });
 });
@@ -142,7 +148,6 @@ describe("registerSignalHandlers", () => {
     expect(mockClose).not.toHaveBeenCalled();
     expect(mockExit).not.toHaveBeenCalled();
   });
-
 });
 
 describe("formatDuration", () => {
