@@ -49,6 +49,15 @@ During approval Cappa re-compares the latest actual image against the existing b
 updates the expected file when they truly differ. This prevents identical images with minor binary
 differences from needlessly churning in version control and keeps your baseline commits tidy.
 
+Use `--filter` to approve only a subset of screenshots by name or path. Matching is a
+case-insensitive substring search, so `--filter button` matches `Button/Primary`,
+`Button/Secondary`, and so on. Pass the flag multiple times to supply more than one pattern —
+a screenshot is approved if it matches any of them.
+
+```bash
+cappa approve --filter Button --filter Input
+```
+
 ## `cappa status`
 
 Summarizes the state of your screenshot directory, showing how many files are pending approval and

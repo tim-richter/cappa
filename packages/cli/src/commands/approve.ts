@@ -54,12 +54,16 @@ export const approve = async (options: { filter?: string[] }) => {
   }
 };
 
-const filterScreenshots = (screenshots: Screenshot[], filters: string[]) => {
+export const filterScreenshots = (
+  screenshots: Screenshot[],
+  filters: string[],
+) => {
   return screenshots.filter((screenshot) => {
     return filters.some((filter: string) => {
-      const nameMatches = screenshot.name.includes(filter);
+      const nameMatches = screenshot.name.toLowerCase().includes(filter);
       const pathMatches =
-        "actualPath" in screenshot && screenshot.actualPath?.includes(filter);
+        "actualPath" in screenshot &&
+        screenshot.actualPath?.toLowerCase().includes(filter);
       return nameMatches || pathMatches;
     });
   });
