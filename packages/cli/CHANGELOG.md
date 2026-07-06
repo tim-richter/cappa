@@ -1,5 +1,20 @@
 # @cappa/cli
 
+## 0.10.2
+
+### Patch Changes
+
+- ee60b61: fix(cli): make `approve --filter` case-insensitive
+
+  `--filter Button` now matches `Button/Primary` as expected. Previously the filter was lowercased but compared against the raw-cased screenshot name, so capitalized story names never matched.
+
+- 466eb57: fix(cli): exit 1 for new and deleted screenshots so CI catches unreviewed baselines
+
+  New screenshots (no baseline to compare) now return `success: false` instead of `true`, so `capture` exits 1 and the failure report lists them alongside changed screenshots. After all plugins finish, `capture` also checks for deleted screenshots (baselines with no corresponding actual) and exits 1 if any are found. This aligns the exit code with the `onFail` callback, which already included both categories.
+
+- c4f1011: fix(cli): register SIGINT/SIGTERM handlers so Ctrl-C during capture closes the browser before exit
+- 3656ed1: `cappa status` now exits with code 1 when any screenshots are new, changed, or deleted, making it usable as a CI/script gate (e.g. `cappa status && deploy.sh`).
+
 ## 0.10.1
 
 ### Patch Changes
