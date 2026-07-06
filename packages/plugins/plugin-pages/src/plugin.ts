@@ -157,7 +157,11 @@ export const cappaPluginPages: Plugin<PagesPluginOptions> = (options) => {
             ? undefined
             : captureResult.base.comparisonResult
               ? captureResult.base.comparisonResult.passed
-              : Boolean(captureResult.base.filepath),
+              : false,
+          isNew:
+            !captureResult.base.skipped && !captureResult.base.comparisonResult
+              ? true
+              : undefined,
           skipped: captureResult.base.skipped,
         };
       } catch (error) {

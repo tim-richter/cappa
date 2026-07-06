@@ -1,6 +1,98 @@
 import type { ScreenshotTool } from "@cappa/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { formatDuration, registerSignalHandlers } from "./capture";
+import {
+  didScreenshotFail,
+  formatDuration,
+  getDeletedScreenshots,
+  registerSignalHandlers,
+} from "./capture";
+
+vi.mock("node:fs/promises", () => ({
+  glob: vi.fn(),
+}));
+
+import { glob } from "node:fs/promises";
+
+describe("didScreenshotFail", () => {
+  it("returns false for a non-object result", () => {
+    expect(didScreenshotFail(null)).toBe(false);
+    expect(didScreenshotFail("string")).toBe(false);
+    expect(didScreenshotFail(42)).toBe(false);
+  });
+
+  it("returns true when result has a non-null error", () => {
+    expect(didScreenshotFail({ error: "oops" })).toBe(true);
+    expect(didScreenshotFail({ error: new Error("boom") })).toBe(true);
+  });
+
+  it("returns false when error is null/undefined", () => {
+    expect(didScreenshotFail({ error: null })).toBe(false);
+    expect(didScreenshotFail({ error: undefined })).toBe(false);
+  });
+
+  it("returns true when success is explicitly false", () => {
+    expect(didScreenshotFail({ success: false })).toBe(true);
+  });
+
+  it("returns false when success is true (comparison passed)", () => {
+    expect(
+      didScreenshotFail({ success: true, filepath: "/some/path.png" }),
+    ).toBe(false);
+  });
+
+  it("returns true when filepath is missing and not skipped (new screenshot with failed capture)", () => {
+    expect(didScreenshotFail({ filepath: undefined, skipped: false })).toBe(
+      true,
+    );
+  });
+
+  it("returns false when skipped is true even without filepath", () => {
+    expect(didScreenshotFail({ filepath: undefined, skipped: true })).toBe(
+      false,
+    );
+  });
+});
+
+describe("getDeletedScreenshots", () => {
+  it("returns empty array when no expected screenshots exist", async () => {
+    vi.mocked(glob).mockImplementation(async function* () {});
+    expect(await getDeletedScreenshots("/output")).toEqual([]);
+  });
+
+  it("returns empty array when all expected screenshots have a matching actual", async () => {
+    vi.mocked(glob).mockImplementation(async function* (pattern) {
+      if ((pattern as string).includes("actual")) {
+        yield "/output/actual/button.png";
+      } else {
+        yield "/output/expected/button.png";
+      }
+    });
+    expect(await getDeletedScreenshots("/output")).toEqual([]);
+  });
+
+  it("returns the deleted relative path when an expected screenshot has no matching actual", async () => {
+    vi.mocked(glob).mockImplementation(async function* (pattern) {
+      if ((pattern as string).includes("actual")) {
+        // no actual screenshots
+      } else {
+        yield "/output/expected/button.png";
+      }
+    });
+    expect(await getDeletedScreenshots("/output")).toEqual(["button.png"]);
+  });
+
+  it("returns only the missing paths when some expected screenshots are absent from actual", async () => {
+    vi.mocked(glob).mockImplementation(async function* (pattern) {
+      if ((pattern as string).includes("actual")) {
+        yield "/output/actual/button.png";
+      } else {
+        yield "/output/expected/button.png";
+        yield "/output/expected/card.png";
+      }
+    });
+    expect(await getDeletedScreenshots("/output")).toEqual(["card.png"]);
+  });
+});
 
 describe("registerSignalHandlers", () => {
   let unregister: (() => void) | undefined;

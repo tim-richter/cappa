@@ -274,6 +274,38 @@ describe("cappaPluginPages", () => {
       });
     });
 
+    it("returns success: false for a new screenshot with no baseline (no comparisonResult)", async () => {
+      const plugin = cappaPluginPages({
+        pages: [{ url: "https://example.com", name: "new-page" }],
+      });
+
+      const page = createMockPage();
+      const screenshotTool = createMockScreenshotTool({
+        captureWithVariants: vi.fn().mockResolvedValue({
+          base: {
+            filename: "new-page.png",
+            filepath: "/screenshots/actual/new-page.png",
+            skipped: false,
+            comparisonResult: null,
+          },
+          variants: [],
+        }),
+      });
+
+      const result = await plugin.execute(
+        {
+          id: "new-page",
+          url: "https://example.com",
+          data: { url: "https://example.com", name: "new-page" },
+        },
+        page,
+        screenshotTool,
+        {},
+      );
+
+      expect(result).toMatchObject({ success: false, isNew: true });
+    });
+
     it("applies custom wait strategy per page", async () => {
       const plugin = cappaPluginPages({
         pages: [

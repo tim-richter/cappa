@@ -14,6 +14,7 @@ import { groupScreenshots } from "../utils/groupScreenshots";
 type PluginCaptureResult = {
   success?: boolean;
   skipped?: boolean;
+  isNew?: boolean;
   error?: unknown;
   filepath?: string;
   storyId?: string;
@@ -31,7 +32,7 @@ type FailedScreenshotInfo = {
 const isObject = (value: unknown): value is Record<string, unknown> =>
   typeof value === "object" && value !== null;
 
-const didScreenshotFail = (result: unknown): boolean => {
+export const didScreenshotFail = (result: unknown): boolean => {
   if (!isObject(result)) {
     return false;
   }
@@ -134,13 +135,15 @@ export function formatDuration(ms: number): string {
 
 function generateFailureReportMessage(
   failedScreenshots: FailedScreenshotInfo[],
+  deletedScreenshots: string[],
 ): string {
-  if (failedScreenshots.length === 0) {
+  const total = failedScreenshots.length + deletedScreenshots.length;
+  if (total === 0) {
     return "";
   }
 
   const lines: string[] = [];
-  lines.push(`${chalk.red(`Total failures: ${failedScreenshots.length}`)}\n`);
+  lines.push(`${chalk.red(`Total failures: ${total}`)}\n`);
 
   // Group by plugin
   const byPlugin = new Map<string, FailedScreenshotInfo[]>();
@@ -173,7 +176,13 @@ function generateFailureReportMessage(
         lines.push(`  ${chalk.red("Error:")} ${errorMsg}`);
       }
       if (result.success === false) {
-        lines.push(`  ${chalk.red("Status:")} Failed (success: false)`);
+        if (result.isNew) {
+          lines.push(
+            `  ${chalk.yellow("Status:")} New screenshot (no baseline — run 'cappa approve' to accept)`,
+          );
+        } else {
+          lines.push(`  ${chalk.red("Status:")} Failed (comparison failed)`);
+        }
       }
       if (!result.filepath && result.skipped !== true) {
         lines.push(`  ${chalk.red("Status:")} Failed (no filepath generated)`);
@@ -181,7 +190,36 @@ function generateFailureReportMessage(
     }
   }
 
+  if (deletedScreenshots.length > 0) {
+    lines.push(`\n${chalk.bold("Deleted baselines:")}`);
+    for (const screenshotPath of deletedScreenshots) {
+      lines.push(
+        `  ${chalk.dim("Name:")} ${screenshotPath.replace(/\.png$/, "")}`,
+      );
+    }
+  }
+
   return lines.join("\n");
+}
+
+export async function getDeletedScreenshots(
+  outputDir: string,
+): Promise<string[]> {
+  const actualDir = path.resolve(outputDir, "actual");
+  const expectedDir = path.resolve(outputDir, "expected");
+
+  const [actualFiles, expectedFiles] = await Promise.all([
+    Array.fromAsync(glob(path.join(actualDir, "**/*.png"))),
+    Array.fromAsync(glob(path.join(expectedDir, "**/*.png"))),
+  ]);
+
+  const actualRelative = new Set(
+    actualFiles.map((p) => path.relative(actualDir, p)),
+  );
+
+  return expectedFiles
+    .map((p) => path.relative(expectedDir, p))
+    .filter((rel) => !actualRelative.has(rel));
 }
 
 type CaptureOptions = {
@@ -232,6 +270,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
 
   let captureError: unknown;
   let hasScreenshotFailure = false;
+  let anyTasksRan = false;
   const failedScreenshots: FailedScreenshotInfo[] = [];
 
   try {
@@ -254,6 +293,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
         continue;
       }
 
+      anyTasksRan = true;
       let pluginHasFailure = false;
       // Phase 2: Execute tasks in parallel chunks
       // Use the minimum of concurrency and actual number of tasks to avoid empty chunks
@@ -332,6 +372,18 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     await screenshotTool.close();
   }
 
+  let deletedScreenshots: string[] = [];
+  if (anyTasksRan) {
+    try {
+      deletedScreenshots = await getDeletedScreenshots(config.outputDir);
+      if (deletedScreenshots.length > 0) {
+        hasScreenshotFailure = true;
+      }
+    } catch (err) {
+      logger.warn("Could not check for deleted screenshots:", err);
+    }
+  }
+
   const isCi = options.ci || process.env.CI === "true";
 
   if (!captureError && isCi) {
@@ -341,7 +393,10 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const duration = formatDuration(performance.now() - captureStart);
 
   if (hasScreenshotFailure) {
-    const reportMessage = generateFailureReportMessage(failedScreenshots);
+    const reportMessage = generateFailureReportMessage(
+      failedScreenshots,
+      deletedScreenshots,
+    );
     logger.box({
       title: "Failed Screenshots",
       message: reportMessage,

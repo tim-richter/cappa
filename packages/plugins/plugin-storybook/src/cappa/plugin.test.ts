@@ -639,3 +639,74 @@ describe("connection timeout", () => {
     timeoutSpy.mockRestore();
   });
 });
+
+describe("cappaPluginStorybook - execute", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  function createMockPage() {
+    return {
+      goto: vi.fn().mockResolvedValue(undefined),
+      setViewportSize: vi.fn().mockResolvedValue(undefined),
+      evaluate: vi.fn().mockResolvedValue(false),
+      on: vi.fn(),
+    } as any;
+  }
+
+  function makeAutoResolveLatchMap() {
+    const _map = new Map<string, any>();
+    return {
+      set(id: string, latch: { p: Promise<any>; resolve: (v: any) => void }) {
+        latch.resolve(undefined);
+        _map.set(id, latch);
+      },
+      get: (id: string) => _map.get(id),
+      delete: (id: string) => _map.delete(id),
+    };
+  }
+
+  it("returns success: false for a new screenshot with no baseline (no comparisonResult)", async () => {
+    const mockCaptureWithVariants = vi.fn().mockResolvedValue({
+      base: {
+        filename: "button--primary.png",
+        filepath: "/screenshots/actual/button--primary.png",
+        skipped: false,
+        comparisonResult: null,
+      },
+      variants: [],
+    });
+
+    const screenshotTool = {
+      viewport: { width: 1920, height: 1080 },
+      connectionTimeout: 20000,
+      captureWithVariants: mockCaptureWithVariants,
+    } as any;
+
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    const result = await plugin.execute(
+      {
+        id: "button--primary",
+        url: "http://localhost:6006/iframe.html?id=button--primary",
+        data: {
+          story: {
+            id: "button--primary",
+            name: "Primary",
+            title: "Button",
+            kind: "Button",
+            story: "Primary",
+            type: "story",
+          },
+        },
+      },
+      createMockPage(),
+      screenshotTool,
+      { latchMap: makeAutoResolveLatchMap() },
+    );
+
+    expect(result).toMatchObject({ success: false, isNew: true });
+  });
+});
