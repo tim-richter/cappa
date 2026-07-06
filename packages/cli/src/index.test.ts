@@ -962,6 +962,40 @@ describe("cappa CLI", () => {
     );
   });
 
+  test("status command sets process.exitCode to 1 when screenshots have drifted", async () => {
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+    });
+
+    groupScreenshotsMock.mockResolvedValue([
+      { category: "new" },
+      { category: "changed" },
+      { category: "passed" },
+    ]);
+
+    process.argv = ["node", "cappa", "status"];
+    await run();
+
+    expect(process.exitCode).toBe(1);
+  });
+
+  test("status command leaves process.exitCode unset when all screenshots pass", async () => {
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+    });
+
+    groupScreenshotsMock.mockResolvedValue([{ category: "passed" }]);
+
+    process.argv = ["node", "cappa", "status"];
+    await run();
+
+    expect(process.exitCode).toBeUndefined();
+  });
+
   test("status command summarizes grouped screenshots", async () => {
     loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",

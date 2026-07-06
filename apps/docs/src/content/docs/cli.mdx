@@ -52,7 +52,12 @@ differences from needlessly churning in version control and keeps your baseline 
 ## `cappa status`
 
 Summarizes the state of your screenshot directory, showing how many files are pending approval and
-whether any captures are missing. This is useful for scripting custom checks or reporting in CI.
+whether any captures are missing. When any screenshots are `new`, `changed`, or `deleted`, the
+command exits with code `1`, making it suitable as a CI/script gate:
+
+```bash
+cappa status && deploy.sh
+```
 
 When [`diff.interpret`](/configuration#diffinterpret) is enabled, `status` also prints a per-screenshot
 breakdown of the changed screenshots, including the diff percentage, severity, region count and a

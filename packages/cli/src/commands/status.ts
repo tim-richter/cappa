@@ -52,4 +52,12 @@ export const status = async () => {
       message: changeLines.join("\n"),
     });
   }
+
+  if (
+    groupedScreenshots.some((s) =>
+      ["new", "changed", "deleted"].includes(s.category),
+    )
+  ) {
+    process.exitCode = 1;
+  }
 };
