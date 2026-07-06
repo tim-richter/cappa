@@ -188,6 +188,24 @@ type CaptureOptions = {
   ci?: boolean;
 };
 
+export function registerSignalHandlers(
+  screenshotTool: ScreenshotTool,
+  exitFn: (code: number) => void = process.exit,
+): () => void {
+  const handleSignal = async () => {
+    await screenshotTool.close();
+    exitFn(130);
+  };
+
+  process.once("SIGINT", handleSignal);
+  process.once("SIGTERM", handleSignal);
+
+  return () => {
+    process.off("SIGINT", handleSignal);
+    process.off("SIGTERM", handleSignal);
+  };
+}
+
 const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const logger = getLogger();
   const captureStart = performance.now();
@@ -209,6 +227,8 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
     connectionTimeout: config.connectionTimeout,
   });
+
+  const unregisterSignalHandlers = registerSignalHandlers(screenshotTool);
 
   let captureError: unknown;
   let hasScreenshotFailure = false;
@@ -308,7 +328,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     captureError = error;
     throw error;
   } finally {
-    // Always close the browser to ensure the process exits
+    unregisterSignalHandlers();
     await screenshotTool.close();
   }
 
