@@ -122,6 +122,14 @@ async function executeOnFailCallback(
   }
 }
 
+export function formatProgress(
+  completed: number,
+  total: number,
+  taskId: string,
+): string {
+  return `[${completed}/${total}] captured ${taskId}`;
+}
+
 export function formatDuration(ms: number): string {
   const seconds = Math.floor(ms / 1000);
   const minutes = Math.floor(seconds / 60);
@@ -312,6 +320,8 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
         `Processing ${tasks.length} tasks with ${effectiveConcurrency} contexts in ${chunks.length} chunks`,
       );
 
+      let completedTasks = 0;
+
       const allResults = await Promise.all(
         chunks.map(async (chunk, chunkIndex) => {
           const page = screenshotTool.getPageFromPool(chunkIndex);
@@ -335,6 +345,9 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
               context,
             );
             chunkResults.push({ result, task });
+
+            completedTasks++;
+            logger.info(formatProgress(completedTasks, tasks.length, task.id));
 
             if (didScreenshotFail(result)) {
               pluginHasFailure = true;
