@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   didScreenshotFail,
   formatDuration,
+  formatProgress,
   getDeletedScreenshots,
   registerSignalHandlers,
 } from "./capture";
@@ -147,6 +148,24 @@ describe("registerSignalHandlers", () => {
 
     expect(mockClose).not.toHaveBeenCalled();
     expect(mockExit).not.toHaveBeenCalled();
+  });
+});
+
+describe("formatProgress", () => {
+  it("formats a progress message with completed count, total, and task ID", () => {
+    expect(formatProgress(1, 480, "story-button")).toBe(
+      "[1/480] captured story-button",
+    );
+  });
+
+  it("formats correctly when completed equals total", () => {
+    expect(formatProgress(480, 480, "story-footer")).toBe(
+      "[480/480] captured story-footer",
+    );
+  });
+
+  it("handles a single-task run", () => {
+    expect(formatProgress(1, 1, "homepage")).toBe("[1/1] captured homepage");
   });
 });
 
