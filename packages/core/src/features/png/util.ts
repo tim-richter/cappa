@@ -1,3 +1,4 @@
+import { open } from "node:fs/promises";
 import type { MetadataEntries } from "./types";
 
 type ParsedChunk = {
@@ -130,6 +131,42 @@ export function injectTextMetadata(buffer: Buffer, metadata: MetadataEntries) {
     ...textChunks,
     buffer.subarray(iendChunk.offset),
   ]);
+}
+
+export function isValidPngSignature(buffer: Buffer): boolean {
+  if (buffer.length < pngSignature.length) return false;
+  return buffer.subarray(0, pngSignature.length).equals(pngSignature);
+}
+
+const IHDR_MIN_BYTES = 24;
+
+export async function readIhdrDimensions(
+  source: string | Buffer,
+): Promise<{ width: number; height: number }> {
+  let buf: Buffer;
+
+  if (typeof source === "string") {
+    const fh = await open(source, "r");
+    try {
+      buf = Buffer.alloc(IHDR_MIN_BYTES);
+      await fh.read(buf, 0, IHDR_MIN_BYTES, 0);
+    } finally {
+      await fh.close();
+    }
+  } else {
+    buf = source;
+  }
+
+  if (
+    buf.length < IHDR_MIN_BYTES ||
+    !buf.subarray(0, pngSignature.length).equals(pngSignature)
+  ) {
+    throw new Error("Not a valid PNG");
+  }
+
+  const width = buf.readUInt32BE(16);
+  const height = buf.readUInt32BE(20);
+  return { width, height };
 }
 
 /**

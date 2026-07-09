@@ -10,6 +10,11 @@ import {
 } from "@blazediff/core-native";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
+import {
+  injectTextMetadata,
+  isValidPngSignature,
+  readIhdrDimensions,
+} from "../features/png/util";
 import type { DiffConfig } from "../types";
 
 /** Pixel diff options: Cappa `DiffConfig` plus optional native-only output tuning. */
@@ -46,7 +51,10 @@ async function resolveInputPath(
     return path.resolve(source);
   }
 
-  await PNG.load(source);
+  if (!isValidPngSignature(source)) {
+    throw new Error("Invalid PNG buffer: missing PNG signature");
+  }
+
   const root = await ensureTempRoot(state);
   const dest = path.join(root, fileName);
   await fsp.writeFile(dest, source);
@@ -146,7 +154,7 @@ export async function compareImages(
       }
     }
 
-    const { width, height } = await PNG.load(p1);
+    const { width, height } = await readIhdrDimensions(p1);
     const totalPixels = width * height;
 
     if (nativeResult.match) {
@@ -162,9 +170,16 @@ export async function compareImages(
 
     let diffBuffer: Buffer | undefined;
     if (withDiff && diffPath) {
-      const raw = await fsp.readFile(diffPath);
-      const diffPng = await PNG.load(raw);
-      diffBuffer = await annotateDiffImage(diffPng, options).toBuffer();
+      const rawDiff = await fsp.readFile(diffPath);
+      const diffMetadata: Record<string, string> = {
+        "cappa.diff.algorithm": "pixel",
+      };
+      for (const [key, value] of Object.entries(options)) {
+        if (value !== undefined) {
+          diffMetadata[`cappa.diff.${key}`] = String(value);
+        }
+      }
+      diffBuffer = injectTextMetadata(rawDiff, diffMetadata);
     }
 
     const numDiffPixels = nativeResult.diffCount;
@@ -188,20 +203,6 @@ export async function compareImages(
         });
     }
   }
-}
-
-function annotateDiffImage(image: PNG, options: DiffConfig) {
-  image.setMetadata("cappa.diff.algorithm", "pixel");
-
-  for (const [key, value] of Object.entries(options)) {
-    if (value === undefined) {
-      continue;
-    }
-
-    image.setMetadata(`cappa.diff.${key}`, String(value));
-  }
-
-  return image;
 }
 
 /**

@@ -406,7 +406,7 @@ class ScreenshotTool {
   async takeScreenshotWithComparison(
     page: Page,
     filename: string,
-    referenceImage: Buffer,
+    referenceImage: string | Buffer,
     options: ScreenshotSettings & {
       saveDiffImage?: boolean;
       diffImageFilename?: string;
@@ -524,7 +524,7 @@ class ScreenshotTool {
 
   async retryScreenshot(
     page: Page,
-    referenceImage: Buffer,
+    referenceImage: string | Buffer,
     options: ScreenshotSettings,
     diffOverride?: DiffOptions,
   ) {
@@ -656,7 +656,7 @@ class ScreenshotTool {
         await this.takeScreenshotWithComparison(
           page,
           filename,
-          await this.filesystem.readExpectedFile(filename),
+          this.filesystem.getExpectedFilePath(filename),
           {
             ...options,
             saveDiffImage: saveDiff,

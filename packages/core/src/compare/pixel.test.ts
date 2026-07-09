@@ -1,6 +1,7 @@
 import fs from "node:fs";
+import fsp from "node:fs/promises";
 import path from "node:path";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
 import { PNG as CappaPNG } from "../features/png/png";
 import {
   type CompareOptions,
@@ -398,6 +399,39 @@ describe("compare", () => {
 
       expect(result.passed).toBe(true);
       expect(result.percentDifference).toBe(0);
+    });
+  });
+
+  describe("performance optimizations", () => {
+    it("should not write temp files when both inputs are paths", async () => {
+      const writeSpy = vi.spyOn(fsp, "writeFile");
+      const redPath = path.join(testDir, "red.png");
+      const bluePath = path.join(testDir, "blue.png");
+
+      await compareImages(redPath, bluePath);
+
+      expect(writeSpy).not.toHaveBeenCalled();
+      writeSpy.mockRestore();
+    });
+
+    it("should not call PNG.load for dimension extraction", async () => {
+      const loadSpy = vi.spyOn(CappaPNG, "load");
+      const redPath = path.join(testDir, "red.png");
+      const bluePath = path.join(testDir, "blue.png");
+
+      await compareImages(redPath, bluePath);
+
+      expect(loadSpy).not.toHaveBeenCalled();
+      loadSpy.mockRestore();
+    });
+
+    it("should reject invalid PNG buffers with a clear error", async () => {
+      const invalidBuffer = Buffer.from("not a png file");
+      const validImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+
+      await expect(compareImages(invalidBuffer, validImage)).rejects.toThrow(
+        "Invalid PNG buffer",
+      );
     });
   });
 });
