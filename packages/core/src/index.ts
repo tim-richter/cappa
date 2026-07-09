@@ -7,6 +7,7 @@ import {
   ScreenshotFileSystem,
   toDiffMetaPath,
 } from "./filesystem";
+import { mapWithConcurrency } from "./mapWithConcurrency";
 import type { Plugin, PluginDef, PluginFunction } from "./plugin";
 import ScreenshotTool, {
   type ScreenshotCaptureDetails,
@@ -54,6 +55,7 @@ export {
   type InterpretResult,
   imagesMatch,
   imagesMatchGMSD,
+  mapWithConcurrency,
   type NewScreenshot,
   type PassedScreenshot,
   type Plugin,

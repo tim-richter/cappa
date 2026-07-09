@@ -2,6 +2,7 @@ import { glob } from "node:fs/promises";
 import path from "node:path";
 import {
   type FailedScreenshot,
+  mapWithConcurrency,
   ScreenshotFileSystem,
   ScreenshotTool,
 } from "@cappa/core";
@@ -303,69 +304,55 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
 
       anyTasksRan = true;
       let pluginHasFailure = false;
-      // Phase 2: Execute tasks in parallel chunks
-      // Use the minimum of concurrency and actual number of tasks to avoid empty chunks
-      const effectiveConcurrency = Math.min(
-        tasks.length,
-        screenshotTool.concurrency,
-      );
-      const chunkSize = Math.ceil(tasks.length / effectiveConcurrency);
-      const chunks: (typeof tasks)[] = [];
-
-      for (let i = 0; i < tasks.length; i += chunkSize) {
-        chunks.push(tasks.slice(i, i + chunkSize));
-      }
 
       logger.debug(
-        `Processing ${tasks.length} tasks with ${effectiveConcurrency} contexts in ${chunks.length} chunks`,
+        `Processing ${tasks.length} tasks with concurrency ${screenshotTool.concurrency}`,
       );
 
       let completedTasks = 0;
+      const pageContexts = new Map<number, any>();
 
-      const allResults = await Promise.all(
-        chunks.map(async (chunk, chunkIndex) => {
-          const page = screenshotTool.getPageFromPool(chunkIndex);
-          const chunkResults: Array<{
-            result: PluginCaptureResult;
-            task: (typeof tasks)[number];
-          }> = [];
-          let context: any;
+      const allResults = await mapWithConcurrency(
+        screenshotTool.concurrency,
+        tasks,
+        async (task: any, workerIndex) => {
+          const page = screenshotTool.getPageFromPool(workerIndex);
 
-          // Initialize page if plugin has initPage method
-          if (plugin.initPage) {
-            context = await plugin.initPage(page, screenshotTool);
-          }
-
-          for (const task of chunk) {
-            logger.debug(`Executing task: ${task.id}`);
-            const result = await plugin.execute(
-              task,
-              page,
-              screenshotTool,
-              context,
+          if (!pageContexts.has(workerIndex) && plugin.initPage) {
+            pageContexts.set(
+              workerIndex,
+              await plugin.initPage(page, screenshotTool),
             );
-            chunkResults.push({ result, task });
+          }
+          const context = pageContexts.get(workerIndex);
 
-            completedTasks++;
-            logger.info(formatProgress(completedTasks, tasks.length, task.id));
+          logger.debug(`Executing task: ${task.id}`);
+          const result = await plugin.execute(
+            task,
+            page,
+            screenshotTool,
+            context,
+          );
 
-            if (didScreenshotFail(result)) {
-              pluginHasFailure = true;
-              hasScreenshotFailure = true;
-              failedScreenshots.push({
-                taskId: task.id,
-                taskUrl: task.url,
-                result: result as PluginCaptureResult,
-                pluginName: plugin.name,
-              });
-            }
+          completedTasks++;
+          logger.info(formatProgress(completedTasks, tasks.length, task.id));
+
+          if (didScreenshotFail(result)) {
+            pluginHasFailure = true;
+            hasScreenshotFailure = true;
+            failedScreenshots.push({
+              taskId: task.id,
+              taskUrl: task.url,
+              result: result as PluginCaptureResult,
+              pluginName: plugin.name,
+            });
           }
 
-          return chunkResults;
-        }),
+          return result;
+        },
       );
 
-      const results = allResults.flat().map((r) => r.result);
+      const results = allResults;
       if (pluginHasFailure) {
         logger.error(
           `Plugin ${plugin.name} completed with failures: ${results.length} results`,
