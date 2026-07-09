@@ -1,5 +1,23 @@
 # @cappa/core
 
+## 0.12.1
+
+### Patch Changes
+
+- 5548381: perf(cli): replace static pre-chunking with work-stealing pool in capture
+
+  Replace fixed chunk assignment with a shared work queue so pages grab the
+  next task as soon as they finish the current one. Reuses and extends the
+  existing `mapWithConcurrency` utility from `@cappa/core` to support return
+  values and worker indices. Eliminates idle tail time when task durations vary.
+
+- 9b49288: perf(core): eliminate redundant PNG decodes and temp-file round-trips in image comparison
+
+  - Pass expected-image file path directly to the native comparator instead of reading into a Buffer and writing back to a temp file
+  - Replace full sharp decode for PNG validation with an 8-byte signature check
+  - Extract image dimensions from the 24-byte IHDR header instead of a full sharp decode
+  - Inject diff metadata directly into the PNG buffer instead of decode/set/re-encode
+
 ## 0.12.0
 
 ### Minor Changes

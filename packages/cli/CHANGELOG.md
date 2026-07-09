@@ -1,5 +1,22 @@
 # @cappa/cli
 
+## 0.10.3
+
+### Patch Changes
+
+- 26f09dc: Add info-level progress feedback during capture so users see `[N/total] captured <task>` as each screenshot completes, instead of silence until the plugin finishes.
+- 5548381: perf(cli): replace static pre-chunking with work-stealing pool in capture
+
+  Replace fixed chunk assignment with a shared work queue so pages grab the
+  next task as soon as they finish the current one. Reuses and extends the
+  existing `mapWithConcurrency` utility from `@cappa/core` to support return
+  values and worker indices. Eliminates idle tail time when task durations vary.
+
+- Updated dependencies [5548381]
+- Updated dependencies [9b49288]
+  - @cappa/core@0.12.1
+  - @cappa/server@0.8.2
+
 ## 0.10.2
 
 ### Patch Changes
