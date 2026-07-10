@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.12.2
+
+### Patch Changes
+
+- ef49619: Fix missing diff images when `diff.interpret` is enabled. The native comparison binding skips writing the diff output file when `interpret: true` is passed, causing ENOENT errors during capture. Interpretation is now fetched in a separate call so the diff image is always produced.
+
 ## 0.12.1
 
 ### Patch Changes
