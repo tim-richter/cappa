@@ -170,16 +170,21 @@ export async function compareImages(
 
     let diffBuffer: Buffer | undefined;
     if (withDiff && diffPath) {
-      const rawDiff = await fsp.readFile(diffPath);
-      const diffMetadata: Record<string, string> = {
-        "cappa.diff.algorithm": "pixel",
-      };
-      for (const [key, value] of Object.entries(options)) {
-        if (value !== undefined) {
-          diffMetadata[`cappa.diff.${key}`] = String(value);
+      try {
+        await fsp.access(diffPath, fs.constants.R_OK);
+        const rawDiff = await fsp.readFile(diffPath);
+        const diffMetadata: Record<string, string> = {
+          "cappa.diff.algorithm": "pixel",
+        };
+        for (const [key, value] of Object.entries(options)) {
+          if (value !== undefined) {
+            diffMetadata[`cappa.diff.${key}`] = String(value);
+          }
         }
+        diffBuffer = injectTextMetadata(rawDiff, diffMetadata);
+      } catch {
+        // Native comparison did not produce a diff file – leave diffBuffer undefined.
       }
-      diffBuffer = injectTextMetadata(rawDiff, diffMetadata);
     }
 
     const numDiffPixels = nativeResult.diffCount;
