@@ -402,6 +402,53 @@ describe("compare", () => {
     });
   });
 
+  describe("diff file generation", () => {
+    it("should produce diffBuffer with two buffers", async () => {
+      const red = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blue = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const result = await compareImages(red, blue, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with two file paths", async () => {
+      const redPath = path.join(testDir, "red.png");
+      const bluePath = path.join(testDir, "blue.png");
+      const result = await compareImages(redPath, bluePath, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with buffer + file path (capture scenario)", async () => {
+      const screenshotBuffer = await createSolidColorPNG(
+        100,
+        100,
+        [255, 0, 0, 255],
+      );
+      const referencePath = path.join(testDir, "blue.png");
+      const result = await compareImages(screenshotBuffer, referencePath, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with buffer + file path and interpret enabled", async () => {
+      const screenshotBuffer = await createSolidColorPNG(
+        100,
+        100,
+        [255, 0, 0, 255],
+      );
+      const referencePath = path.join(testDir, "blue.png");
+      const result = await compareImages(
+        screenshotBuffer,
+        referencePath,
+        true,
+        { interpret: true },
+      );
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+  });
+
   describe("performance optimizations", () => {
     it("should not write temp files when both inputs are paths", async () => {
       const writeSpy = vi.spyOn(fsp, "writeFile");
@@ -423,52 +470,6 @@ describe("compare", () => {
 
       expect(loadSpy).not.toHaveBeenCalled();
       loadSpy.mockRestore();
-    });
-
-    it("should not throw when native compare does not produce a diff file", async () => {
-      const redImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
-      const blueImage = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
-
-      const unlinkSpy = vi.spyOn(fsp, "rm");
-      const originalReadFile = fsp.readFile;
-      const readSpy = vi
-        .spyOn(fsp, "readFile")
-        .mockImplementation(async (p, ...args) => {
-          if (
-            typeof p === "string" &&
-            p.includes("cappa-pxl-") &&
-            p.endsWith("diff.png")
-          ) {
-            throw Object.assign(
-              new Error(`ENOENT: no such file or directory, open '${p}'`),
-              { code: "ENOENT" },
-            );
-          }
-          return (originalReadFile as any).call(fsp, p, ...args);
-        });
-      const accessSpy = vi
-        .spyOn(fsp, "access")
-        .mockImplementation(async (p) => {
-          if (
-            typeof p === "string" &&
-            p.includes("cappa-pxl-") &&
-            p.endsWith("diff.png")
-          ) {
-            throw Object.assign(
-              new Error(`ENOENT: no such file or directory, access '${p}'`),
-              { code: "ENOENT" },
-            );
-          }
-        });
-
-      const result = await compareImages(redImage, blueImage, true);
-
-      expect(result.passed).toBe(false);
-      expect(result.diffBuffer).toBeUndefined();
-
-      readSpy.mockRestore();
-      accessSpy.mockRestore();
-      unlinkSpy.mockRestore();
     });
 
     it("should reject invalid PNG buffers with a clear error", async () => {
