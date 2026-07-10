@@ -402,6 +402,53 @@ describe("compare", () => {
     });
   });
 
+  describe("diff file generation", () => {
+    it("should produce diffBuffer with two buffers", async () => {
+      const red = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+      const blue = await createSolidColorPNG(50, 50, [0, 0, 255, 255]);
+      const result = await compareImages(red, blue, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with two file paths", async () => {
+      const redPath = path.join(testDir, "red.png");
+      const bluePath = path.join(testDir, "blue.png");
+      const result = await compareImages(redPath, bluePath, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with buffer + file path (capture scenario)", async () => {
+      const screenshotBuffer = await createSolidColorPNG(
+        100,
+        100,
+        [255, 0, 0, 255],
+      );
+      const referencePath = path.join(testDir, "blue.png");
+      const result = await compareImages(screenshotBuffer, referencePath, true);
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+
+    it("should produce diffBuffer with buffer + file path and interpret enabled", async () => {
+      const screenshotBuffer = await createSolidColorPNG(
+        100,
+        100,
+        [255, 0, 0, 255],
+      );
+      const referencePath = path.join(testDir, "blue.png");
+      const result = await compareImages(
+        screenshotBuffer,
+        referencePath,
+        true,
+        { interpret: true },
+      );
+      expect(result.passed).toBe(false);
+      expect(result.diffBuffer).toBeDefined();
+    });
+  });
+
   describe("performance optimizations", () => {
     it("should not write temp files when both inputs are paths", async () => {
       const writeSpy = vi.spyOn(fsp, "writeFile");

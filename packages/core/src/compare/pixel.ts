@@ -6,6 +6,7 @@ import {
   type BlazeDiffOptions,
   type BlazeDiffResult,
   compare as blazediffCompare,
+  interpret as blazediffInterpret,
   type InterpretResult,
 } from "@blazediff/core-native";
 import { getLogger } from "@cappa/logger";
@@ -61,22 +62,13 @@ async function resolveInputPath(
   return dest;
 }
 
-function toNativeOptions(
-  config: DiffConfig,
-  withDiff: boolean,
-): BlazeDiffOptions {
+function toNativeOptions(config: DiffConfig): BlazeDiffOptions {
   const extra = config as CompareOptions;
   const out: BlazeDiffOptions = {
     threshold: extra.threshold,
     antialiasing: extra.includeAA ?? false,
   };
 
-  // Only run the interpretation pass when we are actually producing a diff. This
-  // avoids wasted work for pass/fail-only comparisons (e.g. `imagesMatch` during
-  // approval), where the interpretation result would be discarded anyway.
-  if (extra.interpret && withDiff) {
-    out.interpret = true;
-  }
   if (extra.diffMask !== undefined) {
     out.diffMask = extra.diffMask;
   }
@@ -116,14 +108,19 @@ export async function compareImages(
       diffPath = path.join(root, "diff.png");
     }
 
+    const wantInterpret = !!(options as CompareOptions).interpret && withDiff;
+
     let nativeResult: BlazeDiffResult;
 
     try {
+      // Never pass `interpret` to `compare` — the native binding skips writing
+      // the diff image when interpret mode is on.  Interpretation is fetched in
+      // a separate call below when needed.
       nativeResult = await blazediffCompare(
         p1,
         p2,
         withDiff ? diffPath : undefined,
-        toNativeOptions(options, withDiff),
+        toNativeOptions(options),
       );
     } catch (error) {
       getLogger().error((error as Error).message || "Unknown error");
@@ -185,6 +182,18 @@ export async function compareImages(
     const numDiffPixels = nativeResult.diffCount;
     const percentDifference = nativeResult.diffPercentage;
 
+    let interpretation: InterpretResult | undefined;
+    if (wantInterpret && !nativeResult.match) {
+      try {
+        interpretation = await blazediffInterpret(p1, p2, {
+          threshold: options.threshold,
+          antialiasing: options.includeAA ?? false,
+        });
+      } catch {
+        // Interpretation is best-effort; don't fail the comparison.
+      }
+    }
+
     return {
       numDiffPixels,
       totalPixels,
@@ -192,7 +201,7 @@ export async function compareImages(
       diffBuffer,
       passed: isPassed(percentDifference, numDiffPixels, options),
       differentSizes: false,
-      interpretation: nativeResult.interpretation,
+      interpretation,
     };
   } finally {
     if (state.tempRoot) {
