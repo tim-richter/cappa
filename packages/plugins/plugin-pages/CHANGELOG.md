@@ -1,5 +1,13 @@
 # @cappa/plugin-pages
 
+## 0.2.9
+
+### Patch Changes
+
+- 98940bf: update deps
+- Updated dependencies [98940bf]
+  - @cappa/core@0.12.3
+
 ## 0.2.8
 
 ### Patch Changes

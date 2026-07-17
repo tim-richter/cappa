@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.12.3
+
+### Patch Changes
+
+- 98940bf: update deps
+
 ## 0.12.2
 
 ### Patch Changes

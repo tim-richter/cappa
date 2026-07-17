@@ -1,5 +1,13 @@
 # @cappa/server
 
+## 0.8.4
+
+### Patch Changes
+
+- 98940bf: update deps
+- Updated dependencies [98940bf]
+  - @cappa/core@0.12.3
+
 ## 0.8.3
 
 ### Patch Changes
