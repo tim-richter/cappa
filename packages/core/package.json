@@ -40,17 +40,17 @@
     "playwright-core": "^1.55.0"
   },
   "dependencies": {
-    "@blazediff/core-native": "^5.1.0",
+    "@blazediff/core-native": "^5.2.0",
     "@blazediff/gmsd": "^1.7.1",
     "@cappa/logger": "workspace:*",
-    "sharp": "^0.35.1"
+    "sharp": "^0.35.3"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "playwright-core": "^1.61.0",
+    "playwright-core": "^1.61.1",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

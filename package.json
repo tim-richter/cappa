@@ -26,13 +26,13 @@
     "release": "pnpm -r build && pnpm --filter server build && changeset publish"
   },
   "devDependencies": {
-    "@biomejs/biome": "^2.5.0",
-    "@changesets/cli": "^2.31.0",
+    "@biomejs/biome": "^2.5.4",
+    "@changesets/cli": "^2.31.1",
     "@types/node": "catalog:",
-    "turbo": "^2.9.18",
+    "turbo": "^2.10.5",
     "typescript": "catalog:"
   },
-  "packageManager": "pnpm@11.7.0",
+  "packageManager": "pnpm@11.13.1",
   "msw": {
     "workerDirectory": [
       "apps/web/public"
