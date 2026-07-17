@@ -1,5 +1,14 @@
 # @cappa/plugin-storybook
 
+## 0.8.11
+
+### Patch Changes
+
+- 98940bf: update deps
+- 52c4271: Normalize story filenames to lowercase to prevent case-sensitivity mismatches between local (macOS, case-insensitive) and CI/Docker (Linux, case-sensitive) environments
+- Updated dependencies [98940bf]
+  - @cappa/core@0.12.3
+
 ## 0.8.10
 
 ### Patch Changes
