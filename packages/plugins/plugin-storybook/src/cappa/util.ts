@@ -96,5 +96,7 @@ export const waitForVisualIdle = async (page: Page) => {
  * @returns The filename for the story. Slashes represent folders that should be handled by seperate file system calls.
  */
 export const buildFilename = (story: StorybookStory) => {
-  return `${story.title.replace(/[^a-zA-Z0-9/]/g, "")}/${story.name.replace(/[^a-zA-Z0-9]/g, "")}.png`;
+  const title = story.title.replace(/[^a-zA-Z0-9/]/g, "").toLowerCase();
+  const name = story.name.replace(/[^a-zA-Z0-9]/g, "").toLowerCase();
+  return `${title}/${name}.png`;
 };
