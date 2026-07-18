@@ -1,5 +1,17 @@
 # @cappa/cli
 
+## 0.11.0
+
+### Minor Changes
+
+- 84c0de4: Add `--filter` / `-f` option to the `capture` command to filter tasks by id using a glob pattern. Also exports the `PluginTask` type from `@cappa/core`.
+
+### Patch Changes
+
+- Updated dependencies [84c0de4]
+  - @cappa/core@0.12.4
+  - @cappa/server@0.8.5
+
 ## 0.10.5
 
 ### Patch Changes
