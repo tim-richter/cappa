@@ -23,6 +23,21 @@ cappa capture
 Cappa also enables the same CI mode automatically when `CI=true` is set in the environment, so
 `cappa capture` behaves like `cappa capture --ci` in most CI/CD pipelines.
 
+Use `--filter` (or `-f`) to capture only tasks whose id matches a glob pattern. This is useful
+when you want to iterate on a single component without re-capturing everything. The pattern is
+matched against each task's id using Node's built-in glob matching.
+
+```bash
+# capture only button stories
+cappa capture --filter "button*"
+
+# capture a single story by exact id
+cappa capture -f "card--default"
+```
+
+When a filter is active, Cappa displays a hint box and logs how many tasks matched per plugin so
+you can verify the pattern is selecting what you expect.
+
 ## `cappa review`
 
 Launches an interface for comparing the latest screenshots against the approved baseline. The review

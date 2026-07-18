@@ -2,6 +2,7 @@ import type { ScreenshotTool } from "@cappa/core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   didScreenshotFail,
+  filterTasks,
   formatDuration,
   formatProgress,
   getDeletedScreenshots,
@@ -185,5 +186,43 @@ describe("formatDuration", () => {
     expect(formatDuration(60000)).toBe("1m 0s");
     expect(formatDuration(90000)).toBe("1m 30s");
     expect(formatDuration(125000)).toBe("2m 5s");
+  });
+});
+
+describe("filterTasks", () => {
+  const tasks = [
+    { id: "button--primary", url: "http://localhost:6006" },
+    { id: "button--secondary", url: "http://localhost:6006" },
+    { id: "card--default", url: "http://localhost:6006" },
+    { id: "card--with-image", url: "http://localhost:6006" },
+    { id: "header--logged-in", url: "http://localhost:6006" },
+  ];
+
+  it("filters tasks matching a glob pattern with wildcard", () => {
+    const result = filterTasks(tasks, "button*");
+    expect(result.map((t) => t.id)).toEqual([
+      "button--primary",
+      "button--secondary",
+    ]);
+  });
+
+  it("filters tasks matching an exact id", () => {
+    const result = filterTasks(tasks, "card--default");
+    expect(result.map((t) => t.id)).toEqual(["card--default"]);
+  });
+
+  it("returns empty array when no tasks match", () => {
+    const result = filterTasks(tasks, "footer*");
+    expect(result).toEqual([]);
+  });
+
+  it("returns all tasks when pattern matches everything", () => {
+    const result = filterTasks(tasks, "*");
+    expect(result).toHaveLength(5);
+  });
+
+  it("supports character class patterns", () => {
+    const result = filterTasks(tasks, "card--*image");
+    expect(result.map((t) => t.id)).toEqual(["card--with-image"]);
   });
 });
