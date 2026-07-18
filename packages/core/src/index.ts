@@ -8,7 +8,7 @@ import {
   toDiffMetaPath,
 } from "./filesystem";
 import { mapWithConcurrency } from "./mapWithConcurrency";
-import type { Plugin, PluginDef, PluginFunction } from "./plugin";
+import type { Plugin, PluginDef, PluginFunction, PluginTask } from "./plugin";
 import ScreenshotTool, {
   type ScreenshotCaptureDetails,
   type ScreenshotCaptureExtras,
@@ -61,6 +61,7 @@ export {
   type Plugin,
   type PluginDef,
   type PluginFunction,
+  type PluginTask,
   readDiffMeta,
   type Screenshot,
   type ScreenshotCaptureDetails,

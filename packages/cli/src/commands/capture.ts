@@ -1,5 +1,6 @@
 import { glob } from "node:fs/promises";
 import path from "node:path";
+import type { PluginTask } from "@cappa/core";
 import {
   type FailedScreenshot,
   mapWithConcurrency,
@@ -233,7 +234,12 @@ export async function getDeletedScreenshots(
 
 type CaptureOptions = {
   ci?: boolean;
+  filter?: string;
 };
+
+export function filterTasks(tasks: PluginTask[], filter: string): PluginTask[] {
+  return tasks.filter((task) => path.matchesGlob(task.id, filter));
+}
 
 export function registerSignalHandlers(
   screenshotTool: ScreenshotTool,
@@ -296,6 +302,21 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
         return { plugin, tasks };
       }),
     );
+
+    if (options.filter) {
+      logger.box({
+        title: "Filter Active",
+        message: `Only capturing tasks matching: ${chalk.cyan(options.filter)}`,
+      });
+
+      for (const entry of pluginTasks) {
+        const before = entry.tasks.length;
+        entry.tasks = filterTasks(entry.tasks, options.filter);
+        logger.info(
+          `${entry.plugin.name}: ${entry.tasks.length}/${before} tasks match filter`,
+        );
+      }
+    }
 
     for (const { plugin, tasks } of pluginTasks) {
       if (tasks.length === 0) {
@@ -415,6 +436,10 @@ export const registerCaptureCommand = (program: Command): void => {
     .command("capture")
     .description("Capture screenshots")
     .option("--ci", "run capture in CI mode and execute onFail callback")
+    .option(
+      "-f, --filter <pattern>",
+      "only capture tasks whose id matches the given glob pattern",
+    )
     .action(async (options: CaptureOptions) => {
       await runCapture(options);
     });
