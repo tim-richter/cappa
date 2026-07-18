@@ -40,6 +40,10 @@ program
 program
   .command("status")
   .description("Get status of screenshots")
+  .option(
+    "-f, --filter <pattern>",
+    "only report screenshots whose name matches the given glob pattern",
+  )
   .action(status);
 
 program

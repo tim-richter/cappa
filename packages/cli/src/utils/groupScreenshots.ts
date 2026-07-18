@@ -2,11 +2,21 @@ import { createHash } from "node:crypto";
 import path from "node:path";
 import { readDiffMeta, type Screenshot } from "@cappa/core";
 
+const matchesFilter = (name: string, filter?: string): boolean => {
+  if (!filter) return true;
+  return path.matchesGlob(name, filter);
+};
+
+export type GroupScreenshotsOptions = {
+  filter?: string;
+};
+
 export const groupScreenshots = async (
   actualScreenshots: string[],
   expectedScreenshots: string[],
   diffScreenshots: string[],
   outputDir: string,
+  options?: GroupScreenshotsOptions,
 ): Promise<Screenshot[]> => {
   const screenshotRepresentations: Screenshot[] = [];
 
@@ -68,6 +78,14 @@ export const groupScreenshots = async (
     }
 
     const name = relativePath.replace(".png", "");
+
+    // When a filter is active, only report screenshots within the filter's
+    // scope as deleted — screenshots outside the filter were intentionally
+    // not captured and should not be considered deleted.
+    if (!matchesFilter(name, options?.filter)) {
+      continue;
+    }
+
     const id = createHash("sha256").update(relativePath).digest("hex");
 
     screenshotRepresentations.push({

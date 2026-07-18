@@ -383,6 +383,7 @@ describe("cappa CLI", () => {
       ],
       ["/tmp/screenshots/diff/button.png"],
       "/tmp/screenshots",
+      { filter: undefined },
     );
 
     expect(onFail).toHaveBeenCalledWith([

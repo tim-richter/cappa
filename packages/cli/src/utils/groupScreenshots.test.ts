@@ -155,6 +155,77 @@ afterEach(() => {
   fs.rmSync(tempDir, { recursive: true, force: true });
 });
 
+it("should not mark filtered-out screenshots as deleted when filter is active", async () => {
+  const outputDir = "/home/user/output";
+  const actualScreenshots = [`${outputDir}/actual/button--primary.png`];
+  const expectedScreenshots = [
+    `${outputDir}/expected/button--primary.png`,
+    `${outputDir}/expected/card--default.png`,
+    `${outputDir}/expected/header--logged-in.png`,
+  ];
+  const diffScreenshots: string[] = [];
+
+  const result = await groupScreenshots(
+    actualScreenshots,
+    expectedScreenshots,
+    diffScreenshots,
+    outputDir,
+    { filter: "button*" },
+  );
+
+  expect(result.map((s) => s.category)).toEqual(["passed"]);
+  expect(result).toHaveLength(1);
+  expect(result[0]?.name).toBe("button--primary");
+});
+
+it("should still detect deleted screenshots within the filter scope", async () => {
+  const outputDir = "/home/user/output";
+  const actualScreenshots = [`${outputDir}/actual/button--primary.png`];
+  const expectedScreenshots = [
+    `${outputDir}/expected/button--primary.png`,
+    `${outputDir}/expected/button--secondary.png`,
+    `${outputDir}/expected/card--default.png`,
+  ];
+  const diffScreenshots: string[] = [];
+
+  const result = await groupScreenshots(
+    actualScreenshots,
+    expectedScreenshots,
+    diffScreenshots,
+    outputDir,
+    { filter: "button*" },
+  );
+
+  const categories = result.map((s) => ({
+    name: s.name,
+    category: s.category,
+  }));
+  expect(categories).toEqual([
+    { name: "button--secondary", category: "deleted" },
+    { name: "button--primary", category: "passed" },
+  ]);
+});
+
+it("should report all deleted screenshots when no filter is active", async () => {
+  const outputDir = "/home/user/output";
+  const actualScreenshots: string[] = [];
+  const expectedScreenshots = [
+    `${outputDir}/expected/button--primary.png`,
+    `${outputDir}/expected/card--default.png`,
+  ];
+  const diffScreenshots: string[] = [];
+
+  const result = await groupScreenshots(
+    actualScreenshots,
+    expectedScreenshots,
+    diffScreenshots,
+    outputDir,
+  );
+
+  expect(result).toHaveLength(2);
+  expect(result.every((s) => s.category === "deleted")).toBe(true);
+});
+
 it("attaches diff metadata from the sidecar for changed screenshots", async () => {
   const name = "Test/Story.png";
   const diffImagePath = path.join(tempDir, "diff", name);

@@ -6,7 +6,11 @@ import { getConfig } from "../features/config";
 import { describeChanges } from "../utils/describeChanges";
 import { groupScreenshots } from "../utils/groupScreenshots";
 
-export const status = async () => {
+type StatusOptions = {
+  filter?: string;
+};
+
+export const status = async (options: StatusOptions = {}) => {
   const logger = getLogger();
 
   const config = await getConfig();
@@ -33,6 +37,7 @@ export const status = async () => {
     await Array.fromAsync(expectedScreenshots),
     await Array.fromAsync(diffScreenshots),
     config.outputDir,
+    { filter: options.filter },
   );
 
   logger.debug(

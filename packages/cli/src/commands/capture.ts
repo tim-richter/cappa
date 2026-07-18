@@ -62,6 +62,7 @@ export const didScreenshotFail = (result: unknown): boolean => {
 
 async function executeOnFailCallback(
   config: Awaited<ReturnType<typeof getConfig>>,
+  filter?: string,
 ): Promise<void> {
   const logger = getLogger();
 
@@ -91,6 +92,7 @@ async function executeOnFailCallback(
     await Array.fromAsync(expectedScreenshots),
     await Array.fromAsync(diffScreenshots),
     config.outputDir,
+    { filter },
   );
 
   const failingScreenshots: FailedScreenshot[] = groupedScreenshots
@@ -214,6 +216,7 @@ function generateFailureReportMessage(
 
 export async function getDeletedScreenshots(
   outputDir: string,
+  filter?: string,
 ): Promise<string[]> {
   const actualDir = path.resolve(outputDir, "actual");
   const expectedDir = path.resolve(outputDir, "expected");
@@ -229,7 +232,17 @@ export async function getDeletedScreenshots(
 
   return expectedFiles
     .map((p) => path.relative(expectedDir, p))
-    .filter((rel) => !actualRelative.has(rel));
+    .filter((rel) => {
+      if (actualRelative.has(rel)) return false;
+      // When a filter is active, only report screenshots within the filter's
+      // scope as deleted — screenshots outside the filter were intentionally
+      // not captured.
+      if (filter) {
+        const name = rel.replace(/\.png$/, "");
+        if (!path.matchesGlob(name, filter)) return false;
+      }
+      return true;
+    });
 }
 
 type CaptureOptions = {
@@ -396,7 +409,10 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   let deletedScreenshots: string[] = [];
   if (anyTasksRan) {
     try {
-      deletedScreenshots = await getDeletedScreenshots(config.outputDir);
+      deletedScreenshots = await getDeletedScreenshots(
+        config.outputDir,
+        options.filter,
+      );
       if (deletedScreenshots.length > 0) {
         hasScreenshotFailure = true;
       }
@@ -408,7 +424,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const isCi = options.ci || process.env.CI === "true";
 
   if (!captureError && isCi) {
-    await executeOnFailCallback(config);
+    await executeOnFailCallback(config, options.filter);
   }
 
   const duration = formatDuration(performance.now() - captureStart);

@@ -100,6 +100,41 @@ describe("getDeletedScreenshots", () => {
     } as any);
     expect(await getDeletedScreenshots("/output")).toEqual(["card.png"]);
   });
+
+  it("only reports deleted screenshots matching the filter when filter is provided", async () => {
+    vi.mocked(glob).mockImplementation(async function* (
+      pattern: string | readonly string[],
+    ) {
+      if ((pattern as string).includes("actual")) {
+        yield "/output/actual/button--primary.png";
+      } else {
+        yield "/output/expected/button--primary.png";
+        yield "/output/expected/button--secondary.png";
+        yield "/output/expected/card--default.png";
+        yield "/output/expected/header--logged-in.png";
+      }
+    } as any);
+    expect(await getDeletedScreenshots("/output", "button*")).toEqual([
+      "button--secondary.png",
+    ]);
+  });
+
+  it("reports all deleted screenshots when no filter is provided", async () => {
+    vi.mocked(glob).mockImplementation(async function* (
+      pattern: string | readonly string[],
+    ) {
+      if ((pattern as string).includes("actual")) {
+        // no actual screenshots
+      } else {
+        yield "/output/expected/button--primary.png";
+        yield "/output/expected/card--default.png";
+      }
+    } as any);
+    expect(await getDeletedScreenshots("/output")).toEqual([
+      "button--primary.png",
+      "card--default.png",
+    ]);
+  });
 });
 
 describe("registerSignalHandlers", () => {
