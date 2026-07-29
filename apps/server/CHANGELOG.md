@@ -1,5 +1,11 @@
 # @cappa/server
 
+## 0.8.6
+
+### Patch Changes
+
+- 9a3a5c0: security dep updates
+
 ## 0.8.5
 
 ### Patch Changes
