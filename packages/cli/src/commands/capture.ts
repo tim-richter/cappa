@@ -1,6 +1,6 @@
 import { glob } from "node:fs/promises";
 import path from "node:path";
-import type { PluginTask } from "@cappa/core";
+import type { PluginTask, Screenshot } from "@cappa/core";
 import {
   type FailedScreenshot,
   mapWithConcurrency,
@@ -11,7 +11,9 @@ import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
 import { getConfig } from "../features/config";
-import { groupScreenshots } from "../utils/groupScreenshots";
+import { collectScreenshots } from "../utils/collectScreenshots";
+import { DEFAULT_MAX_REGIONS, describeChanges } from "../utils/describeChanges";
+import { parseMaxRegions } from "../utils/parseMaxRegions";
 
 type PluginCaptureResult = {
   success?: boolean;
@@ -62,36 +64,13 @@ export const didScreenshotFail = (result: unknown): boolean => {
 
 async function executeOnFailCallback(
   config: Awaited<ReturnType<typeof getConfig>>,
+  groupedScreenshots: Screenshot[],
 ): Promise<void> {
   const logger = getLogger();
 
   if (!config.onFail) {
     return;
   }
-
-  const actualScreenshotsPromise = glob(
-    path.resolve(config.outputDir, "actual", "**/*.png"),
-  );
-  const expectedScreenshotsPromise = glob(
-    path.resolve(config.outputDir, "expected", "**/*.png"),
-  );
-  const diffScreenshotsPromise = glob(
-    path.resolve(config.outputDir, "diff", "**/*.png"),
-  );
-
-  const [actualScreenshots, expectedScreenshots, diffScreenshots] =
-    await Promise.all([
-      actualScreenshotsPromise,
-      expectedScreenshotsPromise,
-      diffScreenshotsPromise,
-    ]);
-
-  const groupedScreenshots = await groupScreenshots(
-    await Array.fromAsync(actualScreenshots),
-    await Array.fromAsync(expectedScreenshots),
-    await Array.fromAsync(diffScreenshots),
-    config.outputDir,
-  );
 
   const failingScreenshots: FailedScreenshot[] = groupedScreenshots
     .filter((screenshot) => screenshot.category !== "passed")
@@ -235,6 +214,7 @@ export async function getDeletedScreenshots(
 type CaptureOptions = {
   ci?: boolean;
   filter?: string;
+  maxRegions?: number;
 };
 
 export function filterTasks(tasks: PluginTask[], filter: string): PluginTask[] {
@@ -407,8 +387,19 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
 
   const isCi = options.ci || process.env.CI === "true";
 
+  // Read back the diff metadata sidecars once and reuse them for both the
+  // onFail callback and the changed-screenshot report below.
+  let groupedScreenshots: Screenshot[] = [];
+  if (!captureError && (isCi || hasScreenshotFailure)) {
+    try {
+      groupedScreenshots = await collectScreenshots(config.outputDir);
+    } catch (err) {
+      logger.warn("Could not collect screenshot results:", err);
+    }
+  }
+
   if (!captureError && isCi) {
-    await executeOnFailCallback(config);
+    await executeOnFailCallback(config, groupedScreenshots);
   }
 
   const duration = formatDuration(performance.now() - captureStart);
@@ -422,6 +413,19 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
       title: "Failed Screenshots",
       message: reportMessage,
     });
+
+    // Surface the diff stats and, when `diff.interpret` is enabled, what
+    // changed and where — this is often the only debugging signal on CI.
+    const changeLines = describeChanges(groupedScreenshots, {
+      maxRegions: options.maxRegions,
+    });
+    if (changeLines.length > 0) {
+      logger.box({
+        title: "Changed Screenshots",
+        message: changeLines.join("\n"),
+      });
+    }
+
     logger.error(
       `One or more screenshots failed in ${duration}. See report above for details.`,
     );
@@ -439,6 +443,12 @@ export const registerCaptureCommand = (program: Command): void => {
     .option(
       "-f, --filter <pattern>",
       "only capture tasks whose id matches the given glob pattern",
+    )
+    .option(
+      "--max-regions <count>",
+      "maximum number of interpreted diff regions listed per changed screenshot (0 to disable)",
+      parseMaxRegions,
+      DEFAULT_MAX_REGIONS,
     )
     .action(async (options: CaptureOptions) => {
       await runCapture(options);

@@ -6,6 +6,8 @@ import { registerCaptureCommand } from "./commands/capture";
 import { init } from "./commands/init";
 import { review } from "./commands/review";
 import { status } from "./commands/status";
+import { DEFAULT_MAX_REGIONS } from "./utils/describeChanges";
+import { parseMaxRegions } from "./utils/parseMaxRegions";
 
 const program = new Command();
 
@@ -40,6 +42,12 @@ program
 program
   .command("status")
   .description("Get status of screenshots")
+  .option(
+    "--max-regions <count>",
+    "maximum number of interpreted diff regions listed per changed screenshot (0 to disable)",
+    parseMaxRegions,
+    DEFAULT_MAX_REGIONS,
+  )
   .action(status);
 
 program

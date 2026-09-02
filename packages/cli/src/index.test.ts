@@ -198,6 +198,8 @@ vi.mock("chalk", () => ({
     blue: identity,
     bold: identity,
     dim: identity,
+    cyan: identity,
+    gray: identity,
   },
   yellow: identity,
   red: identity,
@@ -205,6 +207,8 @@ vi.mock("chalk", () => ({
   blue: identity,
   bold: identity,
   dim: identity,
+  cyan: identity,
+  gray: identity,
 }));
 
 let run: () => Promise<void>;
@@ -227,6 +231,7 @@ beforeEach(() => {
   loadConfigMock.mockReset();
   getConfigMock.mockReset();
   groupScreenshotsMock.mockReset();
+  groupScreenshotsMock.mockResolvedValue([]);
 
   fsMock.existsSync.mockReturnValue(false);
 
@@ -516,6 +521,160 @@ describe("cappa CLI", () => {
     expect(groupScreenshotsMock).toHaveBeenCalled();
     // onFail should not be called when all screenshots pass
     expect(onFail).not.toHaveBeenCalled();
+  });
+
+  test("capture command reports the diff interpretation of changed screenshots", async () => {
+    const pluginDiscover = vi
+      .fn()
+      .mockResolvedValue([{ id: "task-1", url: "http://localhost" }]);
+    const pluginExecute = vi
+      .fn()
+      .mockResolvedValue({ success: false, filepath: "actual/button.png" });
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2, interpret: true },
+      retries: 1,
+      concurrency: 1,
+      plugins: [
+        { name: "plugin", discover: pluginDiscover, execute: pluginExecute },
+      ],
+    });
+
+    groupScreenshotsMock.mockResolvedValue([
+      {
+        id: "1",
+        name: "button",
+        category: "changed",
+        actualPath: "actual/button.png",
+        expectedPath: "expected/button.png",
+        diffPath: "diff/button.png",
+        diffMeta: {
+          numDiffPixels: 100,
+          percentDifference: 1.87,
+          interpretation: {
+            summary: "Moderate visual change detected",
+            diffCount: 100,
+            totalRegions: 1,
+            severity: "Medium",
+            diffPercentage: 1.87,
+            width: 100,
+            height: 100,
+            regions: [
+              {
+                changeType: "ContentChange",
+                position: "center",
+                percentage: 1.87,
+                bbox: { x: 10, y: 20, width: 30, height: 40 },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
+    process.argv = ["node", "cappa", "capture"];
+
+    await run();
+
+    const changedBox = loggerInstance.box.mock.calls.find(
+      ([arg]) => arg?.title === "Changed Screenshots",
+    );
+
+    expect(changedBox).toBeDefined();
+    expect(changedBox?.[0].message).toContain("button");
+    expect(changedBox?.[0].message).toContain("MEDIUM");
+    expect(changedBox?.[0].message).toContain("1.87%");
+    expect(changedBox?.[0].message).toContain(
+      "Moderate visual change detected",
+    );
+    expect(changedBox?.[0].message).toContain("content");
+    expect(changedBox?.[0].message).toContain("30x40 at (10, 20)");
+    expect(process.exit).toHaveBeenCalledWith(1);
+  });
+
+  test("capture --max-regions caps the region breakdown", async () => {
+    const pluginDiscover = vi
+      .fn()
+      .mockResolvedValue([{ id: "task-1", url: "http://localhost" }]);
+    const pluginExecute = vi
+      .fn()
+      .mockResolvedValue({ success: false, filepath: "actual/button.png" });
+
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screenshots",
+      diff: { threshold: 0.2, interpret: true },
+      retries: 1,
+      concurrency: 1,
+      plugins: [
+        { name: "plugin", discover: pluginDiscover, execute: pluginExecute },
+      ],
+    });
+
+    groupScreenshotsMock.mockResolvedValue([
+      {
+        id: "1",
+        name: "button",
+        category: "changed",
+        actualPath: "actual/button.png",
+        expectedPath: "expected/button.png",
+        diffPath: "diff/button.png",
+        diffMeta: {
+          numDiffPixels: 100,
+          percentDifference: 1.87,
+          interpretation: {
+            summary: "Moderate visual change detected",
+            diffCount: 100,
+            totalRegions: 2,
+            severity: "Medium",
+            diffPercentage: 1.87,
+            width: 100,
+            height: 100,
+            regions: [
+              {
+                changeType: "ColorChange",
+                position: "top",
+                percentage: 0.1,
+                bbox: { x: 0, y: 0, width: 10, height: 10 },
+              },
+              {
+                changeType: "Addition",
+                position: "center",
+                percentage: 1.77,
+                bbox: { x: 10, y: 20, width: 30, height: 40 },
+              },
+            ],
+          },
+        },
+      },
+    ]);
+
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
+    process.argv = ["node", "cappa", "capture", "--max-regions", "1"];
+
+    await run();
+
+    const changedBox = loggerInstance.box.mock.calls.find(
+      ([arg]) => arg?.title === "Changed Screenshots",
+    );
+
+    // Only the largest region is listed, the rest is collapsed.
+    expect(changedBox?.[0].message).toContain("added at center");
+    expect(changedBox?.[0].message).not.toContain("color at top");
+    expect(changedBox?.[0].message).toContain("and 1 more region");
   });
 
   test("capture command exits with code 1 when a screenshot comparison fails", async () => {
