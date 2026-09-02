@@ -38,6 +38,26 @@ cappa capture -f "card--default"
 When a filter is active, Cappa displays a hint box and logs how many tasks matched per plugin so
 you can verify the pattern is selecting what you expect.
 
+### Change report
+
+When a run fails, Cappa prints a **Changed Screenshots** box after the failure report listing every
+changed screenshot with its diff percentage. When [`diff.interpret`](/configuration#diffinterpret)
+is enabled, the box also includes the severity, the human-readable summary and each detected region
+with its change type, position and bounding box:
+
+```
+Changed Screenshots
+Button/Primary  · MEDIUM · 1.87% · 2 regions
+  Moderate visual change detected (1.87% of image, 2 regions).
+  → content at center · 0.90% · 360x200 at (420, 300)
+  → added at right · 0.50% · 180x140 at (960, 120)
+```
+
+At most five regions are listed per screenshot; the rest are collapsed into a
+`… and N more regions` line. Because the report is printed to stdout, it gives you the *where* and
+*what* of a diff directly in your CI logs, without having to download the diff artifacts or open
+the review UI.
+
 ## `cappa review`
 
 Launches an interface for comparing the latest screenshots against the approved baseline. The review
@@ -84,8 +104,9 @@ cappa status && deploy.sh
 ```
 
 When [`diff.interpret`](/configuration#diffinterpret) is enabled, `status` also prints a per-screenshot
-breakdown of the changed screenshots, including the diff percentage, severity, region count and a
-human-readable summary of what changed.
+breakdown of the changed screenshots, including the diff percentage, severity, region count, a
+human-readable summary of what changed and the individual regions — the same report
+[`cappa capture`](#change-report) prints on failure.
 
 Tip: combine the commands with npm scripts to make common workflows easy to discover for the rest of
 your team.

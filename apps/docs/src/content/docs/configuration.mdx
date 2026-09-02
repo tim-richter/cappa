@@ -184,10 +184,12 @@ When enabled, each changed screenshot gets a `diff/<name>.json` sidecar next to 
 }
 ```
 
-The sidecar is read back by `cappa status` and the review UI:
+The sidecar is read back by `cappa capture`, `cappa status` and the review UI:
 
+- **`cappa capture`** prints the same breakdown after the failure report, so CI logs show what
+  changed and where without downloading the diff images.
 - **`cappa status`** prints a per-screenshot breakdown of changed screenshots with severity,
-  region count and summary.
+  region count, summary and the individual regions.
 - **The review UI** shows a severity badge, a summary banner and interactive, color-coded
   region overlays on the diff view.
 
