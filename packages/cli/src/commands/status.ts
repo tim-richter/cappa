@@ -4,7 +4,11 @@ import { getConfig } from "../features/config";
 import { collectScreenshots } from "../utils/collectScreenshots";
 import { describeChanges } from "../utils/describeChanges";
 
-export const status = async () => {
+type StatusOptions = {
+  maxRegions?: number;
+};
+
+export const status = async (options: StatusOptions = {}) => {
   const logger = getLogger();
 
   const config = await getConfig();
@@ -21,7 +25,9 @@ export const status = async () => {
     message: `${chalk.yellow("New screenshots:")} ${groupedScreenshots.filter((r) => r.category === "new").length}\n${chalk.red("Deleted screenshots:")} ${groupedScreenshots.filter((r) => r.category === "deleted").length}\n${chalk.green("Changed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "changed").length}\n${chalk.blue("Passed screenshots:")} ${groupedScreenshots.filter((r) => r.category === "passed").length}`,
   });
 
-  const changeLines = describeChanges(groupedScreenshots);
+  const changeLines = describeChanges(groupedScreenshots, {
+    maxRegions: options.maxRegions,
+  });
   if (changeLines.length > 0) {
     logger.box({
       title: "Changed Screenshots",

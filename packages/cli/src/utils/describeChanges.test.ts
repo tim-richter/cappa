@@ -195,6 +195,38 @@ describe("describeChanges", () => {
     expect(lines[4]).toContain("and 5 more regions");
   });
 
+  it("lists the largest regions first without mutating the input", () => {
+    const regions = [
+      region("ColorChange", "top", { x: 0, y: 0, width: 10, height: 10 }, 0.2),
+      region("Addition", "right", { x: 0, y: 0, width: 10, height: 10 }, 2.5),
+      region("Deletion", "bottom", { x: 0, y: 0, width: 10, height: 10 }, 1.1),
+    ];
+
+    const lines = describeChanges([
+      changedScreenshot("a", { totalRegions: 3, regions }),
+    ]);
+
+    expect(lines[2]).toContain("added");
+    expect(lines[3]).toContain("removed");
+    expect(lines[4]).toContain("color");
+    expect(regions.map((r) => r.percentage)).toEqual([0.2, 2.5, 1.1]);
+  });
+
+  it("keeps the biggest regions when truncating", () => {
+    const regions = [
+      region("ColorChange", "top", { x: 0, y: 0, width: 10, height: 10 }, 0.1),
+      region("Addition", "right", { x: 0, y: 0, width: 10, height: 10 }, 9.9),
+    ];
+
+    const lines = describeChanges(
+      [changedScreenshot("a", { totalRegions: 2, regions })],
+      { maxRegions: 1 },
+    );
+
+    expect(lines[2]).toContain("added");
+    expect(lines[3]).toContain("and 1 more region");
+  });
+
   it("omits the region breakdown when maxRegions is 0", () => {
     const screenshots = [
       changedScreenshot("a", {

@@ -12,7 +12,8 @@ import chalk from "chalk";
 import type { Command } from "commander";
 import { getConfig } from "../features/config";
 import { collectScreenshots } from "../utils/collectScreenshots";
-import { describeChanges } from "../utils/describeChanges";
+import { DEFAULT_MAX_REGIONS, describeChanges } from "../utils/describeChanges";
+import { parseMaxRegions } from "../utils/parseMaxRegions";
 
 type PluginCaptureResult = {
   success?: boolean;
@@ -213,6 +214,7 @@ export async function getDeletedScreenshots(
 type CaptureOptions = {
   ci?: boolean;
   filter?: string;
+  maxRegions?: number;
 };
 
 export function filterTasks(tasks: PluginTask[], filter: string): PluginTask[] {
@@ -414,7 +416,9 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
 
     // Surface the diff stats and, when `diff.interpret` is enabled, what
     // changed and where — this is often the only debugging signal on CI.
-    const changeLines = describeChanges(groupedScreenshots);
+    const changeLines = describeChanges(groupedScreenshots, {
+      maxRegions: options.maxRegions,
+    });
     if (changeLines.length > 0) {
       logger.box({
         title: "Changed Screenshots",
@@ -439,6 +443,12 @@ export const registerCaptureCommand = (program: Command): void => {
     .option(
       "-f, --filter <pattern>",
       "only capture tasks whose id matches the given glob pattern",
+    )
+    .option(
+      "--max-regions <count>",
+      "maximum number of interpreted diff regions listed per changed screenshot (0 to disable)",
+      parseMaxRegions,
+      DEFAULT_MAX_REGIONS,
     )
     .action(async (options: CaptureOptions) => {
       await runCapture(options);

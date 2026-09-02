@@ -53,10 +53,22 @@ Button/Primary  · MEDIUM · 1.87% · 2 regions
   → added at right · 0.50% · 180x140 at (960, 120)
 ```
 
-At most five regions are listed per screenshot; the rest are collapsed into a
-`… and N more regions` line. Because the report is printed to stdout, it gives you the *where* and
-*what* of a diff directly in your CI logs, without having to download the diff artifacts or open
-the review UI.
+Regions are listed largest first, so the biggest change is always at the top. At most five are
+listed per screenshot; the rest are collapsed into a `… and N more regions` line. Because the
+report is printed to stdout, it gives you the *where* and *what* of a diff directly in your CI
+logs, without having to download the diff artifacts or open the review UI.
+
+Use `--max-regions` to change how many regions are listed. It accepts any non-negative integer,
+where `0` omits the per-region breakdown and keeps only the severity line and summary. The same
+flag is available on [`cappa status`](#cappa-status).
+
+```bash
+# list up to 20 regions per screenshot when debugging a CI failure
+cappa capture --max-regions 20
+
+# severity and summary only
+cappa capture --max-regions 0
+```
 
 ## `cappa review`
 
@@ -106,7 +118,7 @@ cappa status && deploy.sh
 When [`diff.interpret`](/configuration#diffinterpret) is enabled, `status` also prints a per-screenshot
 breakdown of the changed screenshots, including the diff percentage, severity, region count, a
 human-readable summary of what changed and the individual regions — the same report
-[`cappa capture`](#change-report) prints on failure.
+[`cappa capture`](#change-report) prints on failure, and it accepts the same `--max-regions` flag.
 
 Tip: combine the commands with npm scripts to make common workflows easy to discover for the rest of
 your team.

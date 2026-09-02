@@ -41,11 +41,15 @@ const describeRegion = (region: ChangeRegion): string => {
   ].join(" ");
 };
 
+/** Default number of regions listed per changed screenshot. */
+export const DEFAULT_MAX_REGIONS = 5;
+
 export type DescribeChangesOptions = {
   /**
-   * Maximum number of interpreted regions listed per screenshot. Remaining
-   * regions are collapsed into a `… and N more region(s)` line.
-   * Set to `0` to omit the per-region breakdown entirely.
+   * Maximum number of interpreted regions listed per screenshot. The largest
+   * regions are listed first; the remainder is collapsed into a
+   * `… and N more region(s)` line. Set to `0` to omit the per-region
+   * breakdown entirely.
    *
    * @default 5
    */
@@ -64,7 +68,7 @@ export const describeChanges = (
   screenshots: Screenshot[],
   options: DescribeChangesOptions = {},
 ): string[] => {
-  const { maxRegions = 5 } = options;
+  const { maxRegions = DEFAULT_MAX_REGIONS } = options;
 
   const changed = screenshots.filter(
     (screenshot) => screenshot.category === "changed",
@@ -108,7 +112,10 @@ export const describeChanges = (
       lines.push(`  ${chalk.dim(interpretation.summary)}`);
     }
 
-    const regions = interpretation?.regions ?? [];
+    // Largest regions first, so truncating keeps the most significant ones.
+    const regions = [...(interpretation?.regions ?? [])].sort(
+      (a, b) => b.percentage - a.percentage,
+    );
     if (maxRegions > 0 && regions.length > 0) {
       for (const region of regions.slice(0, maxRegions)) {
         lines.push(`  ${chalk.dim("→")} ${describeRegion(region)}`);
