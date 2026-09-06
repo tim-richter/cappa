@@ -49,14 +49,29 @@
   },
   "keywords": [
     "storybook-addon",
+    "test",
     "screenshot",
     "plugin",
     "storybook",
-    "visual-testing"
+    "visual-testing",
+    "visual regression",
+    "vrt",
+    "playwright",
+    "cappa"
   ],
   "storybook": {
     "displayName": "Cappa",
-    "unsupportedFrameworks": []
+    "icon": "https://github.com/user-attachments/assets/70683ad3-4a57-46b2-b829-16ec25b4ac94",
+    "supportedFrameworks": [
+      "react",
+      "vue",
+      "angular",
+      "web-components",
+      "ember",
+      "html",
+      "svelte",
+      "preact"
+    ]
   },
   "peerDependencies": {
     "storybook": "^9 || ^10"
