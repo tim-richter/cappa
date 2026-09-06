@@ -45,7 +45,7 @@ test("return Config when config is set with defineConfig", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light", port: 3000 },
+    review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
   });
 });
 
@@ -174,7 +174,7 @@ test("return Config when config is a function", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light", port: 3000 },
+    review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
   });
 });
 
@@ -212,7 +212,7 @@ test("return Config when config is a promise", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light", port: 3000 },
+    review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
   });
 });
 
@@ -262,7 +262,7 @@ test("passes environment variables to config functions", async () => {
       fullPage: true,
       viewport: { width: 1920, height: 1080 },
     },
-    review: { theme: "light", port: 3000 },
+    review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
   });
 
   if (originalNodeEnv === undefined) {

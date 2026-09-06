@@ -1,106 +1,43 @@
-import type { ScreenshotTool } from "@cappa/core";
-import { afterEach, describe, expect, it, vi } from "vitest";
-import {
-  didScreenshotFail,
-  filterTasks,
-  formatDuration,
-  formatProgress,
-  getDeletedScreenshots,
-  registerSignalHandlers,
-} from "./capture";
+import type { RunEvent, ScreenshotTool } from "@cappa/core";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
-vi.mock("node:fs/promises", () => ({
-  glob: vi.fn(),
+const { loggerInstance } = vi.hoisted(() => ({
+  loggerInstance: {
+    level: 4,
+    debug: vi.fn(),
+    info: vi.fn(),
+    success: vi.fn(),
+    error: vi.fn(),
+    warn: vi.fn(),
+    box: vi.fn(),
+  },
 }));
 
-import { glob } from "node:fs/promises";
+vi.mock("@cappa/logger", () => ({
+  getLogger: () => loggerInstance,
+  initLogger: () => loggerInstance,
+}));
 
-describe("didScreenshotFail", () => {
-  it("returns false for a non-object result", () => {
-    expect(didScreenshotFail(null)).toBe(false);
-    expect(didScreenshotFail("string")).toBe(false);
-    expect(didScreenshotFail(42)).toBe(false);
-  });
-
-  it("returns true when result has a non-null error", () => {
-    expect(didScreenshotFail({ error: "oops" })).toBe(true);
-    expect(didScreenshotFail({ error: new Error("boom") })).toBe(true);
-  });
-
-  it("returns false when error is null/undefined", () => {
-    expect(didScreenshotFail({ error: null })).toBe(false);
-    expect(didScreenshotFail({ error: undefined })).toBe(false);
-  });
-
-  it("returns true when success is explicitly false", () => {
-    expect(didScreenshotFail({ success: false })).toBe(true);
-  });
-
-  it("returns false when success is true (comparison passed)", () => {
-    expect(
-      didScreenshotFail({ success: true, filepath: "/some/path.png" }),
-    ).toBe(false);
-  });
-
-  it("returns true when filepath is missing and not skipped (new screenshot with failed capture)", () => {
-    expect(didScreenshotFail({ filepath: undefined, skipped: false })).toBe(
-      true,
-    );
-  });
-
-  it("returns false when skipped is true even without filepath", () => {
-    expect(didScreenshotFail({ filepath: undefined, skipped: true })).toBe(
-      false,
-    );
-  });
+vi.mock("chalk", () => {
+  const identity = (value: string) => value;
+  return {
+    __esModule: true,
+    default: { cyan: identity, red: identity, bold: identity, dim: identity },
+  };
 });
 
-describe("getDeletedScreenshots", () => {
-  it("returns empty array when no expected screenshots exist", async () => {
-    vi.mocked(glob).mockImplementation(async function* () {} as any);
-    expect(await getDeletedScreenshots("/output")).toEqual([]);
-  });
+import {
+  formatDuration,
+  formatProgress,
+  registerSignalHandlers,
+  renderRunEvent,
+} from "./capture";
 
-  it("returns empty array when all expected screenshots have a matching actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (
-      pattern: string | readonly string[],
-    ) {
-      if ((pattern as string).includes("actual")) {
-        yield "/output/actual/button.png";
-      } else {
-        yield "/output/expected/button.png";
-      }
-    } as any);
-    expect(await getDeletedScreenshots("/output")).toEqual([]);
-  });
-
-  it("returns the deleted relative path when an expected screenshot has no matching actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (
-      pattern: string | readonly string[],
-    ) {
-      if ((pattern as string).includes("actual")) {
-        // no actual screenshots
-      } else {
-        yield "/output/expected/button.png";
-      }
-    } as any);
-    expect(await getDeletedScreenshots("/output")).toEqual(["button.png"]);
-  });
-
-  it("returns only the missing paths when some expected screenshots are absent from actual", async () => {
-    vi.mocked(glob).mockImplementation(async function* (
-      pattern: string | readonly string[],
-    ) {
-      if ((pattern as string).includes("actual")) {
-        yield "/output/actual/button.png";
-      } else {
-        yield "/output/expected/button.png";
-        yield "/output/expected/card.png";
-      }
-    } as any);
-    expect(await getDeletedScreenshots("/output")).toEqual(["card.png"]);
-  });
-});
+const event = <T extends RunEvent["type"]>(
+  type: T,
+  rest: Omit<Extract<RunEvent, { type: T }>, "type" | "seq" | "runId" | "at">,
+): RunEvent =>
+  ({ type, seq: 1, runId: "run-1", at: 0, ...rest }) as unknown as RunEvent;
 
 describe("registerSignalHandlers", () => {
   let unregister: (() => void) | undefined;
@@ -189,40 +126,118 @@ describe("formatDuration", () => {
   });
 });
 
-describe("filterTasks", () => {
-  const tasks = [
-    { id: "button--primary", url: "http://localhost:6006" },
-    { id: "button--secondary", url: "http://localhost:6006" },
-    { id: "card--default", url: "http://localhost:6006" },
-    { id: "card--with-image", url: "http://localhost:6006" },
-    { id: "header--logged-in", url: "http://localhost:6006" },
-  ];
-
-  it("filters tasks matching a glob pattern with wildcard", () => {
-    const result = filterTasks(tasks, "button*");
-    expect(result.map((t) => t.id)).toEqual([
-      "button--primary",
-      "button--secondary",
-    ]);
+describe("renderRunEvent", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(loggerInstance)) {
+      if (typeof fn === "function") {
+        (fn as ReturnType<typeof vi.fn>).mockReset();
+      }
+    }
   });
 
-  it("filters tasks matching an exact id", () => {
-    const result = filterTasks(tasks, "card--default");
-    expect(result.map((t) => t.id)).toEqual(["card--default"]);
+  it("forwards log events to the matching logger level", () => {
+    renderRunEvent(
+      event("log", { level: "debug", message: "hello", args: [1] }),
+    );
+    expect(loggerInstance.debug).toHaveBeenCalledWith("hello", 1);
+
+    renderRunEvent(
+      event("log", { level: "warn", message: "careful", args: [] }),
+    );
+    expect(loggerInstance.warn).toHaveBeenCalledWith("careful");
   });
 
-  it("returns empty array when no tasks match", () => {
-    const result = filterTasks(tasks, "footer*");
-    expect(result).toEqual([]);
+  it("reports the task count discovered per plugin", () => {
+    renderRunEvent(
+      event("discover:plugin", { plugin: "storybook", taskCount: 12 }),
+    );
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      "Found 12 tasks for storybook",
+    );
   });
 
-  it("returns all tasks when pattern matches everything", () => {
-    const result = filterTasks(tasks, "*");
-    expect(result).toHaveLength(5);
+  it("renders the filter box and per-plugin match counts", () => {
+    renderRunEvent(
+      event("filter:applied", {
+        filter: "button*",
+        taskIds: undefined,
+        plugins: [{ plugin: "storybook", before: 10, after: 2 }],
+      }),
+    );
+
+    expect(loggerInstance.box).toHaveBeenCalledWith({
+      title: "Filter Active",
+      message: "Only capturing tasks matching: button*",
+    });
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      "storybook: 2/10 tasks match filter",
+    );
   });
 
-  it("supports character class patterns", () => {
-    const result = filterTasks(tasks, "card--*image");
-    expect(result.map((t) => t.id)).toEqual(["card--with-image"]);
+  it("does not render the filter box for an id-only selection", () => {
+    renderRunEvent(
+      event("filter:applied", {
+        filter: undefined,
+        taskIds: ["button--primary"],
+        plugins: [{ plugin: "storybook", before: 10, after: 1 }],
+      }),
+    );
+
+    expect(loggerInstance.box).not.toHaveBeenCalled();
+  });
+
+  it("logs progress on task completion", () => {
+    renderRunEvent(
+      event("task:complete", {
+        plugin: "storybook",
+        taskId: "button--primary",
+        url: "http://localhost:6006",
+        status: "passed",
+        completed: 3,
+        total: 9,
+        durationMs: 12,
+        result: undefined,
+      }),
+    );
+
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      "[3/9] captured button--primary",
+    );
+  });
+
+  it("logs plugin completion as success or error depending on failures", () => {
+    renderRunEvent(
+      event("plugin:complete", {
+        plugin: "storybook",
+        resultCount: 4,
+        failed: false,
+      }),
+    );
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "Plugin storybook completed: 4 results",
+    );
+
+    renderRunEvent(
+      event("plugin:complete", {
+        plugin: "pages",
+        resultCount: 2,
+        failed: true,
+      }),
+    );
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      "Plugin pages completed with failures: 2 results",
+    );
+  });
+
+  it("logs run errors", () => {
+    renderRunEvent(
+      event("run:error", {
+        error: { name: "Error", message: "boom" },
+      }),
+    );
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      "Error during plugin execution:",
+      "boom",
+    );
   });
 });

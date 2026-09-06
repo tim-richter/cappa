@@ -21,6 +21,7 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { SeverityBadge } from "./components/Interpretation";
@@ -187,6 +188,8 @@ export function ScreenshotComparison({
 
         {/* Right side */}
         <div className="flex items-center gap-4 justify-end">
+          <RecaptureButton taskId={screenshot.name} />
+
           {!screenshot.approved && (
             <Tooltip>
               <TooltipTrigger asChild>

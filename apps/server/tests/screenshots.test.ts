@@ -1,47 +1,57 @@
-import { vol } from "memfs";
+import type { Screenshot } from "@cappa/core";
 import { describe, expect, it } from "vitest";
 import { createServer } from "../src/server";
+import { createFakeEngine, type FakeEngine } from "./fakeEngine";
 
-describe("GET /", () => {
-  it("should return all screenshots", async () => {
-    const app = await createServer({
-      outputDir: "dist/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          actualPath: "/screenshots/actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "deleted",
-          expectedPath: "/screenshots/expected/Screenshot 2.png",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          category: "changed",
-          actualPath: "/screenshots/actual/Screenshot 3.png",
-          expectedPath: "/screenshots/expected/Screenshot 3.png",
-          diffPath: "/screenshots/diff/Screenshot 3.png",
-        },
-        {
-          name: "Screenshot 4",
-          id: "4",
-          category: "passed",
-          actualPath: "/screenshots/actual/Screenshot 4.png",
-          expectedPath: "/screenshots/expected/Screenshot 4.png",
-        },
-      ],
-    });
+const screenshots: Screenshot[] = [
+  {
+    name: "Screenshot 1",
+    id: "1",
+    category: "new",
+    actualPath: "actual/Screenshot 1.png",
+  },
+  {
+    name: "Screenshot 2",
+    id: "2",
+    category: "deleted",
+    expectedPath: "expected/Screenshot 2.png",
+  },
+  {
+    name: "Screenshot 3",
+    id: "3",
+    category: "changed",
+    actualPath: "actual/Screenshot 3.png",
+    expectedPath: "expected/Screenshot 3.png",
+    diffPath: "diff/Screenshot 3.png",
+  },
+  {
+    name: "Screenshot 4",
+    id: "4",
+    category: "passed",
+    actualPath: "actual/Screenshot 4.png",
+    expectedPath: "expected/Screenshot 4.png",
+  },
+];
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/screenshots",
-    });
+const build = async (
+  opts: Partial<Parameters<typeof createServer>[0]> = {},
+  engine: FakeEngine = createFakeEngine(),
+) => {
+  engine.screenshots = [...screenshots];
+  const app = await createServer({
+    engine,
+    outputDir: "dist/screenshots",
+    logger: false,
+    ...opts,
+  });
+  return { app, engine };
+};
+
+describe("GET /api/screenshots", () => {
+  it("returns every screenshot with asset URLs and navigation links", async () => {
+    const { app } = await build();
+
+    const response = await app.inject({ url: "/api/screenshots" });
 
     expect(response.statusCode).toBe(200);
     expect(response.json()).toEqual([
@@ -49,15 +59,16 @@ describe("GET /", () => {
         name: "Screenshot 1",
         id: "1",
         category: "new",
-        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
+        approved: false,
+        actualPath: "/assets/screenshots/actual/Screenshot 1.png",
         next: "2",
       },
       {
         name: "Screenshot 2",
         id: "2",
         category: "deleted",
-        expectedPath:
-          "/assets/screenshots//screenshots/expected/Screenshot 2.png",
+        approved: false,
+        expectedPath: "/assets/screenshots/expected/Screenshot 2.png",
         next: "3",
         prev: "1",
       },
@@ -65,10 +76,10 @@ describe("GET /", () => {
         name: "Screenshot 3",
         id: "3",
         category: "changed",
-        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 3.png",
-        expectedPath:
-          "/assets/screenshots//screenshots/expected/Screenshot 3.png",
-        diffPath: "/assets/screenshots//screenshots/diff/Screenshot 3.png",
+        approved: false,
+        actualPath: "/assets/screenshots/actual/Screenshot 3.png",
+        expectedPath: "/assets/screenshots/expected/Screenshot 3.png",
+        diffPath: "/assets/screenshots/diff/Screenshot 3.png",
         next: "4",
         prev: "2",
       },
@@ -76,476 +87,215 @@ describe("GET /", () => {
         name: "Screenshot 4",
         id: "4",
         category: "passed",
-        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 4.png",
-        expectedPath:
-          "/assets/screenshots//screenshots/expected/Screenshot 4.png",
+        // A screenshot matching its baseline has nothing left to approve.
+        approved: true,
+        actualPath: "/assets/screenshots/actual/Screenshot 4.png",
+        expectedPath: "/assets/screenshots/expected/Screenshot 4.png",
         prev: "3",
       },
     ]);
   });
 
-  it("should filter by category", async () => {
-    const app = await createServer({
-      outputDir: "dist/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          actualPath: "/screenshots/actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "deleted",
-          expectedPath: "/screenshots/expected/Screenshot 2.png",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          category: "changed",
-          actualPath: "/screenshots/actual/Screenshot 3.png",
-          expectedPath: "/screenshots/expected/Screenshot 3.png",
-          diffPath: "/screenshots/diff/Screenshot 3.png",
-        },
-        {
-          name: "Screenshot 4",
-          id: "4",
-          category: "passed",
-          actualPath: "/screenshots/actual/Screenshot 4.png",
-          expectedPath: "/screenshots/expected/Screenshot 4.png",
-        },
-      ],
-    });
+  it("reads through to the engine on every request", async () => {
+    const { app, engine } = await build();
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/screenshots",
-      query: { category: "new" },
-    });
+    await app.inject({ url: "/api/screenshots" });
+    engine.screenshots = [];
+    const second = await app.inject({ url: "/api/screenshots" });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([
-      {
-        name: "Screenshot 1",
-        id: "1",
-        category: "new",
-        actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
-        next: "2",
-      },
-    ]);
+    expect(second.json()).toEqual([]);
   });
 
-  it("should filter by search", async () => {
-    const app = await createServer({
-      outputDir: "dist/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          actualPath: "/screenshots/actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "deleted",
-          expectedPath: "/screenshots/expected/Screenshot 2.png",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          category: "changed",
-          actualPath: "/screenshots/actual/Screenshot 3.png",
-          expectedPath: "/screenshots/expected/Screenshot 3.png",
-          diffPath: "/screenshots/diff/Screenshot 3.png",
-        },
-        {
-          name: "Screenshot 4",
-          id: "4",
-          category: "passed",
-          actualPath: "/screenshots/actual/Screenshot 4.png",
-          expectedPath: "/screenshots/expected/Screenshot 4.png",
-        },
-      ],
-    });
+  it("filters by category", async () => {
+    const { app } = await build();
 
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/screenshots",
-      query: { search: "Screenshot 2" },
-    });
+    const response = await app.inject({ url: "/api/screenshots?category=new" });
 
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual([
-      {
-        name: "Screenshot 2",
-        id: "2",
-        category: "deleted",
-        expectedPath:
-          "/assets/screenshots//screenshots/expected/Screenshot 2.png",
-        next: "3",
-        prev: "1",
-      },
-    ]);
-  });
-});
-
-describe("GET /:id", () => {
-  it("should return a screenshot", async () => {
-    const app = await createServer({
-      outputDir: "dist/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          actualPath: "/screenshots/actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "deleted",
-          expectedPath: "/screenshots/expected/Screenshot 2.png",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          category: "changed",
-          actualPath: "/screenshots/actual/Screenshot 3.png",
-          expectedPath: "/screenshots/expected/Screenshot 3.png",
-          diffPath: "/screenshots/diff/Screenshot 3.png",
-        },
-        {
-          name: "Screenshot 4",
-          id: "4",
-          category: "passed",
-          actualPath: "/screenshots/actual/Screenshot 4.png",
-          expectedPath: "/screenshots/expected/Screenshot 4.png",
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: "GET",
-      url: "/api/screenshots/1",
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      name: "Screenshot 1",
-      id: "1",
-      category: "new",
-      actualPath: "/assets/screenshots//screenshots/actual/Screenshot 1.png",
-      next: "2",
-    });
+    expect(response.json()).toHaveLength(1);
+    expect(response.json()[0]).toMatchObject({ id: "1" });
   });
 
-  it("should return a 404 if the screenshot does not exist", async () => {
-    const app = await createServer({
-      outputDir: "dist/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          actualPath: "/screenshots/actual/Screenshot 1.png",
-        },
-      ],
-    });
+  it("filters by search term, case-insensitively", async () => {
+    const { app } = await build();
 
     const response = await app.inject({
-      method: "GET",
-      url: "/api/screenshots/2",
+      url: "/api/screenshots?search=screenshot%203",
     });
 
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({ error: "Screenshot not found" });
-  });
-});
-
-describe("PATCH /:id", () => {
-  it("should update a screenshot", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "deleted",
-          approved: false,
-          expectedPath: "expected/Screenshot 2.png",
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      body: {
-        approved: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(response.json()).toEqual({
-      name: "Screenshot 1",
-      id: "1",
-      category: "new",
-      approved: true,
-      actualPath: "/assets/screenshots/actual/Screenshot 1.png",
-      next: "2",
-    });
+    expect(response.json()).toHaveLength(1);
+    expect(response.json()[0]).toMatchObject({ id: "3" });
   });
 
-  it("should return a 404 if the screenshot does not exist", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-      ],
-    });
+  it("keeps next/prev spanning the whole list when filtering", async () => {
+    const { app } = await build();
 
     const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/2",
-      body: {
-        approved: true,
-      },
+      url: "/api/screenshots?category=changed",
     });
 
-    expect(response.statusCode).toBe(404);
-    expect(response.json()).toEqual({
-      error: "Screenshot not found",
-    });
+    // Screenshot 3 is alone in the filtered result but still links to 2 and 4.
+    expect(response.json()[0]).toMatchObject({ prev: "2", next: "4" });
   });
 
-  it("should return a 400 if the body is invalid", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-      ],
-    });
+  it("rejects an unknown category", async () => {
+    const { app } = await build();
 
     const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      body: {
-        approved: "true",
-      },
+      url: "/api/screenshots?category=sideways",
     });
 
     expect(response.statusCode).toBe(400);
-    expect(response.json()).toEqual({
-      error: {
-        fieldErrors: {
-          approved: ["approved must be a boolean"],
-        },
-        formErrors: [],
-      },
-    });
-  });
-
-  it("should move approved screenshots to expected directory", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      body: {
-        approved: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(vol.toJSON()).toEqual({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-      "/screenshots/expected/Screenshot 1.png": "actual screenshot",
-    });
-  });
-
-  it("should overwrite existing approved screenshots", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-      "/screenshots/expected/Screenshot 1.png": "existing screenshot",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      body: {
-        approved: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(vol.toJSON()).toEqual({
-      "/screenshots/actual/Screenshot 1.png": "actual screenshot",
-      "/screenshots/expected/Screenshot 1.png": "actual screenshot",
-    });
-  });
-
-  it("should remove expected file when approving a deleted screenshot", async () => {
-    vol.fromJSON({
-      "/screenshots/expected/Gone.png": "old baseline",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Gone",
-          id: "del-1",
-          category: "deleted",
-          approved: false,
-          expectedPath: "expected/Gone.png",
-        },
-      ],
-    });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/del-1",
-      body: {
-        approved: true,
-      },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(vol.toJSON()["/screenshots/expected/Gone.png"]).toBeUndefined();
   });
 });
 
-describe("POST /approve-batch", () => {
-  it("should approve multiple screenshots and move to expected directory", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual 1",
-      "/screenshots/actual/Screenshot 2.png": "actual 2",
+describe("GET /api/screenshots/:id", () => {
+  it("returns one screenshot", async () => {
+    const { app } = await build();
+
+    const response = await app.inject({ url: "/api/screenshots/3" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json()).toMatchObject({
+      id: "3",
+      diffPath: "/assets/screenshots/diff/Screenshot 3.png",
+    });
+  });
+
+  it("404s for an unknown id", async () => {
+    const { app } = await build();
+
+    expect((await app.inject({ url: "/api/screenshots/99" })).statusCode).toBe(
+      404,
+    );
+  });
+});
+
+describe("PATCH /api/screenshots/:id", () => {
+  it("approves a screenshot and returns its updated state", async () => {
+    const { app, engine } = await build();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/1",
+      payload: { approved: true },
     });
 
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 2.png",
-        },
-      ],
+    expect(response.statusCode).toBe(200);
+    expect(engine.approve).toHaveBeenCalledWith(["Screenshot 1"]);
+    expect(response.json()).toMatchObject({
+      id: "1",
+      category: "passed",
+      approved: true,
     });
+  });
+
+  it("is a no-op when approved is false", async () => {
+    const { app, engine } = await build();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/1",
+      payload: { approved: false },
+    });
+
+    expect(response.statusCode).toBe(200);
+    expect(engine.approve).not.toHaveBeenCalled();
+  });
+
+  it("rejects a non-boolean approved flag", async () => {
+    const { app } = await build();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/1",
+      payload: { approved: "yes" },
+    });
+
+    expect(response.statusCode).toBe(400);
+  });
+
+  it("404s for an unknown id", async () => {
+    const { app } = await build();
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/99",
+      payload: { approved: true },
+    });
+
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("surfaces an approval failure as a 500", async () => {
+    const engine = createFakeEngine();
+    engine.approve = (async () => ({
+      approved: [],
+      errors: [{ name: "Screenshot 1", error: "disk full" }],
+    })) as FakeEngine["approve"];
+    const { app } = await build({}, engine);
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/1",
+      payload: { approved: true },
+    });
+
+    expect(response.statusCode).toBe(500);
+    expect(response.json()).toEqual({ error: "disk full" });
+  });
+
+  it("refuses in read-only mode", async () => {
+    const { app, engine } = await build({ readOnly: true });
+
+    const response = await app.inject({
+      method: "PATCH",
+      url: "/api/screenshots/1",
+      payload: { approved: true },
+    });
+
+    expect(response.statusCode).toBe(403);
+    expect(engine.approve).not.toHaveBeenCalled();
+  });
+});
+
+describe("POST /api/screenshots/approve-batch", () => {
+  it("approves several screenshots by name", async () => {
+    const { app, engine } = await build();
 
     const response = await app.inject({
       method: "POST",
       url: "/api/screenshots/approve-batch",
-      payload: { names: ["Screenshot 1", "Screenshot 2"] },
+      payload: { names: ["Screenshot 1", "Screenshot 3"] },
     });
 
     expect(response.statusCode).toBe(200);
-    const body = response.json() as { approved: string[]; errors: unknown[] };
-    expect(body.approved).toEqual(["Screenshot 1", "Screenshot 2"]);
-    expect(body.errors).toEqual([]);
-
-    expect(vol.toJSON()).toEqual({
-      "/screenshots/actual/Screenshot 1.png": "actual 1",
-      "/screenshots/actual/Screenshot 2.png": "actual 2",
-      "/screenshots/expected/Screenshot 1.png": "actual 1",
-      "/screenshots/expected/Screenshot 2.png": "actual 2",
+    expect(response.json()).toEqual({
+      approved: ["Screenshot 1", "Screenshot 3"],
+      errors: [],
     });
-
-    const listResponse = await app.inject({
-      method: "GET",
-      url: "/api/screenshots",
-    });
-    const list = listResponse.json() as { approved?: boolean }[];
-    expect(list.every((s) => s.approved)).toBe(true);
+    expect(engine.approve).toHaveBeenCalledWith([
+      "Screenshot 1",
+      "Screenshot 3",
+    ]);
   });
 
-  it("should return 400 if names is empty", async () => {
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [],
+  it("reports names that could not be approved", async () => {
+    const { app } = await build();
+
+    const response = await app.inject({
+      method: "POST",
+      url: "/api/screenshots/approve-batch",
+      payload: { names: ["Screenshot 1", "ghost"] },
     });
+
+    expect(response.json()).toEqual({
+      approved: ["Screenshot 1"],
+      errors: [{ name: "ghost", error: "Screenshot not found" }],
+    });
+  });
+
+  it("rejects an empty names array", async () => {
+    const { app, engine } = await build();
 
     const response = await app.inject({
       method: "POST",
@@ -554,88 +304,31 @@ describe("POST /approve-batch", () => {
     });
 
     expect(response.statusCode).toBe(400);
+    expect(engine.approve).not.toHaveBeenCalled();
   });
 
-  it("should skip already approved and collect errors for missing files", async () => {
-    vol.fromJSON({
-      "/screenshots/actual/Screenshot 1.png": "actual 1",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Screenshot 1",
-          id: "1",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 1.png",
-        },
-        {
-          name: "Screenshot 2",
-          id: "2",
-          category: "new",
-          approved: true,
-          actualPath: "actual/Screenshot 2.png",
-        },
-        {
-          name: "Screenshot 3",
-          id: "3",
-          category: "new",
-          approved: false,
-          actualPath: "actual/Screenshot 3.png",
-        },
-      ],
-    });
+  it("rejects a malformed body", async () => {
+    const { app } = await build();
 
     const response = await app.inject({
       method: "POST",
       url: "/api/screenshots/approve-batch",
-      payload: { names: ["Screenshot 1", "Screenshot 2", "Screenshot 3"] },
+      payload: { names: "Screenshot 1" },
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = response.json() as {
-      approved: string[];
-      errors: { name: string; error: string }[];
-    };
-    expect(body.approved).toEqual(["Screenshot 1"]);
-    expect(body.errors.length).toBe(1);
-    expect(body.errors[0].name).toBe("Screenshot 3");
-    expect(body.errors[0].error).toBeDefined();
+    expect(response.statusCode).toBe(400);
   });
 
-  it("should remove expected file when approving a deleted screenshot", async () => {
-    vol.fromJSON({
-      "/screenshots/expected/Removed.png": "old baseline",
-    });
-
-    const app = await createServer({
-      outputDir: "/screenshots",
-      logger: false,
-      screenshots: [
-        {
-          name: "Removed",
-          id: "1",
-          category: "deleted",
-          approved: false,
-          expectedPath: "expected/Removed.png",
-        },
-      ],
-    });
+  it("refuses in read-only mode", async () => {
+    const { app, engine } = await build({ readOnly: true });
 
     const response = await app.inject({
       method: "POST",
       url: "/api/screenshots/approve-batch",
-      payload: { names: ["Removed"] },
+      payload: { names: ["Screenshot 1"] },
     });
 
-    expect(response.statusCode).toBe(200);
-    const body = response.json() as { approved: string[]; errors: unknown[] };
-    expect(body.approved).toEqual(["Removed"]);
-    expect(body.errors).toEqual([]);
-
-    expect(vol.toJSON()["/screenshots/expected/Removed.png"]).toBeUndefined();
+    expect(response.statusCode).toBe(403);
+    expect(engine.approve).not.toHaveBeenCalled();
   });
 });

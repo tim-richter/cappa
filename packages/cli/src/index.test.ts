@@ -46,12 +46,52 @@ const screenshotFileSystemInstances: Array<{
 }> = [];
 
 const imagesMatchMock = vi.fn();
+const groupScreenshotsMock = vi.fn();
+const localEngineInstances: Array<{
+  options: unknown;
+  close: ReturnType<typeof vi.fn>;
+}> = [];
 
 vi.mock("@cappa/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@cappa/core")>();
 
   return {
     ...actual,
+    groupScreenshots: (...args: unknown[]) => groupScreenshotsMock(...args),
+    // `collectScreenshots` calls `groupScreenshots` through a relative import
+    // inside `@cappa/core`, so mocking the package export alone would not reach
+    // it. Re-implement the (tiny) glob-and-delegate here so both entry points
+    // route through the same spy.
+    collectScreenshots: async (outputDir: string) => {
+      const listPngs = async (dir: string) =>
+        Array.fromAsync(
+          await globMock(path.resolve(outputDir, dir, "**/*.png")),
+        );
+
+      const [actualScreenshots, expectedScreenshots, diffScreenshots] =
+        await Promise.all([
+          listPngs("actual"),
+          listPngs("expected"),
+          listPngs("diff"),
+        ]);
+
+      return groupScreenshotsMock(
+        actualScreenshots,
+        expectedScreenshots,
+        diffScreenshots,
+        outputDir,
+      );
+    },
+    LocalEngine: class {
+      options: unknown;
+      close: ReturnType<typeof vi.fn>;
+
+      constructor(options: unknown) {
+        this.options = options;
+        this.close = vi.fn();
+        localEngineInstances.push(this);
+      }
+    },
     ScreenshotTool: class {
       options: unknown;
       close: ReturnType<typeof vi.fn>;
@@ -167,6 +207,8 @@ const createServerMock = vi.fn(async () => {
 
 vi.mock("@cappa/server", () => ({
   createServer: createServerMock,
+  isLoopbackHost: (host: string) =>
+    host === "localhost" || host === "127.0.0.1" || host.startsWith("127."),
 }));
 
 const globMock = vi.fn().mockResolvedValue([]);
@@ -178,15 +220,16 @@ vi.mock("node:fs/promises", () => ({
 
 const loadConfigMock = vi.fn();
 const getConfigMock = vi.fn();
-vi.mock("./features/config", () => ({
-  loadConfig: loadConfigMock,
-  getConfig: getConfigMock,
-}));
+vi.mock("@cappa/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@cappa/config")>();
 
-const groupScreenshotsMock = vi.fn();
-vi.mock("./utils/groupScreenshots", () => ({
-  groupScreenshots: groupScreenshotsMock,
-}));
+  return {
+    // Keep the real `defaultConfig` template — the init test asserts on it.
+    ...actual,
+    loadConfig: loadConfigMock,
+    getConfig: getConfigMock,
+  };
+});
 
 const identity = (value: string) => value;
 vi.mock("chalk", () => ({
@@ -226,6 +269,7 @@ beforeEach(() => {
   screenshotToolInstances.length = 0;
   screenshotFileSystemInstances.length = 0;
   serverInstances.length = 0;
+  localEngineInstances.length = 0;
   globMock.mockReset();
   globMock.mockImplementation(() => Promise.resolve([]));
   loadConfigMock.mockReset();
@@ -741,16 +785,7 @@ describe("cappa CLI", () => {
     expect(process.exit).toHaveBeenCalledWith(1);
   });
 
-  test("review command groups screenshots and starts review server", async () => {
-    const grouped = [
-      {
-        id: "1",
-        name: "button",
-        category: "new",
-        actualPath: "actual/button.png",
-      },
-    ];
-
+  test("review command builds a local engine and starts the server", async () => {
     loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",
       config: {},
@@ -759,6 +794,11 @@ describe("cappa CLI", () => {
     getConfigMock.mockResolvedValue({
       outputDir: "/tmp/screens",
       plugins: [],
+      retries: 2,
+      concurrency: 1,
+      logConsoleEvents: true,
+      connectionTimeout: 20000,
+      screenshot: { fullPage: true, viewport: { width: 1920, height: 1080 } },
       diff: {
         type: "pixel",
         threshold: 0.1,
@@ -770,52 +810,141 @@ describe("cappa CLI", () => {
       review: { theme: "light", port: 4000 },
     });
 
-    globMock.mockImplementation((pattern: string) => {
-      if (pattern.includes("/actual/")) {
-        return Promise.resolve(["/tmp/screens/actual/button.png"]);
-      }
-      if (pattern.includes("/expected/")) {
-        return Promise.resolve(["/tmp/screens/expected/button.png"]);
-      }
-      if (pattern.includes("/diff/")) {
-        return Promise.resolve(["/tmp/screens/diff/button.png"]);
-      }
-      return Promise.resolve([]);
-    });
-
-    groupScreenshotsMock.mockResolvedValue(grouped);
-
     process.argv = ["node", "cappa", "review"];
     await run();
 
-    expect(groupScreenshotsMock).toHaveBeenCalledWith(
-      ["/tmp/screens/actual/button.png"],
-      ["/tmp/screens/expected/button.png"],
-      ["/tmp/screens/diff/button.png"],
-      "/tmp/screens",
-    );
+    // The engine is built here, in the process that evaluated the config, and
+    // injected into the server.
+    expect(localEngineInstances).toHaveLength(1);
+    expect(localEngineInstances[0]?.options).toMatchObject({
+      outputDir: path.resolve("/tmp/screens"),
+      plugins: [],
+      retries: 2,
+      concurrency: 1,
+    });
 
     expect(createServerMock).toHaveBeenCalledWith({
+      engine: localEngineInstances[0],
       isProd: true,
       outputDir: path.resolve("/tmp/screens"),
-      screenshots: grouped,
       logger: true,
       theme: "light",
-      diff: {
-        type: "pixel",
-        threshold: 0.1,
-        includeAA: false,
-        fastBufferCheck: true,
-        maxDiffPixels: 0,
-        maxDiffPercentage: 0,
-      },
+      readOnly: false,
+      token: undefined,
     });
 
     expect(serverInstances).toHaveLength(1);
-    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({ port: 4000 });
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({
+      port: 4000,
+      host: "127.0.0.1",
+    });
     expect(loggerInstance.success).toHaveBeenCalledWith(
       "Review UI available at http://localhost:4000",
     );
+  });
+
+  test("review --port and --read-only override the config", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+
+    process.argv = ["node", "cappa", "review", "--port", "5555", "--read-only"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ readOnly: true }),
+    );
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({
+      port: 5555,
+      host: "127.0.0.1",
+    });
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      "Running read-only: capture and approval are disabled.",
+    );
+  });
+
+  test("review generates an access token when bound off loopback", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    const options = (createServerMock.mock.calls.at(-1) as unknown[])[0] as {
+      token?: string;
+    };
+    expect(options.token).toEqual(expect.any(String));
+    expect(options.token).not.toHaveLength(0);
+    expect(loggerInstance.warn).toHaveBeenCalledWith(
+      expect.stringContaining("requiring an access token"),
+    );
+  });
+
+  test("review repeats the generated token at a visible log level", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+    // `success` is info-level, so at -l 2 the URL carrying the token would
+    // otherwise never be shown and the server would be unreachable.
+    loggerInstance.level = 2;
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    const warned = loggerInstance.warn.mock.calls
+      .map(([message]) => String(message))
+      .filter((message) => message.includes("Review UI available at"));
+
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toContain("token=");
+  });
+
+  test("review does not repeat the URL when the log level already shows it", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    expect(
+      loggerInstance.warn.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes("Review UI available at")),
+    ).toHaveLength(0);
   });
 
   test("approve command copies filtered screenshots and cleans diffs", async () => {

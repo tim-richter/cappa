@@ -20,7 +20,9 @@
     "tsc": "tsc"
   },
   "dependencies": {
+    "@cappa/client": "workspace:*",
     "@cappa/core": "workspace:*",
+    "@cappa/protocol": "workspace:*",
     "@radix-ui/react-dialog": "catalog:",
     "@radix-ui/react-separator": "catalog:",
     "@tanstack/react-query": "^5.101.2",

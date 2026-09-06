@@ -1,0 +1,52 @@
+{
+  "name": "@cappa/config",
+  "version": "0.0.0",
+  "description": "Loads and resolves cappa.config.ts",
+  "type": "module",
+  "license": "MIT",
+  "author": "Tim Richter",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tim-richter/cappa.git"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "screenshot",
+    "config"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
+  "main": "./dist/index.cjs",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.cts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.cjs"
+    },
+    "./package.json": "./package.json"
+  },
+  "scripts": {
+    "build": "tsdown",
+    "tsc": "tsc",
+    "test": "vitest",
+    "test:run": "vitest --run",
+    "attw": "attw --pack --profile node16 ."
+  },
+  "dependencies": {
+    "@cappa/core": "workspace:*",
+    "@cappa/logger": "workspace:*",
+    "jiti": "2.7.0"
+  },
+  "devDependencies": {
+    "@arethetypeswrong/cli": "catalog:",
+    "@types/node": "catalog:",
+    "tsdown": "catalog:",
+    "typescript": "catalog:",
+    "vitest": "catalog:"
+  }
+}

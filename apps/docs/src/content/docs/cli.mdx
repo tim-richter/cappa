@@ -87,6 +87,20 @@ When [`diff.interpret`](/configuration#diffinterpret) is enabled, changed screen
 severity badge, a summary banner and interactive, color-coded region overlays on the diff view so
 you can see at a glance what changed and where.
 
+The review UI can also **drive the capture itself**: start a run, watch it live, cancel it, or
+re-capture a single screenshot without leaving the page. See [Interactive UI](/interactive-ui).
+
+```bash
+cappa review --port 4000        # override review.port
+cappa review --read-only        # serve a report with capture and approval disabled
+cappa review --host 0.0.0.0     # expose beyond this machine (requires a token)
+cappa review --token <value>    # supply the token yourself instead of generating one
+```
+
+Binding to anything other than a loopback host exposes control of a browser that reads local
+files, so Cappa requires an access token there and generates one — printed as part of the URL —
+when you do not pass `--token`.
+
 ## `cappa approve`
 
 Promotes the currently reviewed screenshots to the baseline. This command is typically run after a

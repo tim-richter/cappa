@@ -1,68 +1,112 @@
 import fs from "node:fs";
 import path from "node:path";
-import type { DiffOptions, DiffOptionsPixel, Screenshot } from "@cappa/core";
+import type { CaptureEngine } from "@cappa/core";
+import {
+  ASSET_PREFIX,
+  type Capabilities,
+  PROTOCOL_VERSION,
+  TOKEN_HEADER,
+} from "@cappa/protocol";
 import compress from "@fastify/compress";
 import fastifyStatic from "@fastify/static";
 import Fastify from "fastify";
+import { runsPlugin } from "./runs";
 import { screenshotsPlugin } from "./screenshots";
-import { resolveFromHere, transform } from "./util";
-
-// Extend FastifyInstance to include our decorated properties
-const defaultPixelDiff: DiffOptionsPixel = {
-  type: "pixel",
-  threshold: 0.1,
-  includeAA: false,
-  fastBufferCheck: true,
-  maxDiffPixels: 0,
-  maxDiffPercentage: 0,
-};
+import { isLoopbackHost, resolveFromHere } from "./util";
 
 declare module "fastify" {
   interface FastifyInstance {
-    screenshots: Screenshot[];
+    /**
+     * The capture engine, injected rather than constructed.
+     *
+     * The server never loads `cappa.config.ts`: plugins are live closures, so
+     * only the process that evaluated the config can hold them. Taking the
+     * engine by injection is what keeps a remote engine a drop-in replacement.
+     */
+    engine: CaptureEngine;
     outputDir: string;
+    readOnly: boolean;
   }
 }
 
-interface StartServerOptions {
+export interface StartServerOptions {
+  engine: CaptureEngine;
+  outputDir: string;
   isProd?: boolean;
   uiRoot?: string;
-  outputDir: string;
-  screenshots: Screenshot[];
   logger?: boolean;
   /** Theme for the review UI: 'light' or 'dark' */
   theme?: "light" | "dark";
-  /** Diff options for approval (pixel/GMSD); defaults match CLI `getConfig` pixel defaults */
-  diff?: DiffOptions;
+  /**
+   * Refuse capture, approval and every other mutation.
+   *
+   * For serving a CI artifact, where the browser-driving routes have no
+   * business being reachable.
+   */
+  readOnly?: boolean;
+  /**
+   * Shared secret required on every `/api/*` request.
+   *
+   * Omit for a loopback bind. Anything reachable from the network must set one:
+   * this server drives a real browser and writes to disk.
+   */
+  token?: string;
 }
 
 export async function createServer(opts: StartServerOptions) {
   const app = Fastify({ logger: opts.logger ?? true });
 
-  const resolvedDiff: DiffOptions = opts.diff ?? defaultPixelDiff;
+  const readOnly = opts.readOnly ?? false;
 
-  // Add screenshots data to the app instance for use in plugins
-  app.decorate("screenshots", transform(opts.screenshots));
+  app.decorate("engine", opts.engine);
   app.decorate("outputDir", opts.outputDir);
+  app.decorate("readOnly", readOnly);
 
   await app.register(compress);
 
-  app.get("/api/health", async () => ({ ok: true }));
+  if (opts.token) {
+    const expected = opts.token;
+
+    app.addHook("onRequest", async (request, reply) => {
+      if (!request.url.startsWith("/api/")) {
+        return;
+      }
+
+      const provided =
+        request.headers[TOKEN_HEADER] ??
+        (request.query as { token?: string } | undefined)?.token;
+
+      if (provided !== expected) {
+        reply.code(401).send({ error: "Unauthorized" });
+      }
+    });
+  }
+
+  const capabilities: Capabilities = {
+    capture: !readOnly,
+    approve: !readOnly,
+    events: true,
+  };
+
+  app.get("/api/health", async () => ({
+    ok: true,
+    protocolVersion: PROTOCOL_VERSION,
+    capabilities,
+  }));
 
   app.get("/api/config", async () => ({
     theme: opts.theme ?? "light",
+    readOnly,
   }));
 
-  // Register the screenshots plugin with the /api/screenshots prefix
-  await app.register(screenshotsPlugin, {
-    prefix: "/api/screenshots",
-    diff: resolvedDiff,
-  });
+  await app.register(runsPlugin, { prefix: "/api" });
+
+  await app.register(screenshotsPlugin, { prefix: "/api/screenshots" });
 
   if (fs.existsSync(opts.outputDir)) {
     app.register(fastifyStatic, {
       root: path.resolve(opts.outputDir),
-      prefix: "/assets/screenshots",
+      prefix: ASSET_PREFIX,
       // security: disable dotfiles and traversal
       decorateReply: false,
       serveDotFiles: false,
@@ -92,3 +136,5 @@ export async function createServer(opts: StartServerOptions) {
 
   return app;
 }
+
+export { isLoopbackHost };

@@ -1,0 +1,94 @@
+---
+title: Interactive UI
+description: Start, watch and cancel capture runs from the review UI instead of the CLI.
+---
+
+`cappa review` serves more than a report. The same UI can drive the browser: pick what to
+capture, start a run, and watch it happen — without leaving the page to run `cappa capture`
+in another terminal.
+
+```bash
+cappa review
+```
+
+Open the URL it prints and choose **Capture** in the sidebar.
+
+## Capturing
+
+The capture panel lists every task your plugins discovered. From there you can:
+
+- **Capture everything** — the same work `cappa capture` does.
+- **Capture one plugin** — tick a plugin to run only its tasks.
+- **Capture specific screenshots** — filter by name and tick the ones you want.
+
+A selection of specific screenshots leaves the rest of your results alone, so you can
+iterate on one component without re-capturing the whole suite. A full run still clears
+`actual/` and `diff/` first, exactly as the CLI does.
+
+While the run is going you get live progress, a row per task moving from pending through
+running to its outcome, a count by status, and the run's log output. **Cancel** stops it:
+tasks already in flight finish, but nothing new starts.
+
+When the run finishes, the screenshot lists refresh themselves — the Changed, New and
+Passed tabs reflect what was just captured with no reload.
+
+## Re-capturing a single screenshot
+
+Every screenshot's detail page has a **Re-capture** button. It runs that one task and
+leaves every other result untouched, which makes the tighten-a-diff loop short: change
+your component, re-capture, look at the diff, approve.
+
+## One run at a time
+
+The server captures one run at a time — the browser pool is the real constraint, and a
+second concurrent run would only fight it. Starting a run while one is active is rejected
+rather than queued, and the UI disables the button while a run is in flight.
+
+## The browser stays warm
+
+Between captures the browser is kept alive so an interactive run does not pay browser
+startup every time. It shuts down once it has been idle for a while, so a forgotten review
+session does not hold a browser process indefinitely.
+
+Contexts are recycled before every run, so a capture started from the UI is taken against
+the same clean state the CLI would use.
+
+Tune the idle window with [`review.browserIdleTimeout`](/configuration#reviewbrowseridletimeout).
+
+## Serving a report without capture
+
+Capture drives a real browser and writes to disk. When you only want to share a report —
+CI artifacts, for instance — start the server read-only:
+
+```bash
+cappa review --read-only
+```
+
+The capture page, the sidebar entry and the re-capture buttons all disappear, and the
+server refuses capture, approval and every other mutation.
+
+## Exposing the UI beyond your machine
+
+By default the server binds to `127.0.0.1`, reachable only from your own machine. Binding
+anywhere else exposes control of a browser that reads local files, so a token is required:
+
+```bash
+cappa review --host 0.0.0.0
+```
+
+Cappa generates one and prints it as part of the URL. Pass your own with `--token <value>`
+if you would rather choose it. Every `/api/*` request needs it; the UI picks it up from the
+URL automatically.
+
+A request can only capture tasks that discovery produced — the UI selects from that list
+and never supplies a URL of its own — so a client cannot point the browser somewhere
+arbitrary.
+
+## Flags
+
+| Flag | Description |
+| --- | --- |
+| `--port <port>` | Port to listen on. Defaults to [`review.port`](/configuration#reviewport). |
+| `--host <host>` | Host to bind. Defaults to `127.0.0.1`; anything else requires a token. |
+| `--read-only` | Serve the report without capture, approval or any other mutation. |
+| `--token <token>` | Require this token on every API request. |

@@ -4,16 +4,30 @@ import { getPlugins, isPromise } from "./getPlugins";
 import type { ConfigResult } from "./loadConfig";
 import { loadConfig } from "./loadConfig";
 
-type ResolvedUserConfig = Required<Omit<UserConfig, "onFail">> &
+export type ResolvedUserConfig = Required<Omit<UserConfig, "onFail">> &
   Pick<UserConfig, "onFail">;
+
+export type GetConfigOptions = {
+  /**
+   * Directory to load `cappa.config.ts` from when no `loadResult` is given.
+   * @default process.cwd()
+   */
+  cwd?: string;
+  /**
+   * Value exposed as `ConfigEnv.command` to a function-style config.
+   * @default process.argv[2]
+   */
+  command?: string;
+};
 
 /**
  * Converting UserConfig to Config without a change in the object beside the JSON convert.
  */
 export async function getConfig(
   loadResult?: ConfigResult,
+  options: GetConfigOptions = {},
 ): Promise<ResolvedUserConfig> {
-  const result = loadResult ?? (await loadConfig());
+  const result = loadResult ?? (await loadConfig({ cwd: options.cwd }));
 
   const configData = result?.config;
   let cappaUserConfig: Promise<UserConfig> = Promise.resolve(
@@ -21,7 +35,7 @@ export async function getConfig(
   );
 
   const configEnv: ConfigEnv = {
-    command: process.argv[2],
+    command: options.command ?? process.argv[2],
     mode: process.env.NODE_ENV || "development",
     env: process.env,
   };
@@ -81,6 +95,7 @@ export async function getConfig(
     review: {
       theme: userConfig.review?.theme ?? "light",
       port: userConfig.review?.port ?? 3000,
+      browserIdleTimeout: userConfig.review?.browserIdleTimeout ?? 300_000,
     },
     connectionTimeout: userConfig.connectionTimeout ?? 20000,
   };
