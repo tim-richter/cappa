@@ -16,6 +16,15 @@ const mockNoScreenshotsOnDisk = () => {
   vi.mocked(glob).mockImplementation(async function* () {} as any);
 };
 
+/**
+ * A stand-in for `ScreenshotFileSystem`.
+ *
+ * Injecting this is what keeps these tests off the disk entirely: the real
+ * constructor creates `actual/`, `expected/` and `diff/` eagerly, so a runner
+ * built without it would try to `mkdir` the output directory below — which
+ * only succeeds when the tests happen to run as root. Keep it injected, or
+ * switch `outputDir` to a temp directory as `LocalEngine.test.ts` does.
+ */
 const createFileSystem = () =>
   ({
     clearActual: vi.fn(),

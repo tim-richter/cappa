@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("node:fs/promises", () => ({
   glob: vi.fn(),
@@ -8,7 +8,10 @@ vi.mock("../screenshots/collectScreenshots", () => ({
   collectScreenshots: vi.fn(async () => []),
 }));
 
+import fs from "node:fs";
 import { glob } from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import type { PluginTask } from "../plugin";
 import type { RunEvent, RunnablePlugin } from "../runner/types";
 import type ScreenshotTool from "../screenshot";
@@ -23,11 +26,22 @@ import {
   UnknownTargetsError,
 } from "./types";
 
+/**
+ * A real, writable directory for each test.
+ *
+ * `ScreenshotFileSystem` creates `actual/`, `expected/` and `diff/` eagerly in
+ * its constructor, so constructing a `LocalEngine` touches the disk. An
+ * absolute path like `/out` only works when the tests run as root — which is
+ * why an earlier version of this file passed locally and failed on CI with
+ * EACCES.
+ */
+let outputDir: string;
+
 const task = (id: string): PluginTask => ({ id, url: `http://x/${id}` });
 
 const createTool = () =>
   ({
-    outputDir: "/out",
+    outputDir,
     concurrency: 1,
     filesystem: undefined,
     init: vi.fn(async () => {}),
@@ -40,7 +54,7 @@ const createPlugin = (
   name: string,
   tasks: PluginTask[],
   execute: RunnablePlugin["execute"] = async () => ({
-    filepath: "/out/actual/a.png",
+    filepath: `${outputDir}/actual/a.png`,
     success: true,
   }),
 ): RunnablePlugin => ({
@@ -56,7 +70,7 @@ const createEngine = (
 ) => {
   const tools: ScreenshotTool[] = [];
   const engine = new LocalEngine({
-    outputDir: "/out",
+    outputDir,
     plugins,
     createScreenshotTool: () => {
       const tool = createTool();
@@ -81,10 +95,15 @@ const settle = async (engine: LocalEngine, runId: string) => {
 };
 
 beforeEach(() => {
+  outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "cappa-engine-"));
   vi.mocked(glob).mockReset();
   vi.mocked(glob).mockImplementation(async function* () {} as any);
   vi.mocked(collectScreenshots).mockReset();
   vi.mocked(collectScreenshots).mockResolvedValue([]);
+});
+
+afterEach(() => {
+  fs.rmSync(outputDir, { recursive: true, force: true });
 });
 
 describe("LocalEngine discovery", () => {
@@ -374,7 +393,7 @@ describe("LocalEngine cancellation and shutdown", () => {
 
     const plugin = createPlugin("a", [task("a1"), task("a2")], async () => {
       await gate;
-      return { filepath: "/out/actual/a.png", success: true };
+      return { filepath: `${outputDir}/actual/a.png`, success: true };
     });
     const { engine } = createEngine([plugin]);
 
