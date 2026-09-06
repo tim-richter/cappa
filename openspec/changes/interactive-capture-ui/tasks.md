@@ -114,26 +114,63 @@ monotonic event sequencing, the concurrency guard, subset runs with
 `clearActual: false`, browser reuse, unknown-task rejection, cancellation, idle
 eviction and recovery, and the capture → approve → re-capture lifecycle.
 
-## Phase 3 — `@cappa/server` becomes stateful
+## Phase 3 — `@cappa/server` becomes stateful ✅
 
-- [ ] `createServer` signature: drop `screenshots`, add `engine: CaptureEngine`
-      and `readOnly?: boolean`.
-- [ ] `Workspace` service: screenshot index rebuilt from disk, invalidated on
-      `run:complete`. `/api/screenshots` reads through it.
-- [ ] Routes: `GET /api/plugins`, `GET /api/targets` (`?refresh=1`),
+- [x] `createServer` signature: drop `screenshots` and `diff`, add
+      `engine: CaptureEngine`, `readOnly?: boolean` and `token?: string`.
+- [x] `/api/screenshots` reads through the engine on every request.
+- [x] Routes: `GET /api/plugins`, `GET /api/targets` (`?refresh=1`),
       `POST /api/runs`, `GET /api/runs`, `GET /api/runs/:id`,
       `POST /api/runs/:id/cancel`.
-- [ ] `GET /api/runs/:id/events` — SSE. `id:` on each frame from `seq`; honour
-      `Last-Event-ID` for replay; heartbeat comment every 15s; clean teardown on
-      client disconnect.
-- [ ] `GET /api/health` returns `{ ok, protocolVersion, capabilities }`;
+- [x] `GET /api/runs/:id/events` — SSE. `id:` on each frame from `seq`; honours
+      `Last-Event-ID` (and `?sinceSeq=`) for replay; heartbeat comment every
+      15s; clean teardown on client disconnect.
+- [x] `GET /api/health` returns `{ ok, protocolVersion, capabilities }`;
       `GET /api/config` gains `readOnly`.
-- [ ] Validate every body against the `@cappa/protocol` zod schemas. Reject
-      `taskIds` not present in the discovered target set.
-- [ ] `readOnly` guard rejects capture/approve/mutation routes with `403`.
-- [ ] Token auth: required when bound to a non-loopback host; gates `/api/*`.
-- [ ] Tests: run lifecycle over HTTP with a fake engine, SSE framing + replay,
+- [x] Validate every body against the `@cappa/protocol` zod schemas. `taskIds`
+      not in the discovered target set are rejected by the engine and mapped to
+      `400`.
+- [x] `readOnly` guard rejects capture/approve/mutation routes with `403`.
+- [x] Token auth gating `/api/*`, via header or query parameter.
+- [x] `cappa review` builds and injects a `LocalEngine`; gains `--port`,
+      `--host`, `--read-only`, `--token`, and generates a token when bound off
+      loopback.
+- [x] Tests: run lifecycle over HTTP with a fake engine, SSE framing + replay,
       409 on concurrent run, read-only rejections, auth.
+
+**Deviations and findings**
+
+- **No `Workspace` class.** The proposal had one owning a cached screenshot
+  index invalidated on `run:complete`. `LocalEngine.listScreenshots` already
+  reads from disk on every call, so a caching layer above it would have been
+  indirection guarding a cache that must never be stale — anything can write to
+  `outputDir` while the server is up. What was left of the Workspace is the
+  view transform (asset URLs, `next`/`prev`, `approved`) which lives in
+  `util.ts`.
+- **`approved` is derived, not stored.** It used to be per-session state on the
+  in-memory array. With a read-through index there is nowhere to keep it, and
+  nowhere it belongs: a screenshot matching its baseline has nothing left to
+  approve, so `approved` is now `category === "passed"`. The existing review UI
+  keeps working unchanged.
+- **`screenshotPathsForFilesystem` deleted.** It stripped the asset prefix back
+  off before approving. The engine approves by name, so it had no callers left.
+- **Dual-package hazard found by the end-to-end smoke test.** `@cappa/core`
+  ships ESM and CJS builds; the CLI binary is CJS and `@cappa/server` is ESM, so
+  each loads its own copy of `RunInProgressError` / `UnknownTargetsError`. The
+  server's `instanceof` checks were always false against errors thrown by the
+  engine the CLI constructed, silently turning `409` and `400` into `500`. The
+  unit tests could not catch this — they resolve a single module instance — and
+  `attw` checks resolution, not identity. Fixed with `isRunInProgressError` /
+  `isUnknownTargetsError`, which key off a stable `code`; a regression test
+  asserts the guards accept an error that shares no prototype.
+
+**Verification.** 212 core / 54 server / 57 CLI tests, 408 across the repo, with
+lint, `tsc` and `attw` green. CLI capture output still identical to the
+pre-Phase-1 baseline. An end-to-end smoke test drove the real `cappa review`
+binary over HTTP: health and capabilities, plugin and target listing, starting a
+run, `409` on a concurrent run, the live SSE event stream, run detail with
+per-task statuses, `?sinceSeq=` replay, `400` for an undiscovered task id,
+batch approval, and the resulting category change from `new` to `passed`.
 
 ## Phase 4 — `@cappa/client`
 

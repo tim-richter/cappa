@@ -30,6 +30,7 @@
   },
   "dependencies": {
     "@cappa/core": "workspace:*",
+    "@cappa/protocol": "workspace:*",
     "@fastify/compress": "^9.1.0",
     "@fastify/middie": "9.3.3",
     "@fastify/static": "10.1.2",

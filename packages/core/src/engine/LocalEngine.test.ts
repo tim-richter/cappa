@@ -15,7 +15,13 @@ import type ScreenshotTool from "../screenshot";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
 import type { Screenshot } from "../types";
 import { LocalEngine } from "./LocalEngine";
-import { RunInProgressError, UnknownTargetsError } from "./types";
+import {
+  ENGINE_ERROR_CODES,
+  isRunInProgressError,
+  isUnknownTargetsError,
+  RunInProgressError,
+  UnknownTargetsError,
+} from "./types";
 
 const task = (id: string): PluginTask => ({ id, url: `http://x/${id}` });
 
@@ -456,5 +462,53 @@ describe("LocalEngine screenshots", () => {
     });
 
     await engine.close();
+  });
+});
+
+describe("engine error guards", () => {
+  /**
+   * `@cappa/core` ships dual ESM/CJS builds, so a CJS consumer and an ESM one
+   * hold different copies of these classes and `instanceof` between them is
+   * false. That silently turned a 409 into a 500 in the server. The guards must
+   * therefore key off a stable code, not class identity — simulated here with a
+   * structurally identical error that shares no prototype.
+   */
+  const fromAnotherCopy = (code: string, extra: Record<string, unknown>) =>
+    Object.assign(new Error("thrown by a duplicate module instance"), {
+      code,
+      ...extra,
+    });
+
+  it("recognises its own errors", () => {
+    expect(isRunInProgressError(new RunInProgressError("run-1"))).toBe(true);
+    expect(isUnknownTargetsError(new UnknownTargetsError(["a"]))).toBe(true);
+  });
+
+  it("recognises an equivalent error from a duplicate module copy", () => {
+    const duplicate = fromAnotherCopy(ENGINE_ERROR_CODES.runInProgress, {
+      activeRunId: "run-1",
+    });
+
+    expect(duplicate instanceof RunInProgressError).toBe(false);
+    expect(isRunInProgressError(duplicate)).toBe(true);
+
+    const unknown = fromAnotherCopy(ENGINE_ERROR_CODES.unknownTargets, {
+      taskIds: ["ghost"],
+    });
+    expect(unknown instanceof UnknownTargetsError).toBe(false);
+    expect(isUnknownTargetsError(unknown)).toBe(true);
+  });
+
+  it("does not confuse the two error kinds", () => {
+    expect(isUnknownTargetsError(new RunInProgressError("run-1"))).toBe(false);
+    expect(isRunInProgressError(new UnknownTargetsError(["a"]))).toBe(false);
+  });
+
+  it("rejects non-errors and unrelated errors", () => {
+    expect(isRunInProgressError(undefined)).toBe(false);
+    expect(
+      isRunInProgressError({ code: ENGINE_ERROR_CODES.runInProgress }),
+    ).toBe(false);
+    expect(isRunInProgressError(new Error("boom"))).toBe(false);
   });
 });

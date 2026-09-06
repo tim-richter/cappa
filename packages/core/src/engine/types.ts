@@ -91,8 +91,24 @@ export interface CaptureEngine {
   close(): Promise<void>;
 }
 
+/**
+ * Stable discriminators for engine errors.
+ *
+ * These exist because `instanceof` is not reliable across the package
+ * boundary. `@cappa/core` ships dual ESM/CJS builds, so a CJS consumer (the
+ * CLI binary) and an ESM one (the server) each load their own copy of these
+ * classes: an error thrown by one is not an `instanceof` the other's class,
+ * and the check silently fails — turning a 409 into a 500. Callers must use
+ * the guards below rather than `instanceof`.
+ */
+export const ENGINE_ERROR_CODES = {
+  runInProgress: "CAPPA_RUN_IN_PROGRESS",
+  unknownTargets: "CAPPA_UNKNOWN_TARGETS",
+} as const;
+
 /** Thrown by `startRun` when the engine is already running something. */
 export class RunInProgressError extends Error {
+  readonly code = ENGINE_ERROR_CODES.runInProgress;
   readonly activeRunId: string;
 
   constructor(activeRunId: string) {
@@ -104,6 +120,7 @@ export class RunInProgressError extends Error {
 
 /** Thrown by `startRun` when `taskIds` names tasks that were never discovered. */
 export class UnknownTargetsError extends Error {
+  readonly code = ENGINE_ERROR_CODES.unknownTargets;
   readonly taskIds: string[];
 
   constructor(taskIds: string[]) {
@@ -112,3 +129,22 @@ export class UnknownTargetsError extends Error {
     this.taskIds = taskIds;
   }
 }
+
+const hasCode = (error: unknown, code: string): boolean =>
+  error instanceof Error && (error as { code?: unknown }).code === code;
+
+/**
+ * Identity-independent check for `RunInProgressError`.
+ *
+ * Prefer this over `instanceof` — see `ENGINE_ERROR_CODES`.
+ */
+export const isRunInProgressError = (
+  error: unknown,
+): error is RunInProgressError =>
+  hasCode(error, ENGINE_ERROR_CODES.runInProgress);
+
+/** Identity-independent check for `UnknownTargetsError`. */
+export const isUnknownTargetsError = (
+  error: unknown,
+): error is UnknownTargetsError =>
+  hasCode(error, ENGINE_ERROR_CODES.unknownTargets);

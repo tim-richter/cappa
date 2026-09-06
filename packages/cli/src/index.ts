@@ -28,7 +28,22 @@ program
 
 registerCaptureCommand(program);
 
-program.command("review").description("Review screenshots").action(review);
+program
+  .command("review")
+  .description("Open the review and capture UI")
+  .option("-p, --port <port>", "port to listen on", (v) =>
+    Number.parseInt(v, 10),
+  )
+  .option(
+    "--host <host>",
+    "host to bind to (a non-loopback host requires an access token)",
+  )
+  .option(
+    "--read-only",
+    "serve the UI without capture, approval or any other mutation",
+  )
+  .option("--token <token>", "require this access token on every API request")
+  .action(review);
 
 program
   .command("approve")

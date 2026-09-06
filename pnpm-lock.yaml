@@ -101,6 +101,9 @@ importers:
       '@cappa/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@cappa/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@fastify/compress':
         specifier: ^9.1.0
         version: 9.1.0
