@@ -24,6 +24,7 @@ export default defineConfig({
           label: "Guides",
           items: [
             { label: "CLI", link: "/cli" },
+            { label: "Interactive UI", link: "/interactive-ui" },
             { label: "Configuration", link: "/configuration" },
           ],
         },

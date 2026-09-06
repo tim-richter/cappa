@@ -897,6 +897,56 @@ describe("cappa CLI", () => {
     );
   });
 
+  test("review repeats the generated token at a visible log level", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+    // `success` is info-level, so at -l 2 the URL carrying the token would
+    // otherwise never be shown and the server would be unreachable.
+    loggerInstance.level = 2;
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    const warned = loggerInstance.warn.mock.calls
+      .map(([message]) => String(message))
+      .filter((message) => message.includes("Review UI available at"));
+
+    expect(warned).toHaveLength(1);
+    expect(warned[0]).toContain("token=");
+  });
+
+  test("review does not repeat the URL when the log level already shows it", async () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    expect(
+      loggerInstance.warn.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes("Review UI available at")),
+    ).toHaveLength(0);
+  });
+
   test("approve command copies filtered screenshots and cleans diffs", async () => {
     loadConfigMock.mockResolvedValue({
       filepath: "cappa.config.ts",

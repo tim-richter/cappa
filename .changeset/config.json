@@ -3,7 +3,7 @@
   "changelog": "@changesets/cli/changelog",
   "commit": false,
   "fixed": [],
-  "linked": [["@cappa/server", "web"]],
+  "linked": [["@cappa/server", "web", "@cappa/protocol", "@cappa/client"]],
   "access": "public",
   "baseBranch": "main",
   "updateInternalDependencies": "patch",

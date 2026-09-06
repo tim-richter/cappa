@@ -279,20 +279,54 @@ clean checkout. Both the test suite and the browser smoke test were run against
 a `PLAYWRIGHT_BROWSERS_PATH` pointed at an aliased browser directory; nothing in
 the repo was changed to accommodate it.
 
-## Phase 6 — CLI wiring, docs, release
+## Phase 6 — CLI wiring, docs, release ✅
 
-- [ ] `cappa review`: builds a `LocalEngine` from the loaded config and passes it
+- [x] `cappa review`: builds a `LocalEngine` from the loaded config and passes it
       to `createServer`. New flags `--read-only`, `--port`, `--host`, `--token`.
-- [ ] Graceful shutdown: SIGINT/SIGTERM → cancel active run → `engine.close()`.
-- [ ] `apps/docs`: new "Interactive UI" page (capture from the UI, re-capture,
-      read-only mode, security posture) + update the review and config pages for
-      `review.browserIdleTimeout`.
-- [ ] Changesets: minor for `@cappa/core`, `@cappa/server`, `@cappa/cli`; initial
-      release entries for `@cappa/protocol`, `@cappa/client`, `@cappa/config`.
-- [ ] `.changeset/config.json`: keep `@cappa/server`/`web` linked; decide whether
-      `@cappa/protocol` and `@cappa/client` join that link group (they should —
-      the protocol version is part of the server's contract).
-- [ ] Verify `pnpm attw` passes for the three new packages.
+      (Landed in Phase 3.)
+- [x] Graceful shutdown: SIGINT/SIGTERM → close the server, then the engine,
+      which aborts the active run and shuts the browser down.
+- [x] `review.browserIdleTimeout` config option, threaded from `cappa.config.ts`
+      through `@cappa/config` into `LocalEngine`.
+- [x] `apps/docs`: new "Interactive UI" page (capturing, re-capture, one run at
+      a time, the warm browser, read-only mode, exposing the UI beyond your
+      machine, flags), plus the `cappa review` section in the CLI page and
+      `review.browserIdleTimeout` in the configuration page. Sidebar updated.
+- [x] Changesets for every phase; `@cappa/protocol`, `@cappa/client` and
+      `@cappa/config` release at `0.1.0`.
+- [x] `.changeset/config.json`: `@cappa/protocol` and `@cappa/client` joined the
+      `@cappa/server`/`web` link group — the protocol version is part of the
+      server's contract, so a client and a server from the same release always
+      agree.
+- [x] `pnpm attw` clean for all seven published packages.
+
+**Findings**
+
+- **The generated access token could be invisible.** `cappa review --host` prints
+  the token as part of the URL via `logger.success`, which is info-level and
+  therefore suppressed below `-l 3` — so a quieter log level produced a token the
+  user could never see, locking them out of their own server. The URL is now
+  repeated at warning level when the token was generated. Found by running the
+  real binary at `-l 2`; no unit test would have caught it.
+- **A failed server close could orphan the browser.** The first implementation
+  used `try { server.close(); engine.close() } finally { exit }`, so a server
+  that failed to close skipped the engine entirely and left Chromium running —
+  exactly what the shutdown handler exists to prevent. The two closes are now
+  independent, and the test asserts the engine still closes.
+
+**Verification.** 607 tests across the repo, lint, `tsc`, `attw` and the docs
+build all green. `changeset status` resolves cleanly.
+
+CLI capture output is still identical to the pre-Phase-1 baseline apart from the
+new `review.browserIdleTimeout` key appearing in the debug config dump — verified
+by diffing the six parity scenarios with the config block excluded.
+
+End-to-end against the real binary: read-only mode reports reduced capabilities
+and refuses a run with `403`; a non-loopback bind generates a token, prints it
+visibly at `-l 2`, rejects an unauthenticated request with `401` and accepts the
+token as a header; and `SIGTERM` to a server holding a warm browser logs the
+shutdown, exits, and leaves **zero** orphaned Chromium processes (six were
+running beforehand).
 
 ---
 

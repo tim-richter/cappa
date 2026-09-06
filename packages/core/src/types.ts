@@ -189,6 +189,18 @@ export type UserConfig = {
      * @default 3000
      */
     port?: number;
+    /**
+     * How long the browser stays warm between captures started from the UI,
+     * in milliseconds.
+     *
+     * Keeping it alive makes an interactive capture feel immediate instead of
+     * paying browser startup on every click; evicting it when idle stops a
+     * forgotten review session holding a browser process indefinitely. Set to
+     * `0` to shut the browser down after every run.
+     *
+     * @default 300000 (5 minutes)
+     */
+    browserIdleTimeout?: number;
   };
 };
 

@@ -261,6 +261,29 @@ export default defineConfig({
 });
 ```
 
+### review.browserIdleTimeout
+
+- **type**: `number`
+- **default**: `300000` (5 minutes)
+
+How long the browser stays alive between captures started from the
+[interactive UI](/interactive-ui), in milliseconds.
+
+Keeping it warm makes an interactive capture feel immediate instead of paying browser startup
+on every click; evicting it once idle stops a forgotten review session holding a browser
+process indefinitely. Set it to `0` to shut the browser down after every run.
+
+This only affects `cappa review` — `cappa capture` starts and stops a browser per invocation
+either way.
+
+```ts
+export default defineConfig({
+  review: {
+    browserIdleTimeout: 60_000,
+  },
+});
+```
+
 ## onFail
 
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`
