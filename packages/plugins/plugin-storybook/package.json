@@ -61,7 +61,7 @@
   ],
   "storybook": {
     "displayName": "Cappa",
-    "icon": "https://github.com/user-attachments/assets/70683ad3-4a57-46b2-b829-16ec25b4ac94",
+    "icon": "https://raw.githubusercontent.com/tim-richter/cappa/main/packages/plugins/plugin-storybook/assets/cappa-icon.png",
     "supportedFrameworks": [
       "react",
       "vue",
