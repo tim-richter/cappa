@@ -1,16 +1,5 @@
 import { createClient } from "@cappa/client";
-
-/**
- * When the server is bound off loopback it requires a token, and prints it as
- * part of the URL it tells you to open. Lift it out of the query string so the
- * client can send it as a header on every request.
- */
-const tokenFromUrl = (): string | undefined => {
-  if (typeof window === "undefined") {
-    return undefined;
-  }
-  return new URLSearchParams(window.location.search).get("token") ?? undefined;
-};
+import { resolveToken } from "./token";
 
 /**
  * The capture engine this UI drives.
@@ -25,5 +14,5 @@ const tokenFromUrl = (): string | undefined => {
  */
 export const client = createClient({
   baseUrl: "",
-  token: tokenFromUrl(),
+  token: resolveToken(),
 });

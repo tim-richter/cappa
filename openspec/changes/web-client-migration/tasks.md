@@ -5,18 +5,48 @@ Each phase independently mergeable and green (`pnpm lint`, `pnpm tsc`,
 
 ---
 
-## Phase 1 — Token survives the whole session
+## Phase 1 — Token survives the whole session ✅
 
 Fixes the 401s for the capture surface on reload. Small, no API changes.
 
-- [ ] `apps/web/src/api/client.ts`: read the token from `sessionStorage`,
+- [x] `apps/web/src/api/token.ts`: read the token from `sessionStorage`,
       falling back to `?token=` on first load and persisting it there.
-- [ ] Strip `token` from the address bar with `history.replaceState` once it has
+- [x] Strip `token` from the address bar with `history.replaceState` once it has
       been captured.
-- [ ] Tests: token picked up from the URL; persisted across a simulated reload
+- [x] Tests: token picked up from the URL; persisted across a simulated reload
       with no query string; absent when never supplied; URL cleaned.
-- [ ] Verify in a real browser against `cappa review --host 0.0.0.0`: open the
+- [x] Verify in a real browser against `cappa review --host 0.0.0.0`: open the
       printed URL, navigate to `/capture`, reload, capture still works.
+
+**Deviations**
+
+- **A separate `token.ts`, not logic inside `client.ts`.** `client.ts` builds a
+  module-level singleton, so anything inside it can only be tested by resetting
+  modules. Token resolution is the part with the edge cases, so it is its own
+  pure function and tested directly.
+- **Storage access is wrapped in `try`/`catch`.** `sessionStorage` throws
+  outright — not returns null — in a private window or with site data blocked.
+  The token still works for that page load; it just does not survive a reload.
+
+**Verification.** 9 new tests (146 in `apps/web`, up from 137), lint, `tsc` and
+the full repo suite green. Measured before and after against the real `cappa
+review --host 0.0.0.0` binary in a real browser, reloading `/capture` on a URL
+with no token in it:
+
+| | before | after |
+| --- | --- | --- |
+| token in address bar after open | yes | stripped |
+| `GET /api/health` after reload | `401` | `200` |
+| `GET /api/plugins` after reload | never reached | `200` |
+| `GET /api/targets` after reload | never reached | `200` |
+
+A full capture run started from the reloaded page ran to completion over SSE.
+The loopback path (no token anywhere) is unchanged: every page 2xx, nothing
+written to `sessionStorage`, no page errors.
+
+**Still 401 after this phase, as expected:** `GET /api/config` from `main.tsx`
+and every `GET /api/screenshots` from the review pages. Those are the raw-`fetch`
+call sites, and they are what Phases 3 and 4 migrate.
 
 ## Phase 2 — Close the client gaps
 
@@ -36,7 +66,13 @@ surface's invalidation keeps hitting them.
 
 - [ ] `src/main.tsx` — theme via `client.getConfig()`.
 - [ ] `src/layout/Sidebar.tsx` — counts via `client.listScreenshots()`.
-- [ ] `src/layout/Header.tsx` — `client.listScreenshots({ category })`.
+- [ ] `src/layout/Header.tsx` — `client.listScreenshots({ category })`. This
+      also fixes a pre-existing `400`: `pathname.split("/")[1]` is `""` on `/`
+      and `"capture"` on `/capture`, so the header count query sends
+      `?category=` or `?category=capture`, both rejected by the server's schema
+      — the count is silently wrong on those pages today. Passing `undefined`
+      through the client omits the parameter; the `split` still needs a guard
+      against non-category paths.
 - [ ] `src/pages/Home.tsx` — list and search.
 - [ ] `src/pages/{Changed,New,Passed,Deleted}.tsx` — per-category list.
 - [ ] `src/pages/Screenshot.tsx` — `client.getScreenshot(id)`.
