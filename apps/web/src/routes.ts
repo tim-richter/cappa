@@ -4,6 +4,7 @@ import {
   type RouteObject,
 } from "react-router";
 import { Layout } from "./layout/Layout";
+import { Capture } from "./pages/Capture";
 import { Changed } from "./pages/Changed";
 import { Deleted } from "./pages/Deleted";
 import { Home } from "./pages/Home";
@@ -18,6 +19,10 @@ export const routes: RouteObject[] = [
       {
         index: true,
         Component: Home,
+      },
+      {
+        path: "capture",
+        Component: Capture,
       },
       {
         path: "changed",

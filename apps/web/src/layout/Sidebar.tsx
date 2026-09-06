@@ -6,11 +6,13 @@ import {
   SidebarHeader,
   SidebarMenuButton,
 } from "@ui/components/sidebar";
-import { Check, Plus, Trash, TriangleAlert } from "lucide-react";
+import { Camera, Check, Plus, Trash, TriangleAlert } from "lucide-react";
 import { Link, useLocation } from "react-router";
+import { useServerConfig } from "@/api/hooks";
 
 export const AppSidebar = () => {
   const pathname = useLocation().pathname;
+  const { data: config } = useServerConfig();
   const { data: count } = useQuery({
     queryKey: ["screenshots"],
     queryFn: () => {
@@ -31,6 +33,13 @@ export const AppSidebar = () => {
       </SidebarHeader>
 
       <SidebarContent className="mt-4 p-2">
+        {config?.readOnly ? null : (
+          <SidebarMenuButton asChild isActive={pathname === "/capture"}>
+            <Link to="capture">
+              <Camera className="size-4" /> <span>Capture</span>
+            </Link>
+          </SidebarMenuButton>
+        )}
         <SidebarMenuButton asChild isActive={pathname === "/changed"}>
           <Link to="changed">
             <TriangleAlert className="size-4" /> <span>Changed</span>

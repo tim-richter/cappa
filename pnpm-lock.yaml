@@ -150,9 +150,15 @@ importers:
 
   apps/web:
     dependencies:
+      '@cappa/client':
+        specifier: workspace:*
+        version: link:../../packages/client
       '@cappa/core':
         specifier: workspace:*
         version: link:../../packages/core
+      '@cappa/protocol':
+        specifier: workspace:*
+        version: link:../../packages/protocol
       '@radix-ui/react-dialog':
         specifier: 'catalog:'
         version: 1.1.19(@types/react-dom@19.2.3(@types/react@19.2.17))(@types/react@19.2.17)(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

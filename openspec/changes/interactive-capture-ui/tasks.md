@@ -225,20 +225,59 @@ sequence numbers and per-task statuses, a subset re-capture with
 `clearActual: false`, `RunInProgressError` and `UnknownTargetsError` mapped back
 from real HTTP responses, cancellation, and batch approval.
 
-## Phase 5 — `apps/web` capture surface
+## Phase 5 — `apps/web` capture surface ✅
 
-- [ ] `src/api/client.ts` — module-level `createClient` pointed at same-origin.
-- [ ] react-query hooks: `useTargets`, `useRuns`, `useRun`, `useStartRun`,
-      `useCancelRun`, `useRunEvents` (SSE → local reducer, not query cache).
-- [ ] `CapturePanel` — plugin/target picker, glob filter input, Start / Cancel.
-- [ ] `RunView` — progress bar, per-task rows (pending → running → terminal
-      status), streaming log pane with autoscroll.
-- [ ] Re-capture button on screenshot rows and the detail page
-      (`taskIds: [id]` run of one).
-- [ ] Invalidate screenshot queries on `run:complete`.
-- [ ] Hide the capture surface when `GET /api/config` reports `readOnly`.
-- [ ] Route `/capture` + sidebar entry; msw handlers for the new endpoints;
-      Storybook stories for `CapturePanel` and `RunView`; component tests.
+- [x] `src/api/client.ts` — module-level `createClient` pointed at same-origin,
+      lifting the access token out of the page URL when there is one.
+- [x] react-query hooks: `useServerConfig`, `usePlugins`, `useTargets`,
+      `useRuns`, `useStartRun`, `useCancelRun`, `useRecapture`, and
+      `useRunEvents` (SSE → local reducer, not the query cache).
+- [x] `CapturePanel` — plugin picker, task filter, per-task selection, Start.
+- [x] `RunView` — progress bar, per-task rows (pending → running → terminal
+      status), status counts, cancel, log pane with autoscroll.
+- [x] Re-capture button on the screenshot detail page (`taskIds: [id]`,
+      `clearActual: false`).
+- [x] Invalidate screenshot queries on the terminal event.
+- [x] Hide the capture surface — page, sidebar entry and re-capture buttons —
+      when `GET /api/config` reports `readOnly`.
+- [x] Route `/capture` + sidebar entry; msw handlers for the new endpoints;
+      Storybook stories for `CapturePanel`, `RunView` and the page; tests.
+
+**Deviations and findings**
+
+- **The event reducer is a separate pure module** (`src/api/runState.ts`) rather
+  than living inside the hook. It is the piece most likely to be wrong, and this
+  way it is tested directly — including that it is idempotent under replay and
+  never lets progress run backwards, which is what makes a reconnecting stream
+  safe.
+- **The existing screenshot pages still use raw `fetch`.** Migrating them to
+  `@cappa/client` is worthwhile but is not what this phase is for; the capture
+  surface goes through the client, and the two coexist. Listed as a follow-up.
+- **Failures are shown inline, not only as a toast.** Writing the test for a
+  rejected run exposed that `Toaster` lives in `Layout`, so a page rendered on
+  its own drops the toast entirely — and more importantly, a toast is missable.
+  The page now renders the reason inline as well.
+- **`next`/`prev` now come through the protocol** (added in Phase 4), which is
+  what keeps the detail page's arrow-key navigation working through the client.
+
+**Verification.** 137 web tests (up from 83): 21 for the reducer, 14 for
+`CapturePanel`, 12 for `RunView`, 7 for the page driving the real client against
+msw, plus the existing suite unchanged. Lint, `tsc` and the full repo suite
+green.
+
+Then the built UI was driven in a real browser against the real `cappa review`
+server: the sidebar entry, discovery listing, a full run watched to completion
+with correct per-task statuses and durations, live log output, a single-target
+subset run capturing only what was selected, the screenshot list refreshing
+itself afterwards, and the detail page's re-capture button running and
+re-enabling — with no console or page errors.
+
+**Note on running the web suite here.** `apps/web` tests need a Playwright
+browser build this container does not ship (it has 1194, Playwright wants 1228).
+That is pre-existing and unrelated to this change — it fails identically on a
+clean checkout. Both the test suite and the browser smoke test were run against
+a `PLAYWRIGHT_BROWSERS_PATH` pointed at an aliased browser directory; nothing in
+the repo was changed to accommodate it.
 
 ## Phase 6 — CLI wiring, docs, release
 
@@ -259,6 +298,8 @@ from real HTTP responses, cancellation, and batch approval.
 
 ## Follow-ups (explicitly not in this change)
 
+- Migrate the existing screenshot pages in `apps/web` from raw `fetch` to
+  `@cappa/client`, so the whole UI goes through one typed path.
 - `RemoteEngine`-backed CLI: `cappa capture --server <url>`.
 - A standalone `cappa serve` daemon (needs `@cappa/config`, which Phase 2 lands).
 - `watch` mode — re-capture on file change, cheap once the browser stays warm.

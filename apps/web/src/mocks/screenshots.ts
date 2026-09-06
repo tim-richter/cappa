@@ -1,10 +1,13 @@
 import type { Screenshot } from "@cappa/core";
 import { HttpResponse, http } from "msw";
+import { captureHandlers } from "./capture";
 import { mockDiffMeta } from "./diffMeta";
 
 export const handlers = [
+  ...captureHandlers,
+
   http.get("/api/config", () => {
-    return HttpResponse.json({ theme: "light" });
+    return HttpResponse.json({ theme: "light", readOnly: false });
   }),
 
   http.get("/api/screenshots", ({ request }) => {
