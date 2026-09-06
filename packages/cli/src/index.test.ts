@@ -46,12 +46,38 @@ const screenshotFileSystemInstances: Array<{
 }> = [];
 
 const imagesMatchMock = vi.fn();
+const groupScreenshotsMock = vi.fn();
 
 vi.mock("@cappa/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@cappa/core")>();
 
   return {
     ...actual,
+    groupScreenshots: (...args: unknown[]) => groupScreenshotsMock(...args),
+    // `collectScreenshots` calls `groupScreenshots` through a relative import
+    // inside `@cappa/core`, so mocking the package export alone would not reach
+    // it. Re-implement the (tiny) glob-and-delegate here so both entry points
+    // route through the same spy.
+    collectScreenshots: async (outputDir: string) => {
+      const listPngs = async (dir: string) =>
+        Array.fromAsync(
+          await globMock(path.resolve(outputDir, dir, "**/*.png")),
+        );
+
+      const [actualScreenshots, expectedScreenshots, diffScreenshots] =
+        await Promise.all([
+          listPngs("actual"),
+          listPngs("expected"),
+          listPngs("diff"),
+        ]);
+
+      return groupScreenshotsMock(
+        actualScreenshots,
+        expectedScreenshots,
+        diffScreenshots,
+        outputDir,
+      );
+    },
     ScreenshotTool: class {
       options: unknown;
       close: ReturnType<typeof vi.fn>;
@@ -181,11 +207,6 @@ const getConfigMock = vi.fn();
 vi.mock("./features/config", () => ({
   loadConfig: loadConfigMock,
   getConfig: getConfigMock,
-}));
-
-const groupScreenshotsMock = vi.fn();
-vi.mock("./utils/groupScreenshots", () => ({
-  groupScreenshots: groupScreenshotsMock,
 }));
 
 const identity = (value: string) => value;

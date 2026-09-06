@@ -5,27 +5,50 @@ Each phase is independently mergeable and must be green (`pnpm lint`, `pnpm tsc`
 
 ---
 
-## Phase 1 — Extract the orchestrator into `@cappa/core`
+## Phase 1 — Extract the orchestrator into `@cappa/core` ✅
 
 No user-visible change. `cappa capture` output must be byte-identical.
 
-- [ ] `packages/core/src/runner/types.ts` — `RunState`, `RunEvent` union,
+- [x] `packages/core/src/runner/types.ts` — `RunState`, `RunEvent` union,
       `TaskStatus`, `RunSummary`, `RunDetail`, `StartRunRequest`.
-- [ ] `packages/core/src/runner/CaptureRunner.ts` — lift discover → chunk →
-      execute from `packages/cli/src/commands/capture.ts:242`. Takes an
+- [x] `packages/core/src/runner/CaptureRunner.ts` — lift discover → chunk →
+      execute from `packages/cli/src/commands/capture.ts`. Takes an
       **already-initialised** `ScreenshotTool`, plugins, and options; emits events;
       supports `abort()` via `AbortSignal`. No `process`, no `chalk`, no
       `process.exit`.
-- [ ] Move `filterTasks`, `didScreenshotFail`, `getDeletedScreenshots` from the CLI
+- [x] Move `filterTasks`, `didScreenshotFail`, `getDeletedScreenshots` from the CLI
       into the runner module; re-export from `@cappa/core`.
-- [ ] Move `groupScreenshots` + `collectScreenshots` from `@cappa/cli` to
+- [x] Move `groupScreenshots` + `collectScreenshots` from `@cappa/cli` to
       `@cappa/core` (the server needs them; the CLI keeps importing them).
-- [ ] `CaptureRunner.test.ts` — port existing `capture.test.ts` cases; add
+- [x] `CaptureRunner.test.ts` — port existing `capture.test.ts` cases; add
       cancellation, event ordering, and `seq` monotonicity tests.
-- [ ] Rewrite `packages/cli/src/commands/capture.ts` as an event consumer:
-      subscribe → chalk rendering → failure report → `onFail` → `process.exit(1)`.
-      Keep `registerSignalHandlers` in the CLI, wired to `runner.abort()`.
-- [ ] Verify parity by hand against `examples/storybook`.
+- [x] Rewrite `packages/cli/src/commands/capture.ts` as an event consumer:
+      subscribe → `renderRunEvent` → failure report → `onFail` → `process.exit(1)`.
+      `registerSignalHandlers` stays in the CLI.
+- [x] Verify parity against a real capture run.
+
+**Deviations from the proposal**
+
+- **No separate `task:failed` event.** `task:complete` carries a `status`
+  (`passed` / `changed` / `new` / `failed` / `skipped`) and the raw plugin result,
+  which is strictly more information in one event and a simpler UI reducer. Added
+  `filter:applied` so the CLI can render the filter box without owning selection
+  logic.
+- **`clearActual` moved into the runner** as part of `StartRunRequest` (default
+  `true`), so the server does not have to re-implement it. The filesystem is
+  injectable (`CaptureRunnerOptions.fileSystem`) rather than constructed inline.
+- **`registerSignalHandlers` is not wired to `runner.abort()`.** It still closes
+  the browser and exits 130, exactly as before — changing it would alter CLI
+  behaviour, which this phase must not do. Revisit when the server needs graceful
+  shutdown (Phase 6).
+
+**Parity evidence.** `examples/storybook` could not be used: its Storybook build
+fails independently of this change (invalid ESM in `.storybook/main.ts`). Verified
+instead with a self-contained fixture project driving a hand-written plugin over
+local HTML pages, across six scenarios — all-new, all-passed, `--filter`, a
+changed screenshot, a deleted baseline, and a filter matching nothing. Terminal
+output and exit codes are byte-identical before and after the refactor
+(normalising only durations and absolute paths).
 
 ## Phase 2 — `@cappa/protocol` and `@cappa/config`
 

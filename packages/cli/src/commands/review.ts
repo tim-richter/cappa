@@ -1,9 +1,9 @@
 import { glob } from "node:fs/promises";
 import path from "node:path";
+import { groupScreenshots } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import { createServer } from "@cappa/server";
 import { getConfig } from "../features/config";
-import { groupScreenshots } from "../utils/groupScreenshots";
 
 export const review = async () => {
   const logger = getLogger();

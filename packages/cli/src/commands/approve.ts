@@ -1,8 +1,7 @@
 import type { Screenshot } from "@cappa/core";
-import { ScreenshotFileSystem } from "@cappa/core";
+import { groupScreenshots, ScreenshotFileSystem } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import { getConfig } from "../features/config";
-import { groupScreenshots } from "../utils/groupScreenshots";
 
 export const approve = async (options: { filter?: string[] }) => {
   const logger = getLogger();

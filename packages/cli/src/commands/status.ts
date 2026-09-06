@@ -1,7 +1,8 @@
+import { collectScreenshots } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import { getConfig } from "../features/config";
-import { collectScreenshots } from "../utils/collectScreenshots";
+
 import { describeChanges } from "../utils/describeChanges";
 
 type StatusOptions = {

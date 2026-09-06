@@ -9,12 +9,43 @@ import {
 } from "./filesystem";
 import { mapWithConcurrency } from "./mapWithConcurrency";
 import type { Plugin, PluginDef, PluginFunction, PluginTask } from "./plugin";
+import {
+  CaptureRunner,
+  type CaptureRunnerOptions,
+} from "./runner/CaptureRunner";
+import {
+  didScreenshotFail,
+  filterTasks,
+  getDeletedScreenshots,
+  selectTasks,
+  toTaskStatus,
+} from "./runner/tasks";
+import {
+  type PluginCaptureResult,
+  type RunDetail,
+  type RunEvent,
+  type RunEventListener,
+  type RunEventType,
+  type RunLogLevel,
+  type RunnablePlugin,
+  type RunState,
+  type RunSummary,
+  type SerializedError,
+  type StartRunRequest,
+  type Target,
+  type TaskFailure,
+  type TaskRecord,
+  type TaskStatus,
+  toSerializedError,
+} from "./runner/types";
 import ScreenshotTool, {
   type ScreenshotCaptureDetails,
   type ScreenshotCaptureExtras,
   type ScreenshotCaptureResult,
   type ScreenshotVariantCaptureDetails,
 } from "./screenshot";
+import { collectScreenshots } from "./screenshots/collectScreenshots";
+import { groupScreenshots } from "./screenshots/groupScreenshots";
 import type {
   ChangedScreenshot,
   ConfigEnv,
@@ -38,9 +69,12 @@ import type {
 } from "./types";
 
 export {
+  CaptureRunner,
+  type CaptureRunnerOptions,
   type ChangedScreenshot,
   type ChangeRegion,
   type ConfigEnv,
+  collectScreenshots,
   compareImages,
   compareImagesGMSD,
   type DeletedScreenshot,
@@ -51,7 +85,11 @@ export {
   type DiffOptionsGMSD,
   type DiffOptionsPixel,
   defineConfig,
+  didScreenshotFail,
   type FailedScreenshot,
+  filterTasks,
+  getDeletedScreenshots,
+  groupScreenshots,
   type InterpretResult,
   imagesMatch,
   imagesMatchGMSD,
@@ -59,9 +97,18 @@ export {
   type NewScreenshot,
   type PassedScreenshot,
   type Plugin,
+  type PluginCaptureResult,
   type PluginDef,
   type PluginFunction,
   type PluginTask,
+  type RunDetail,
+  type RunEvent,
+  type RunEventListener,
+  type RunEventType,
+  type RunLogLevel,
+  type RunnablePlugin,
+  type RunState,
+  type RunSummary,
   readDiffMeta,
   type Screenshot,
   type ScreenshotCaptureDetails,
@@ -74,7 +121,16 @@ export {
   type ScreenshotVariant,
   type ScreenshotVariantCaptureDetails,
   type ScreenshotVariantWithUrl,
+  type SerializedError,
+  type StartRunRequest,
+  selectTasks,
+  type Target,
+  type TaskFailure,
+  type TaskRecord,
+  type TaskStatus,
   toDiffMetaPath,
+  toSerializedError,
+  toTaskStatus,
   type UserConfig,
   type Viewport,
 };

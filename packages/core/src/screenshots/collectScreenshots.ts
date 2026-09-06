@@ -1,6 +1,6 @@
 import { glob } from "node:fs/promises";
 import path from "node:path";
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "../types";
 import { groupScreenshots } from "./groupScreenshots";
 
 const listPngs = async (dir: string): Promise<string[]> =>

@@ -1,9 +1,14 @@
-import { glob } from "node:fs/promises";
 import path from "node:path";
-import type { PluginTask, Screenshot } from "@cappa/core";
+import type {
+  FailedScreenshot,
+  RunEvent,
+  RunnablePlugin,
+  Screenshot,
+  TaskFailure,
+} from "@cappa/core";
 import {
-  type FailedScreenshot,
-  mapWithConcurrency,
+  CaptureRunner,
+  collectScreenshots,
   ScreenshotFileSystem,
   ScreenshotTool,
 } from "@cappa/core";
@@ -11,56 +16,8 @@ import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
 import { getConfig } from "../features/config";
-import { collectScreenshots } from "../utils/collectScreenshots";
 import { DEFAULT_MAX_REGIONS, describeChanges } from "../utils/describeChanges";
 import { parseMaxRegions } from "../utils/parseMaxRegions";
-
-type PluginCaptureResult = {
-  success?: boolean;
-  skipped?: boolean;
-  isNew?: boolean;
-  error?: unknown;
-  filepath?: string;
-  storyId?: string;
-  storyName?: string;
-  [key: string]: unknown;
-};
-
-type FailedScreenshotInfo = {
-  taskId: string;
-  taskUrl: string;
-  result: PluginCaptureResult;
-  pluginName: string;
-};
-
-const isObject = (value: unknown): value is Record<string, unknown> =>
-  typeof value === "object" && value !== null;
-
-export const didScreenshotFail = (result: unknown): boolean => {
-  if (!isObject(result)) {
-    return false;
-  }
-
-  if ("error" in result && result.error != null) {
-    return true;
-  }
-
-  if ("success" in result) {
-    const { success } = result as PluginCaptureResult;
-    if (success === false) {
-      return true;
-    }
-  }
-
-  if ("filepath" in result) {
-    const { filepath, skipped } = result as PluginCaptureResult;
-    if (!filepath && skipped !== true) {
-      return true;
-    }
-  }
-
-  return false;
-};
 
 async function executeOnFailCallback(
   config: Awaited<ReturnType<typeof getConfig>>,
@@ -123,7 +80,7 @@ export function formatDuration(ms: number): string {
 }
 
 function generateFailureReportMessage(
-  failedScreenshots: FailedScreenshotInfo[],
+  failedScreenshots: TaskFailure[],
   deletedScreenshots: string[],
 ): string {
   const total = failedScreenshots.length + deletedScreenshots.length;
@@ -135,7 +92,7 @@ function generateFailureReportMessage(
   lines.push(`${chalk.red(`Total failures: ${total}`)}\n`);
 
   // Group by plugin
-  const byPlugin = new Map<string, FailedScreenshotInfo[]>();
+  const byPlugin = new Map<string, TaskFailure[]>();
   for (const failed of failedScreenshots) {
     const pluginFailures = byPlugin.get(failed.pluginName);
     if (pluginFailures) {
@@ -191,35 +148,11 @@ function generateFailureReportMessage(
   return lines.join("\n");
 }
 
-export async function getDeletedScreenshots(
-  outputDir: string,
-): Promise<string[]> {
-  const actualDir = path.resolve(outputDir, "actual");
-  const expectedDir = path.resolve(outputDir, "expected");
-
-  const [actualFiles, expectedFiles] = await Promise.all([
-    Array.fromAsync(glob(path.join(actualDir, "**/*.png"))),
-    Array.fromAsync(glob(path.join(expectedDir, "**/*.png"))),
-  ]);
-
-  const actualRelative = new Set(
-    actualFiles.map((p) => path.relative(actualDir, p)),
-  );
-
-  return expectedFiles
-    .map((p) => path.relative(expectedDir, p))
-    .filter((rel) => !actualRelative.has(rel));
-}
-
 type CaptureOptions = {
   ci?: boolean;
   filter?: string;
   maxRegions?: number;
 };
-
-export function filterTasks(tasks: PluginTask[], filter: string): PluginTask[] {
-  return tasks.filter((task) => path.matchesGlob(task.id, filter));
-}
 
 export function registerSignalHandlers(
   screenshotTool: ScreenshotTool,
@@ -239,16 +172,76 @@ export function registerSignalHandlers(
   };
 }
 
+/**
+ * Render a runner event to the terminal.
+ *
+ * All terminal presentation lives here — the runner itself is silent — so the
+ * server can consume the exact same event stream without inheriting CLI output.
+ */
+export function renderRunEvent(event: RunEvent): void {
+  const logger = getLogger();
+
+  switch (event.type) {
+    case "log":
+      logger[event.level](event.message, ...event.args);
+      break;
+
+    case "discover:plugin":
+      logger.info(`Found ${event.taskCount} tasks for ${event.plugin}`);
+      break;
+
+    case "filter:applied": {
+      if (event.filter === undefined) {
+        break;
+      }
+
+      logger.box({
+        title: "Filter Active",
+        message: `Only capturing tasks matching: ${chalk.cyan(event.filter)}`,
+      });
+
+      for (const entry of event.plugins) {
+        logger.info(
+          `${entry.plugin}: ${entry.after}/${entry.before} tasks match filter`,
+        );
+      }
+      break;
+    }
+
+    case "task:start":
+      logger.debug(`Executing task: ${event.taskId}`);
+      break;
+
+    case "task:complete":
+      logger.info(formatProgress(event.completed, event.total, event.taskId));
+      break;
+
+    case "plugin:complete":
+      if (event.failed) {
+        logger.error(
+          `Plugin ${event.plugin} completed with failures: ${event.resultCount} results`,
+        );
+      } else {
+        logger.success(
+          `Plugin ${event.plugin} completed: ${event.resultCount} results`,
+        );
+      }
+      break;
+
+    case "run:error":
+      logger.error("Error during plugin execution:", event.error.message);
+      break;
+
+    default:
+      break;
+  }
+}
+
 const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
   const logger = getLogger();
   const captureStart = performance.now();
 
   const config = await getConfig();
-
-  logger.debug(`Cleaning output directory: ${config.outputDir}`);
-  const fileSystem = new ScreenshotFileSystem(config.outputDir);
-  fileSystem.clearActual();
-  fileSystem.clearDiff();
 
   const screenshotTool = new ScreenshotTool({
     outputDir: config.outputDir,
@@ -261,129 +254,36 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
     connectionTimeout: config.connectionTimeout,
   });
 
+  const runner = new CaptureRunner({
+    screenshotTool,
+    plugins: (config.plugins || []) as unknown as RunnablePlugin[],
+    outputDir: config.outputDir,
+    fileSystem: new ScreenshotFileSystem(config.outputDir),
+  });
+
+  const unsubscribe = runner.on(renderRunEvent);
   const unregisterSignalHandlers = registerSignalHandlers(screenshotTool);
 
   let captureError: unknown;
-  let hasScreenshotFailure = false;
-  let anyTasksRan = false;
-  const failedScreenshots: FailedScreenshotInfo[] = [];
 
   try {
     await screenshotTool.init();
 
-    const plugins = (config.plugins || []) as any[];
-
-    // Phase 1: Discover all tasks in parallel across plugins
-    const pluginTasks = await Promise.all(
-      plugins.map(async (plugin) => {
-        logger.debug(`Discovering tasks for plugin: ${plugin.name}`);
-        const tasks = await plugin.discover(screenshotTool);
-        logger.info(`Found ${tasks.length} tasks for ${plugin.name}`);
-        return { plugin, tasks };
-      }),
-    );
-
-    if (options.filter) {
-      logger.box({
-        title: "Filter Active",
-        message: `Only capturing tasks matching: ${chalk.cyan(options.filter)}`,
-      });
-
-      for (const entry of pluginTasks) {
-        const before = entry.tasks.length;
-        entry.tasks = filterTasks(entry.tasks, options.filter);
-        logger.info(
-          `${entry.plugin.name}: ${entry.tasks.length}/${before} tasks match filter`,
-        );
-      }
-    }
-
-    for (const { plugin, tasks } of pluginTasks) {
-      if (tasks.length === 0) {
-        continue;
-      }
-
-      anyTasksRan = true;
-      let pluginHasFailure = false;
-
-      logger.debug(
-        `Processing ${tasks.length} tasks with concurrency ${screenshotTool.concurrency}`,
-      );
-
-      let completedTasks = 0;
-      const pageContexts = new Map<number, any>();
-
-      const allResults = await mapWithConcurrency(
-        screenshotTool.concurrency,
-        tasks,
-        async (task: any, workerIndex) => {
-          const page = screenshotTool.getPageFromPool(workerIndex);
-
-          if (!pageContexts.has(workerIndex) && plugin.initPage) {
-            pageContexts.set(
-              workerIndex,
-              await plugin.initPage(page, screenshotTool),
-            );
-          }
-          const context = pageContexts.get(workerIndex);
-
-          logger.debug(`Executing task: ${task.id}`);
-          const result = await plugin.execute(
-            task,
-            page,
-            screenshotTool,
-            context,
-          );
-
-          completedTasks++;
-          logger.info(formatProgress(completedTasks, tasks.length, task.id));
-
-          if (didScreenshotFail(result)) {
-            pluginHasFailure = true;
-            hasScreenshotFailure = true;
-            failedScreenshots.push({
-              taskId: task.id,
-              taskUrl: task.url,
-              result: result as PluginCaptureResult,
-              pluginName: plugin.name,
-            });
-          }
-
-          return result;
-        },
-      );
-
-      const results = allResults;
-      if (pluginHasFailure) {
-        logger.error(
-          `Plugin ${plugin.name} completed with failures: ${results.length} results`,
-        );
-      } else {
-        logger.success(
-          `Plugin ${plugin.name} completed: ${results.length} results`,
-        );
-      }
-    }
+    await runner.run({
+      filter: options.filter,
+      clearActual: true,
+    });
   } catch (error) {
-    logger.error("Error during plugin execution:", error);
     captureError = error;
     throw error;
   } finally {
     unregisterSignalHandlers();
+    unsubscribe();
     await screenshotTool.close();
   }
 
-  let deletedScreenshots: string[] = [];
-  if (anyTasksRan) {
-    try {
-      deletedScreenshots = await getDeletedScreenshots(config.outputDir);
-      if (deletedScreenshots.length > 0) {
-        hasScreenshotFailure = true;
-      }
-    } catch (err) {
-      logger.warn("Could not check for deleted screenshots:", err);
-    }
-  }
+  const { failures, deletedScreenshots } = runner.getDetail();
+  const hasScreenshotFailure = runner.hasScreenshotFailure;
 
   const isCi = options.ci || process.env.CI === "true";
 
@@ -406,7 +306,7 @@ const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
 
   if (hasScreenshotFailure) {
     const reportMessage = generateFailureReportMessage(
-      failedScreenshots,
+      failures,
       deletedScreenshots,
     );
     logger.box({

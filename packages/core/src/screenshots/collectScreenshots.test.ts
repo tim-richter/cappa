@@ -5,7 +5,7 @@ vi.mock("node:fs/promises", () => ({
   glob: vi.fn(),
 }));
 
-vi.mock("@cappa/core", () => ({
+vi.mock("../filesystem", () => ({
   readDiffMeta: vi.fn(async () => undefined),
 }));
 

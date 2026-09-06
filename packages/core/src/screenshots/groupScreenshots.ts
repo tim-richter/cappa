@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { readDiffMeta, type Screenshot } from "@cappa/core";
+import { readDiffMeta } from "../filesystem";
+import type { Screenshot } from "../types";
 
 export const groupScreenshots = async (
   actualScreenshots: string[],

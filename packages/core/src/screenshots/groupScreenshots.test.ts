@@ -2,8 +2,8 @@ import { createHash } from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import type { DiffMetadata } from "@cappa/core";
 import { afterEach, beforeEach, expect, it } from "vitest";
+import type { DiffMetadata } from "../types";
 import { groupScreenshots } from "./groupScreenshots";
 
 it("should find changed screenshots", async () => {
