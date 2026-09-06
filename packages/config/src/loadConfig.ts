@@ -8,6 +8,16 @@ export type ConfigResult = {
   config: ReturnType<typeof defineConfig> | UserConfig;
 };
 
+export type LoadConfigOptions = {
+  /**
+   * Directory to look for `cappa.config.ts` in.
+   * @default process.cwd()
+   */
+  cwd?: string;
+};
+
+export const CONFIG_FILENAME = "cappa.config.ts";
+
 const tsLoader = async (configFile: string) => {
   const jiti = createJiti(import.meta.url, {
     jsx: {
@@ -22,8 +32,11 @@ const tsLoader = async (configFile: string) => {
   return mod;
 };
 
-export async function loadConfig(): Promise<ConfigResult> {
-  const configPath = path.resolve(process.cwd(), "cappa.config.ts");
+export async function loadConfig(
+  options: LoadConfigOptions = {},
+): Promise<ConfigResult> {
+  const cwd = options.cwd ?? process.cwd();
+  const configPath = path.resolve(cwd, CONFIG_FILENAME);
 
   if (!fs.existsSync(configPath)) {
     throw new Error(

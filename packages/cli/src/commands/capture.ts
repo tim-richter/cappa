@@ -1,4 +1,5 @@
 import path from "node:path";
+import { getConfig } from "@cappa/config";
 import type {
   FailedScreenshot,
   RunEvent,
@@ -15,7 +16,6 @@ import {
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
-import { getConfig } from "../features/config";
 import { DEFAULT_MAX_REGIONS, describeChanges } from "../utils/describeChanges";
 import { parseMaxRegions } from "../utils/parseMaxRegions";
 

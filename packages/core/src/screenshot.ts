@@ -120,6 +120,7 @@ class ScreenshotTool {
   filesystem: ScreenshotFileSystem;
   logConsoleEvents: boolean;
   connectionTimeout: number;
+  private defaultUserAgent = "";
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -204,8 +205,20 @@ class ScreenshotTool {
 
     const tempCtx = await browser.newContext();
     const tempPage = await tempCtx.newPage();
-    const defaultUserAgent = await tempPage.evaluate(() => navigator.userAgent);
+    this.defaultUserAgent = await tempPage.evaluate(() => navigator.userAgent);
     await tempCtx.close();
+
+    await this.createContexts();
+  }
+
+  /**
+   * Create the pool of browser contexts and pages.
+   */
+  private async createContexts() {
+    const browser = this.browser;
+    if (!browser) {
+      throw new Error("Browser not initialized");
+    }
 
     // Create N contexts and pages in parallel
     const results = await Promise.all(
@@ -213,7 +226,7 @@ class ScreenshotTool {
         const context = await browser.newContext({
           reducedMotion: "reduce",
           deviceScaleFactor: 2,
-          userAgent: `${defaultUserAgent} CappaStorybook`,
+          userAgent: `${this.defaultUserAgent} CappaStorybook`,
           viewport: this.viewport,
         });
         const page = await context.newPage();
@@ -230,15 +243,46 @@ class ScreenshotTool {
   }
 
   /**
+   * Closes every context and page, leaving the browser process running.
+   */
+  async closeContexts() {
+    for (const context of this.contexts) {
+      await context.close();
+    }
+
+    this.contexts = [];
+    this.pages = [];
+    this.context = null;
+    this.page = null;
+  }
+
+  /**
+   * Throw away the current contexts and build a fresh pool on the same browser.
+   *
+   * A long-lived process that keeps the browser warm between capture runs must
+   * call this first: contexts accumulate cookies, storage and scroll position,
+   * and a screenshot taken against leaked state is not the screenshot the CLI
+   * would have taken with a fresh browser.
+   */
+  async recycleContexts() {
+    if (!this.browser) {
+      throw new Error("Browser not initialized");
+    }
+
+    await this.closeContexts();
+    await this.createContexts();
+  }
+
+  /**
    * Closes browser
    * If not closed, the process will not exit
    */
   async close() {
-    for (const context of this.contexts) {
-      await context.close();
-    }
+    await this.closeContexts();
+
     if (this.browser) {
       await this.browser.close();
+      this.browser = null;
     }
   }
 

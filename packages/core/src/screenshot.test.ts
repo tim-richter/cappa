@@ -395,3 +395,87 @@ describe("ScreenshotTool connectionTimeout", () => {
     expect(tool.connectionTimeout).toBe(5000);
   });
 });
+
+describe("ScreenshotTool context lifecycle", () => {
+  const createFakeBrowser = () => {
+    const contexts: Array<{
+      close: ReturnType<typeof vi.fn>;
+      newPage: ReturnType<typeof vi.fn>;
+    }> = [];
+
+    const browser = {
+      newContext: vi.fn(async () => {
+        const context = {
+          close: vi.fn(async () => {}),
+          newPage: vi.fn(async () => ({ evaluate: vi.fn(async () => "UA") })),
+        };
+        contexts.push(context);
+        return context;
+      }),
+      close: vi.fn(async () => {}),
+    };
+
+    return { browser, contexts };
+  };
+
+  /** Skips `init()` (which would launch a real browser) but leaves the tool usable. */
+  const attachBrowser = (tool: ScreenshotTool, browser: unknown) => {
+    tool.browser = browser as never;
+  };
+
+  it("closeContexts closes every context and clears the pool", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp", concurrency: 2 });
+    const { browser, contexts } = createFakeBrowser();
+    attachBrowser(tool, browser);
+
+    await (tool as any).createContexts();
+    expect(tool.pages).toHaveLength(2);
+
+    await tool.closeContexts();
+
+    expect(contexts).toHaveLength(2);
+    expect(
+      contexts.every((context) => context.close.mock.calls.length === 1),
+    ).toBe(true);
+    expect(tool.contexts).toEqual([]);
+    expect(tool.pages).toEqual([]);
+    expect(tool.page).toBeNull();
+  });
+
+  it("recycleContexts replaces the pool without touching the browser", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp", concurrency: 1 });
+    const { browser, contexts } = createFakeBrowser();
+    attachBrowser(tool, browser);
+
+    await (tool as any).createContexts();
+    const first = tool.pages[0];
+
+    await tool.recycleContexts();
+
+    expect(contexts).toHaveLength(2);
+    expect(contexts[0]?.close).toHaveBeenCalledOnce();
+    expect(tool.pages[0]).not.toBe(first);
+    expect(browser.close).not.toHaveBeenCalled();
+  });
+
+  it("recycleContexts throws when no browser is running", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+
+    await expect(tool.recycleContexts()).rejects.toThrow(
+      "Browser not initialized",
+    );
+  });
+
+  it("close tears down contexts and the browser", async () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp", concurrency: 1 });
+    const { browser, contexts } = createFakeBrowser();
+    attachBrowser(tool, browser);
+
+    await (tool as any).createContexts();
+    await tool.close();
+
+    expect(contexts[0]?.close).toHaveBeenCalledOnce();
+    expect(browser.close).toHaveBeenCalledOnce();
+    expect(tool.browser).toBeNull();
+  });
+});

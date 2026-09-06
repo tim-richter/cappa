@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import { defaultConfig } from "@cappa/config";
 import { getLogger } from "@cappa/logger";
-import { defaultConfig } from "../features/config/default";
 
 export const init = async () => {
   const logger = getLogger();

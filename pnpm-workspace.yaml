@@ -24,6 +24,7 @@ catalog:
   tsdown: 0.22.8
   typescript: 6.0.3
   vitest: 4.1.10
+  zod: 4.4.3
   'vitest-browser-react': 2.2.0
 
 allowBuilds:

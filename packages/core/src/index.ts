@@ -2,6 +2,19 @@ import type { ChangeRegion, InterpretResult } from "@blazediff/core-native";
 import { compareImagesGMSD, imagesMatchGMSD } from "./compare/gmsd";
 import { compareImages, imagesMatch } from "./compare/pixel";
 import { defineConfig } from "./config";
+import { LocalEngine, type LocalEngineOptions } from "./engine/LocalEngine";
+import { RunStore, type RunStoreOptions } from "./engine/RunStore";
+import {
+  type ApproveResult,
+  type CaptureEngine,
+  type ListTargetsOptions,
+  type PluginInfo,
+  RunInProgressError,
+  type ScreenshotQuery,
+  type SubscribeOptions,
+  UnknownTargetsError,
+} from "./engine/types";
+import { WarmBrowser, type WarmBrowserOptions } from "./engine/WarmBrowser";
 import {
   readDiffMeta,
   ScreenshotFileSystem,
@@ -46,6 +59,11 @@ import ScreenshotTool, {
 } from "./screenshot";
 import { collectScreenshots } from "./screenshots/collectScreenshots";
 import { groupScreenshots } from "./screenshots/groupScreenshots";
+import {
+  FsScreenshotStore,
+  type ScreenshotBucket,
+  type ScreenshotStore,
+} from "./store";
 import type {
   ChangedScreenshot,
   ConfigEnv,
@@ -69,6 +87,8 @@ import type {
 } from "./types";
 
 export {
+  type ApproveResult,
+  type CaptureEngine,
   CaptureRunner,
   type CaptureRunnerOptions,
   type ChangedScreenshot,
@@ -87,12 +107,16 @@ export {
   defineConfig,
   didScreenshotFail,
   type FailedScreenshot,
+  FsScreenshotStore,
   filterTasks,
   getDeletedScreenshots,
   groupScreenshots,
   type InterpretResult,
   imagesMatch,
   imagesMatchGMSD,
+  type ListTargetsOptions,
+  LocalEngine,
+  type LocalEngineOptions,
   mapWithConcurrency,
   type NewScreenshot,
   type PassedScreenshot,
@@ -100,29 +124,37 @@ export {
   type PluginCaptureResult,
   type PluginDef,
   type PluginFunction,
+  type PluginInfo,
   type PluginTask,
   type RunDetail,
   type RunEvent,
   type RunEventListener,
   type RunEventType,
+  RunInProgressError,
   type RunLogLevel,
   type RunnablePlugin,
   type RunState,
+  RunStore,
+  type RunStoreOptions,
   type RunSummary,
   readDiffMeta,
   type Screenshot,
+  type ScreenshotBucket,
   type ScreenshotCaptureDetails,
   type ScreenshotCaptureExtras,
   type ScreenshotCaptureResult,
   ScreenshotFileSystem,
   type ScreenshotOptions,
+  type ScreenshotQuery,
   type ScreenshotSettings,
+  type ScreenshotStore,
   ScreenshotTool,
   type ScreenshotVariant,
   type ScreenshotVariantCaptureDetails,
   type ScreenshotVariantWithUrl,
   type SerializedError,
   type StartRunRequest,
+  type SubscribeOptions,
   selectTasks,
   type Target,
   type TaskFailure,
@@ -131,6 +163,9 @@ export {
   toDiffMetaPath,
   toSerializedError,
   toTaskStatus,
+  UnknownTargetsError,
   type UserConfig,
   type Viewport,
+  WarmBrowser,
+  type WarmBrowserOptions,
 };

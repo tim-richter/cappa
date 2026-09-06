@@ -50,25 +50,69 @@ changed screenshot, a deleted baseline, and a filter matching nothing. Terminal
 output and exit codes are byte-identical before and after the refactor
 (normalising only durations and absolute paths).
 
-## Phase 2 — `@cappa/protocol` and `@cappa/config`
+## Phase 2 — `@cappa/protocol` and `@cappa/config` ✅
 
-- [ ] New package `packages/protocol` (`@cappa/protocol`). Deps: `zod` only.
+- [x] New package `packages/protocol` (`@cappa/protocol`). Deps: `zod` only.
       No `node:*`, no `playwright-core`. tsdown dual ESM/CJS, `attw` clean.
-- [ ] Define zod schemas + inferred types for every request/response body, the
+- [x] Define zod schemas + inferred types for every request/response body, the
       `RunEvent` union, the route constants, and `PROTOCOL_VERSION`.
-- [ ] Move `packages/cli/src/features/config/` → `packages/config`
-      (`@cappa/config`); `@cappa/cli` depends on it. Mechanical, no behaviour change.
-- [ ] `packages/core/src/engine/types.ts` — the `CaptureEngine` interface.
-- [ ] `packages/core/src/engine/LocalEngine.ts` — in-process implementation:
-      owns the warm `ScreenshotTool`, a `RunManager` (run registry + bounded
-      per-run event log, last 5k events), target discovery cache, and delegates
-      screenshot listing/approval to `ScreenshotFileSystem`.
-- [ ] Warm-browser lifecycle: idle timeout (default 5 min), dispose contexts
-      between runs, explicit `close()`. Tests for eviction and reuse.
-- [ ] `ScreenshotStore` interface + `FsScreenshotStore`; `ScreenshotFileSystem`
-      implements it. Interface only — no second implementation.
-- [ ] Tests for `LocalEngine`: single-run-at-a-time (`409` semantics as a thrown
-      typed error), cancellation, event replay from `sinceSeq`.
+- [x] Compile-time drift guard: assertions that every core type the server
+      serializes is assignable to its protocol counterpart, so `pnpm tsc` fails
+      if the two definitions diverge.
+- [x] Move `packages/cli/src/features/config/` → `packages/config`
+      (`@cappa/config`); `@cappa/cli` depends on it and drops `jiti`/`ts-node`.
+      `loadConfig`/`getConfig` take an explicit `cwd`/`command` rather than
+      always reading `process.cwd()` and `process.argv`.
+- [x] `packages/core/src/engine/types.ts` — the `CaptureEngine` interface, plus
+      `RunInProgressError` and `UnknownTargetsError`.
+- [x] `packages/core/src/engine/LocalEngine.ts` — in-process implementation:
+      owns the warm browser, the run store, the target discovery cache, and
+      delegates screenshot listing/approval to `ScreenshotFileSystem`.
+- [x] Warm-browser lifecycle: idle timeout (default 5 min), context recycling
+      between runs, explicit `close()`. Tests for eviction, reuse and recovery.
+- [x] `ScreenshotStore` interface + `FsScreenshotStore`. Interface only — no
+      second implementation.
+- [x] Tests for `LocalEngine`: single-run-at-a-time (typed error the server will
+      map to `409`), cancellation, event replay from `sinceSeq`.
+- [x] `zod` pinned in the workspace catalog; `@cappa/server` switched to it.
+
+**Deviations and findings**
+
+- **`RunStore`, not `RunManager`.** Run registry plus the bounded event log in
+  one place; `WarmBrowser` owns browser lifetime separately. Two small units
+  beat one class doing both.
+- **Context recycling had to be added to `ScreenshotTool`.** The proposal called
+  for disposing contexts between runs, but `close()` was all-or-nothing. Added
+  `recycleContexts()` / `closeContexts()`. This is not optional polish: a warm
+  browser's pages carry cookies, storage and scroll position from the previous
+  run, so without it a UI-triggered capture could differ from the identical CLI
+  capture. `WarmBrowser` recycles on every acquire after the first.
+- **The diff interpretation is opaque in the protocol.** Its shape belongs to
+  `@blazediff/core-native`'s `InterpretResult` and changes with that dependency;
+  pinning it in a versioned wire contract would turn every diff-engine upgrade
+  into a breaking protocol change. It passes through untouched, and consumers
+  that render the detail narrow it with the type from `@cappa/core`.
+- **Two concurrency bugs found and fixed**, both invisible to the unit tests
+  that existed when they were written:
+  - `listTargets` during a run would acquire the browser and recycle the very
+    contexts the run was capturing with. The public method now serves the cache
+    while a run holds the browser; discovery bypasses that guard only from
+    inside `startRun`, before the browser is acquired.
+  - A client starting a run from inside a `run:complete` subscriber — the
+    obvious "run finished, start the next one" behaviour — raced the engine's
+    teardown and was rejected as though a run were still active. Cleanup is now
+    registered as a runner listener ahead of the run store, so it completes in
+    the same synchronous emit, before any subscriber observes the event. Found
+    by the real-browser smoke test, not by the unit suite.
+
+**Verification.** 208 core / 12 config / 8 protocol tests, plus the whole
+existing suite (355 across the repo), `pnpm lint`, `pnpm tsc` and `pnpm attw`
+green. The six-scenario CLI capture parity check still produces output identical
+to the pre-Phase-1 baseline. An end-to-end `LocalEngine` smoke test against a
+real Chromium exercised discovery, run completion and per-task statuses,
+monotonic event sequencing, the concurrency guard, subset runs with
+`clearActual: false`, browser reuse, unknown-task rejection, cancellation, idle
+eviction and recovery, and the capture → approve → re-capture lifecycle.
 
 ## Phase 3 — `@cappa/server` becomes stateful
 

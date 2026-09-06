@@ -1,7 +1,7 @@
+import { getConfig } from "@cappa/config";
 import { collectScreenshots } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
-import { getConfig } from "../features/config";
 
 import { describeChanges } from "../utils/describeChanges";
 

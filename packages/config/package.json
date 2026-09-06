@@ -1,20 +1,25 @@
 {
-  "name": "@cappa/cli",
-  "version": "0.12.0",
-  "description": "Command line interface for Cappa",
-  "author": "Tim Richter",
+  "name": "@cappa/config",
+  "version": "0.0.0",
+  "description": "Loads and resolves cappa.config.ts",
+  "type": "module",
   "license": "MIT",
-  "keywords": [
-    "screenshot",
-    "cli"
-  ],
-  "publishConfig": {
-    "access": "public"
-  },
+  "author": "Tim Richter",
   "repository": {
     "type": "git",
     "url": "https://github.com/tim-richter/cappa.git"
   },
+  "publishConfig": {
+    "access": "public"
+  },
+  "keywords": [
+    "screenshot",
+    "config"
+  ],
+  "sideEffects": false,
+  "files": [
+    "dist"
+  ],
   "main": "./dist/index.cjs",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.cts",
@@ -25,39 +30,21 @@
     },
     "./package.json": "./package.json"
   },
-  "files": [
-    "dist",
-    "bin",
-    "package.json",
-    "README.md"
-  ],
-  "bin": {
-    "cappa": "./bin/cappa.cjs"
-  },
   "scripts": {
-    "test": "vitest",
-    "test:run": "vitest --run",
-    "test:ui": "vitest --ui",
-    "test:coverage": "vitest --coverage",
-    "screenshot": "node src/index.ts",
     "build": "tsdown",
     "tsc": "tsc",
+    "test": "vitest",
+    "test:run": "vitest --run",
     "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
-    "@cappa/config": "workspace:*",
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
-    "@cappa/server": "workspace:*",
-    "chalk": "^5.6.2",
-    "commander": "15.0.0",
-    "picocolors": "1.1.1"
+    "jiti": "2.7.0"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
-    "@vitest/coverage-v8": "catalog:",
-    "@vitest/ui": "catalog:",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

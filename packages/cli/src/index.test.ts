@@ -204,10 +204,16 @@ vi.mock("node:fs/promises", () => ({
 
 const loadConfigMock = vi.fn();
 const getConfigMock = vi.fn();
-vi.mock("./features/config", () => ({
-  loadConfig: loadConfigMock,
-  getConfig: getConfigMock,
-}));
+vi.mock("@cappa/config", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@cappa/config")>();
+
+  return {
+    // Keep the real `defaultConfig` template — the init test asserts on it.
+    ...actual,
+    loadConfig: loadConfigMock,
+    getConfig: getConfigMock,
+  };
+});
 
 const identity = (value: string) => value;
 vi.mock("chalk", () => ({
