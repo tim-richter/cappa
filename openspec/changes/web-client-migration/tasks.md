@@ -83,25 +83,80 @@ rethrown, `config()`, plus three against a live Fastify server — asset-URL
 rewriting on the single-screenshot route, an unknown id, and a read-only server
 still serving reads. Lint, `tsc` and `attw` green.
 
-## Phase 3 — Migrate the read paths
+## Phase 3 — Migrate the read paths ✅
 
 One commit per file; keep every react-query key exactly as it is so the capture
 surface's invalidation keeps hitting them.
 
-- [ ] `src/main.tsx` — theme via `client.getConfig()`.
-- [ ] `src/layout/Sidebar.tsx` — counts via `client.listScreenshots()`.
-- [ ] `src/layout/Header.tsx` — `client.listScreenshots({ category })`. The
+- [x] `src/main.tsx` — theme via `client.config()`.
+- [x] `src/layout/Sidebar.tsx` — counts via `client.listScreenshots()`.
+- [x] `src/layout/Header.tsx` — `client.listScreenshots({ category })`. The
       category derivation itself was already fixed separately (`""` on `/` was
       sent as `?category=` and rejected with a `400`, leaving a blank title and
       no count); this step only moves the request onto the client.
-- [ ] `src/pages/Home.tsx` — list and search.
-- [ ] `src/pages/{Changed,New,Passed,Deleted}.tsx` — per-category list.
-- [ ] `src/pages/Screenshot.tsx` — `client.getScreenshot(id)`.
-- [ ] Replace the hand-written screenshot types in `src/types.ts` with the
+- [x] `src/pages/Home.tsx` — list and search.
+- [x] `src/pages/{Changed,New,Passed,Deleted}.tsx` — per-category list.
+- [x] `src/pages/Screenshot.tsx` — `client.getScreenshot(id)`.
+- [x] Replace the hand-written screenshot types in `src/types.ts` with the
       `@cappa/protocol` types; delete what is left of the file if nothing
       remains.
-- [ ] Per-page test asserting the fields that page renders survive the client's
+- [x] Per-page test asserting the fields that page renders survive the client's
       zod parse — the Phase 4 `next`/`prev` failure mode, guarded per page.
+
+**Deviations and findings**
+
+- **`src/types.ts` held no duplicate screenshot types.** The plan assumed local
+  copies; in fact every page imported `Screenshot` from `@cappa/core` directly,
+  and the only screenshot-shaped thing in `types.ts` was a `ScreenshotPaths`
+  type with no callers at all. It is deleted; `View` is all that remains.
+- **The real type work was swapping the import source, and the compiler could
+  not have told us.** Twelve components typed themselves on `@cappa/core`'s
+  `Screenshot`, which is *not* assignable from the protocol's — `diffMeta.
+  interpretation` is `InterpretResult` in core and `unknown` on the wire. That
+  should have been a hard error the moment pages started returning protocol
+  types. It was not, because `@blazediff/core-native` does not resolve from
+  `apps/web`, so `InterpretResult` silently degrades to `any` there and every
+  assignment passes. Verified with an `IsAny` probe. The swap is done anyway:
+  relying on an accidental `any` means the day those types do resolve, a dozen
+  files break at once.
+- **One narrowing, in one place.** `Diff.tsx` is the only component that reads
+  the interpretation, so it is the only place that casts the opaque `unknown`
+  to `InterpretResult`, with the reason inline. `Interpretation.tsx` keeps its
+  `InterpretResult`/`ChangeRegion` imports from core — the deliberate exception
+  Phase 4 of `interactive-capture-ui` documented.
+- **`ChangedScreenshot` had to be exported from `@cappa/protocol`.** The
+  comparison views only ever render a changed screenshot; the schema was
+  exported but not its inferred type.
+- **The zod-stripping guard is schema-level, not per-page.** A per-page test
+  would assert the same parse four times over. Instead
+  `src/api/screenshotFields.test.ts` drives the real client against msw and
+  asserts every field any surface reads — list identity fields, the preview
+  path each category uses, `next`/`prev`, and the diff metadata including the
+  opaque interpretation. Confirmed it bites: deleting `next`/`prev` from the
+  protocol and rebuilding fails it.
+- **`apps/web` resolves workspace packages to their built `dist`.** Four tests
+  failed with `client.getScreenshot is not a function` until `@cappa/client`
+  was rebuilt — Phase 2 shipped source but nothing rebuilt the package. Worth
+  knowing before blaming the code.
+
+**Verification.** 154 web tests (up from 150), 362 across the repo plus 212 in
+core; lint, `tsc`, `attw` and a clean `pnpm build` green.
+
+Then the real `cappa review --host 0.0.0.0` binary in a real browser, opened
+once on the printed URL and then navigated as a user would, with no token in
+any later URL — the scenario that was entirely broken before this change:
+
+| page | before | after |
+| --- | --- | --- |
+| `/` | `401`, blank list | no 4xx, list and count render |
+| `/changed`, `/new`, `/passed`, `/deleted` | `401`, blank | no 4xx, headings and rows render |
+| `/screenshots/:id` | `401` | no 4xx, renders, `next`/`prev` present |
+| sidebar total | blank | `Total Screenshots 2` |
+| `/capture` | worked | still works |
+
+Zero page errors. `review.theme: "dark"` puts `dark` on `<html>`, confirming the
+theme now flows through `client.config()` rather than the raw fetch that used to
+`401` and silently fall back to light.
 
 ## Phase 4 — Migrate the write paths and drop `PATCH`
 

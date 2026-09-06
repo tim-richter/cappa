@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { HttpResponse, http } from "msw";
 import { captureHandlers } from "./capture";
 import { mockDiffMeta } from "./diffMeta";

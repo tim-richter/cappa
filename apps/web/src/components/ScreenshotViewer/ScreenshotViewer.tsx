@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";

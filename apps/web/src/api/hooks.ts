@@ -1,5 +1,5 @@
 import { RunInProgressError, UnknownTargetsError } from "@cappa/client";
-import type { StartRunRequest } from "@cappa/protocol";
+import type { ScreenshotCategory, StartRunRequest } from "@cappa/protocol";
 import {
   type UseQueryResult,
   useMutation,
@@ -21,6 +21,65 @@ export const captureKeys = {
   runs: ["runs"] as const,
   run: (id: string) => ["runs", id] as const,
 };
+
+/**
+ * Query keys for the review surface.
+ *
+ * These are the keys the raw-`fetch` call sites used, unchanged. Both a
+ * finished capture run and a batch approval invalidate by the bare
+ * `["screenshots"]` and `["screenshot"]` prefixes, so every key here has to
+ * stay under one of those two or it will quietly stop refreshing.
+ */
+export const screenshotKeys = {
+  /** The unfiltered list, keyed on the bare prefix (the sidebar total). */
+  all: ["screenshots"] as const,
+  /** One page's list: a category, a search term, or neither. */
+  list: (filter?: string | null) => ["screenshots", filter ?? null] as const,
+  detail: (id: string | undefined) => ["screenshot", id] as const,
+};
+
+/** Every screenshot. Used for the sidebar's total. */
+export const useScreenshotTotal = () =>
+  useQuery({
+    queryKey: screenshotKeys.all,
+    queryFn: () => client.listScreenshots(),
+    select: (screenshots) => screenshots.length,
+  });
+
+/** How many screenshots a category holds, or all of them when given none. */
+export const useScreenshotCount = (category?: ScreenshotCategory) =>
+  useQuery({
+    queryKey: screenshotKeys.list(category),
+    queryFn: () => client.listScreenshots(category ? { category } : {}),
+    select: (screenshots) => screenshots.length,
+  });
+
+export const useScreenshotsByCategory = (category: ScreenshotCategory) =>
+  useQuery({
+    queryKey: screenshotKeys.list(category),
+    queryFn: () => client.listScreenshots({ category }),
+  });
+
+/** The full list, narrowed by a name search when there is one. */
+export const useScreenshotSearch = (search: string | null) =>
+  useQuery({
+    queryKey: screenshotKeys.list(search),
+    queryFn: () => client.listScreenshots(search ? { search } : {}),
+  });
+
+/**
+ * One screenshot.
+ *
+ * `client.getScreenshot` resolves to `undefined` for an id the server does not
+ * have, so callers must treat a settled `undefined` as not-found rather than
+ * as still loading.
+ */
+export const useScreenshot = (id: string | undefined) =>
+  useQuery({
+    queryKey: screenshotKeys.detail(id),
+    queryFn: () => client.getScreenshot(id as string),
+    enabled: id !== undefined,
+  });
 
 /** Server config, including whether capture is available at all. */
 export const useServerConfig = () =>

@@ -1,7 +1,6 @@
-import type { Screenshot } from "@cappa/core";
-import { useQuery } from "@tanstack/react-query";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
+import { useScreenshotsByCategory } from "@/api/hooks";
 import { Grid } from "@/components/Grid";
 import { List } from "@/components/List";
 import { Header } from "@/layout/Header";
@@ -15,14 +14,7 @@ export const Passed: FC = () => {
   );
   const activeView = view ?? View.List;
   const ScreenshotComponent = activeView === View.Grid ? Grid : List;
-  const { data, isPending, isError } = useQuery<Screenshot[]>({
-    queryKey: ["screenshots", "passed"],
-    queryFn: () =>
-      fetch("/api/screenshots?category=passed").then((res) => {
-        if (!res.ok) throw new Error(res.statusText);
-        return res.json();
-      }),
-  });
+  const { data, isPending, isError } = useScreenshotsByCategory("passed");
 
   if (isPending) {
     return <div>Loading...</div>;

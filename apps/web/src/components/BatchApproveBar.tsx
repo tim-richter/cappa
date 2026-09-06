@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { Button } from "@ui/components/button";
 import { Check } from "lucide-react";
 import type { FC } from "react";

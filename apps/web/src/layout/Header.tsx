@@ -1,5 +1,3 @@
-import type { Screenshot } from "@cappa/core";
-import { useQuery } from "@tanstack/react-query";
 import { Button } from "@ui/components/button";
 import { Input } from "@ui/components/input";
 import {
@@ -11,6 +9,7 @@ import { Grid3X3, List, Search } from "lucide-react";
 import { debounce, parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC, ReactNode } from "react";
 import { useLocation } from "react-router";
+import { useScreenshotCount } from "@/api/hooks";
 import { View } from "@/types";
 export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
 
@@ -44,16 +43,7 @@ export interface HeaderProps {
 export const Header: FC<HeaderProps> = ({ actions }) => {
   const { pathname } = useLocation();
   const category = categoryFromPath(pathname);
-  const { data: count } = useQuery({
-    queryKey: ["screenshots", category ?? null],
-    queryFn: () => {
-      const query = category ? `?category=${category}` : "";
-      return fetch(`/api/screenshots${query}`).then(
-        (res) => res.json() as unknown as Promise<Screenshot[]>,
-      );
-    },
-    select: (data) => data?.length || 0,
-  });
+  const { data: count } = useScreenshotCount(category);
   const [search, setSearch] = useQueryState("search");
   const [view, setView] = useQueryState(
     "view",

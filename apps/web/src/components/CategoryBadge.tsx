@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { Badge } from "@ui/components/badge";
 import { cn } from "@ui/lib/utils";
 

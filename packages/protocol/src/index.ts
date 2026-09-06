@@ -51,6 +51,7 @@ export {
   type ApproveResult,
   approveRequestSchema,
   approveResultSchema,
+  type ChangedScreenshot,
   changedScreenshotSchema,
   type DiffMetadata,
   deletedScreenshotSchema,

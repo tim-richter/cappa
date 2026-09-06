@@ -1,4 +1,4 @@
-import type { ChangedScreenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/protocol";
 import { Switch } from "@ui/components/switch";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
 import { cn } from "@ui/lib/utils";

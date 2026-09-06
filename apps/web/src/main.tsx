@@ -1,15 +1,13 @@
 import { createRoot } from "react-dom/client";
 import { RouterProvider } from "react-router/dom";
+import { client } from "./api/client";
 import { Providers } from "./Providers";
 import { router } from "./routes";
 
 async function applyTheme() {
   try {
-    const res = await fetch("/api/config");
-    if (res.ok) {
-      const { theme } = (await res.json()) as { theme: "light" | "dark" };
-      document.documentElement.classList.toggle("dark", theme === "dark");
-    }
+    const { theme } = await client.config();
+    document.documentElement.classList.toggle("dark", theme === "dark");
   } catch {
     // Default to light when API is unavailable (e.g. dev without server)
   }

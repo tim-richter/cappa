@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { Card } from "@ui/components/card";
 import { Checkbox } from "@ui/components/checkbox";
 import { cn } from "@ui/lib/utils";
