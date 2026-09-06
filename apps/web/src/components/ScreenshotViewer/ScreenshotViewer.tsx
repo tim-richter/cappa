@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { client } from "@/api/client";
+import { screenshotKeys } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
@@ -60,19 +62,14 @@ export function ScreenshotComparison({
     persistViewMode(nextMode);
   };
 
+  // Approving one screenshot is `approve` with a single name. It used to be a
+  // `PATCH` whose only non-no-op branch called the same engine method, so the
+  // route is gone and this goes through the client like everything else.
   const { mutate: approveScreenshot } = useMutation({
-    mutationFn: (approved: boolean) => {
-      return fetch(`/api/screenshots/${screenshot.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ approved }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    },
+    mutationFn: () => client.approve([screenshot.name]),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["screenshot", screenshot.id],
+        queryKey: screenshotKeys.detail(screenshot.id),
       });
     },
   });
@@ -87,7 +84,7 @@ export function ScreenshotComparison({
       } else if (e.key === "ArrowRight" && screenshot.next) {
         navigate(`/screenshots/${screenshot.next}`);
       } else if (e.key === "a" && !screenshot.approved) {
-        approveScreenshot(true);
+        approveScreenshot();
       }
     };
 
@@ -194,7 +191,8 @@ export function ScreenshotComparison({
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  onClick={() => approveScreenshot(true)}
+                  aria-label="Approve"
+                  onClick={() => approveScreenshot()}
                   size="icon"
                   className="fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600"
                 >

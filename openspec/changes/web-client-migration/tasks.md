@@ -158,17 +158,62 @@ Zero page errors. `review.theme: "dark"` puts `dark` on `<html>`, confirming the
 theme now flows through `client.config()` rather than the raw fetch that used to
 `401` and silently fall back to light.
 
-## Phase 4 — Migrate the write paths and drop `PATCH`
+## Phase 4 — Migrate the write paths and drop `PATCH` ✅
 
-- [ ] `src/hooks/useApproveBatch.ts` — `client.approve(names)`.
-- [ ] `src/components/ScreenshotViewer/ScreenshotViewer.tsx` —
+- [x] `src/hooks/useApproveBatch.ts` — `client.approve(names)`.
+- [x] `src/components/ScreenshotViewer/ScreenshotViewer.tsx` —
       `client.approve([screenshot.name])`; invalidate the same query keys.
-- [ ] Delete `PATCH /api/screenshots/:id` from `apps/server/src/screenshots.ts`,
+- [x] Delete `PATCH /api/screenshots/:id` from `apps/server/src/screenshots.ts`,
       its `patchBodySchema`, and its tests.
-- [ ] Remove the `PATCH` spelling from `@cappa/protocol`'s route docs; keep
+- [x] Remove the `PATCH` spelling from `@cappa/protocol`'s route docs; keep
       `routes.screenshot` for `GET`.
-- [ ] Update the msw handlers in `src/mocks/` to match.
-- [ ] Changeset noting the removed route (`@cappa/server` minor).
+- [x] Update the msw handlers in `src/mocks/` to match.
+- [x] Changeset noting the removed route (`@cappa/server` minor).
+
+**Deviations and findings**
+
+- **Nothing to remove from `@cappa/protocol`.** The route table only ever named
+  paths, not methods, so `routes.screenshot` needed no change and the protocol
+  never mentioned `PATCH`. The stale list was in the `screenshotsPlugin` doc
+  comment in the server, which is where the correction landed.
+- **Nothing to remove from the msw handlers either — and that was the
+  problem.** No handler ever mocked `PATCH`, so the single-approve button had
+  **no test coverage at all**: with `onUnhandledRequest: "warn"` the request
+  fell through to the real network and the test passed regardless. Now that it
+  is `approve-batch`, the existing handler covers it, and
+  `ScreenshotViewer.test.tsx` asserts both the button and the `A` shortcut post
+  the screenshot's *name*.
+- **The approve button had no accessible name.** It is an icon button whose
+  only label was a tooltip, so it could not be selected by role — the reason
+  the first attempt at the test above failed. Given an `aria-label`, matching
+  the convention the view-mode buttons in `Header` already follow.
+- **Single approve keeps invalidating only `["screenshot", id]`.** It could
+  reasonably invalidate the list prefix too, since approving changes a
+  screenshot's category — but the app's `QueryClient` uses the default
+  `staleTime: 0` with `refetchOnMount`, so a list is refetched on navigation
+  anyway and the difference is unobservable. Left as it was rather than
+  changing behaviour in a transport migration.
+- **The deleted `PATCH` tests cost no coverage.** Everything they asserted —
+  read-only refusal, malformed body, unknown target, approval failure — the
+  `approve-batch` suite already covers, and it reports a failed name in a `200`
+  body rather than a blanket `500`. One test remains in their place, asserting
+  the route is *gone*, so reintroducing it has to be deliberate.
+
+**Verification.** No raw `fetch` is left anywhere in `apps/web/src` outside the
+mocks. 156 web tests (up from 154), 49 server (down from 54: six `PATCH` tests
+out, one removal guard in), 358 across the repo plus 212 in core; lint, `tsc`,
+`attw` and a clean `pnpm build` green.
+
+Both writes driven against the real `cappa review --host 0.0.0.0` binary in a
+real browser, opened once on the printed URL and then navigated bare:
+
+| flow | result |
+| --- | --- |
+| detail-page approve | `POST /api/screenshots/approve-batch` `200`, zero `PATCH` requests, `about` flipped `changed` → `passed` |
+| list-page batch approve | "Select all" → "Approve selected (1)" → `200`, `home` flipped `new` → `passed` |
+| lists after approving | refetch, no 4xx, both screenshots listed |
+
+No page errors in either flow.
 
 ## Phase 5 — Verification and docs
 

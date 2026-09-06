@@ -35,6 +35,8 @@ export const screenshotKeys = {
   all: ["screenshots"] as const,
   /** One page's list: a category, a search term, or neither. */
   list: (filter?: string | null) => ["screenshots", filter ?? null] as const,
+  /** The prefix every single-screenshot query sits under. */
+  details: ["screenshot"] as const,
   detail: (id: string | undefined) => ["screenshot", id] as const,
 };
 

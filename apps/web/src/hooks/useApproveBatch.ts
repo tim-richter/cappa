@@ -1,26 +1,22 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { client } from "@/api/client";
+import { screenshotKeys } from "@/api/hooks";
 
+/**
+ * Approve screenshots by name.
+ *
+ * Both prefixes are invalidated because approving changes a screenshot's
+ * category: the lists that group by category and the detail view both go
+ * stale, and every review query key sits under one of the two.
+ */
 export function useApproveBatch() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async (names: string[]) => {
-      const res = await fetch("/api/screenshots/approve-batch", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ names }),
-      });
-      if (!res.ok) {
-        const err = (await res.json()) as { error?: unknown };
-        throw new Error(
-          err?.error ? JSON.stringify(err.error) : res.statusText,
-        );
-      }
-      return res.json() as Promise<{ approved: string[]; errors: unknown[] }>;
-    },
+    mutationFn: (names: string[]) => client.approve(names),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["screenshots"] });
-      queryClient.invalidateQueries({ queryKey: ["screenshot"] });
+      queryClient.invalidateQueries({ queryKey: screenshotKeys.all });
+      queryClient.invalidateQueries({ queryKey: screenshotKeys.details });
     },
   });
 }

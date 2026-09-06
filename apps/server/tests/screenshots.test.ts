@@ -171,89 +171,20 @@ describe("GET /api/screenshots/:id", () => {
 });
 
 describe("PATCH /api/screenshots/:id", () => {
-  it("approves a screenshot and returns its updated state", async () => {
+  it("is gone — approving one screenshot is approve-batch with one name", async () => {
+    // The handler validated `{ approved: true }` and then called the same
+    // engine method `approve-batch` does, with `{ approved: false }` an
+    // explicit no-op. Two spellings of one mutation; the route was removed
+    // rather than carried into the client.
     const { app, engine } = await build();
 
     const response = await app.inject({
       method: "PATCH",
       url: "/api/screenshots/1",
-      payload: { approved: true },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(engine.approve).toHaveBeenCalledWith(["Screenshot 1"]);
-    expect(response.json()).toMatchObject({
-      id: "1",
-      category: "passed",
-      approved: true,
-    });
-  });
-
-  it("is a no-op when approved is false", async () => {
-    const { app, engine } = await build();
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      payload: { approved: false },
-    });
-
-    expect(response.statusCode).toBe(200);
-    expect(engine.approve).not.toHaveBeenCalled();
-  });
-
-  it("rejects a non-boolean approved flag", async () => {
-    const { app } = await build();
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      payload: { approved: "yes" },
-    });
-
-    expect(response.statusCode).toBe(400);
-  });
-
-  it("404s for an unknown id", async () => {
-    const { app } = await build();
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/99",
       payload: { approved: true },
     });
 
     expect(response.statusCode).toBe(404);
-  });
-
-  it("surfaces an approval failure as a 500", async () => {
-    const engine = createFakeEngine();
-    engine.approve = (async () => ({
-      approved: [],
-      errors: [{ name: "Screenshot 1", error: "disk full" }],
-    })) as FakeEngine["approve"];
-    const { app } = await build({}, engine);
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      payload: { approved: true },
-    });
-
-    expect(response.statusCode).toBe(500);
-    expect(response.json()).toEqual({ error: "disk full" });
-  });
-
-  it("refuses in read-only mode", async () => {
-    const { app, engine } = await build({ readOnly: true });
-
-    const response = await app.inject({
-      method: "PATCH",
-      url: "/api/screenshots/1",
-      payload: { approved: true },
-    });
-
-    expect(response.statusCode).toBe(403);
     expect(engine.approve).not.toHaveBeenCalled();
   });
 });
