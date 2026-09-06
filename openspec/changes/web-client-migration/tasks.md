@@ -66,13 +66,10 @@ surface's invalidation keeps hitting them.
 
 - [ ] `src/main.tsx` — theme via `client.getConfig()`.
 - [ ] `src/layout/Sidebar.tsx` — counts via `client.listScreenshots()`.
-- [ ] `src/layout/Header.tsx` — `client.listScreenshots({ category })`. This
-      also fixes a pre-existing `400`: `pathname.split("/")[1]` is `""` on `/`
-      and `"capture"` on `/capture`, so the header count query sends
-      `?category=` or `?category=capture`, both rejected by the server's schema
-      — the count is silently wrong on those pages today. Passing `undefined`
-      through the client omits the parameter; the `split` still needs a guard
-      against non-category paths.
+- [ ] `src/layout/Header.tsx` — `client.listScreenshots({ category })`. The
+      category derivation itself was already fixed separately (`""` on `/` was
+      sent as `?category=` and rejected with a `400`, leaving a blank title and
+      no count); this step only moves the request onto the client.
 - [ ] `src/pages/Home.tsx` — list and search.
 - [ ] `src/pages/{Changed,New,Passed,Deleted}.tsx` — per-category list.
 - [ ] `src/pages/Screenshot.tsx` — `client.getScreenshot(id)`.

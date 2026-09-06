@@ -14,11 +14,27 @@ import { useLocation } from "react-router";
 import { View } from "@/types";
 export type ScreenshotCategory = "changed" | "new" | "deleted" | "passed";
 
-const categoryLabels = {
+const categoryLabels: Record<ScreenshotCategory, string> = {
   changed: "Changed Screenshots",
   new: "New Screenshots",
   deleted: "Deleted Screenshots",
   passed: "Passed Screenshots",
+};
+
+const isCategory = (value: string): value is ScreenshotCategory =>
+  Object.hasOwn(categoryLabels, value);
+
+/**
+ * The category this header is showing, or `undefined` on the home page, which
+ * lists every screenshot and has no category segment.
+ *
+ * The path segment cannot simply be asserted to be a category: on `/` it is
+ * `""`, and the server rejects `?category=` with a `400` — which left the
+ * heading blank and the count empty on the one page every user opens first.
+ */
+const categoryFromPath = (pathname: string): ScreenshotCategory | undefined => {
+  const segment = pathname.split("/")[1] ?? "";
+  return isCategory(segment) ? segment : undefined;
 };
 
 export interface HeaderProps {
@@ -27,11 +43,12 @@ export interface HeaderProps {
 
 export const Header: FC<HeaderProps> = ({ actions }) => {
   const { pathname } = useLocation();
-  const category = pathname.split("/")[1] as ScreenshotCategory;
+  const category = categoryFromPath(pathname);
   const { data: count } = useQuery({
-    queryKey: ["screenshots", category],
+    queryKey: ["screenshots", category ?? null],
     queryFn: () => {
-      return fetch(`/api/screenshots?category=${category}`).then(
+      const query = category ? `?category=${category}` : "";
+      return fetch(`/api/screenshots${query}`).then(
         (res) => res.json() as unknown as Promise<Screenshot[]>,
       );
     },
@@ -50,10 +67,10 @@ export const Header: FC<HeaderProps> = ({ actions }) => {
         <div className="flex items-center justify-between mb-4">
           <div>
             <h2 className="text-2xl font-semibold text-card-foreground">
-              {categoryLabels[category]}
+              {category ? categoryLabels[category] : "All Screenshots"}
             </h2>
             <p className="text-muted-foreground">
-              {count} screenshot(s) in this category
+              {count} screenshot(s){category ? " in this category" : ""}
             </p>
           </div>
         </div>
