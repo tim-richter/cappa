@@ -1,5 +1,5 @@
 import { isRunInProgressError, isUnknownTargetsError } from "@cappa/core";
-import { startRunRequestSchema } from "@cappa/protocol";
+import { ERROR_CODES, startRunRequestSchema } from "@cappa/protocol";
 import type { FastifyPluginAsync } from "fastify";
 import { z } from "zod";
 
@@ -52,6 +52,7 @@ export const runsPlugin: FastifyPluginAsync = async (fastify) => {
       if (isRunInProgressError(error)) {
         reply.code(409).send({
           error: error.message,
+          code: ERROR_CODES.runInProgress,
           activeRunId: error.activeRunId,
         });
         return;
@@ -79,6 +80,7 @@ export const runsPlugin: FastifyPluginAsync = async (fastify) => {
       if (isRunInProgressError(error)) {
         reply.code(409).send({
           error: error.message,
+          code: ERROR_CODES.runInProgress,
           activeRunId: error.activeRunId,
         });
         return;
@@ -86,7 +88,11 @@ export const runsPlugin: FastifyPluginAsync = async (fastify) => {
       // The client may only ask for tasks discovery produced — this is what
       // stops a request steering the browser to an arbitrary URL.
       if (isUnknownTargetsError(error)) {
-        reply.code(400).send({ error: error.message, taskIds: error.taskIds });
+        reply.code(400).send({
+          error: error.message,
+          code: ERROR_CODES.unknownTargets,
+          taskIds: error.taskIds,
+        });
         return;
       }
       throw error;

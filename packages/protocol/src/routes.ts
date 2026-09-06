@@ -43,10 +43,29 @@ export const startRunResponseSchema = z.object({
 
 export type StartRunResponse = z.infer<typeof startRunResponseSchema>;
 
+/**
+ * Machine-readable codes on error responses.
+ *
+ * Kept here, in the wire contract, rather than derived from `@cappa/core`'s
+ * error classes: a client must be able to tell a conflict from a validation
+ * failure without installing the engine. `@cappa/core` mirrors these values and
+ * a compatibility assertion there fails the build if they drift.
+ */
+export const ERROR_CODES = {
+  runInProgress: "CAPPA_RUN_IN_PROGRESS",
+  unknownTargets: "CAPPA_UNKNOWN_TARGETS",
+} as const;
+
+export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
+
 export const errorResponseSchema = z.object({
-  error: z.union([z.string(), z.unknown()]),
+  error: z.unknown(),
+  code: z.string().optional(),
   activeRunId: z.string().optional(),
+  taskIds: z.array(z.string()).optional(),
 });
+
+export type ErrorResponse = z.infer<typeof errorResponseSchema>;
 
 /** Every route the server exposes, in one place. */
 export const routes = {

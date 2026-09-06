@@ -172,16 +172,58 @@ run, `409` on a concurrent run, the live SSE event stream, run detail with
 per-task statuses, `?sinceSeq=` replay, `400` for an undiscovered task id,
 batch approval, and the resulting category change from `new` to `passed`.
 
-## Phase 4 — `@cappa/client`
+## Phase 4 — `@cappa/client` ✅
 
-- [ ] New package `packages/client` (`@cappa/client`). Deps: `@cappa/protocol`.
-      Isomorphic — `fetch` + `EventSource`, no node built-ins.
-- [ ] `createClient({ baseUrl, token? })` implementing `CaptureEngine` as
-      `RemoteEngine`; response parsing via the protocol schemas.
-- [ ] `subscribeRun` over `EventSource` with `sinceSeq`, reconnect, and
-      unsubscribe.
-- [ ] Protocol-version check on first call; throw a clear error on mismatch.
-- [ ] Tests against a real `@cappa/server` instance backed by a fake engine.
+- [x] New package `packages/client` (`@cappa/client`). Deps: `@cappa/protocol`
+      and `zod`. Isomorphic — `fetch` only, no node built-ins.
+- [x] `createClient({ baseUrl, token? })` returning `RemoteEngine`; every
+      response parsed with the protocol schemas.
+- [x] `subscribeRun` with `sinceSeq`, automatic resume, and unsubscribe.
+- [x] Protocol-version check on first call, cached; `ProtocolMismatchError` on
+      mismatch.
+- [x] HTTP status codes mapped onto typed errors (`RunInProgressError`,
+      `UnknownTargetsError`, `CappaHttpError`).
+- [x] Tests against a real `@cappa/server` instance backed by a scripted engine.
+
+**Deviations and findings**
+
+- **`fetch`, not `EventSource`.** The proposal named `EventSource`, but it
+  cannot send request headers — the access token would have to travel in the
+  query string, where it lands in server logs and browser history — and it
+  reconnects on a schedule the caller can neither observe nor cancel. Reading
+  the stream with `fetch` costs a ~100-line SSE parser and buys header auth, an
+  `AbortSignal`, and explicit resume. The parser is covered by its own tests,
+  including frames split mid-UTF-8-sequence.
+- **The client does not import `@cappa/core` at all**, not even for the
+  `CaptureEngine` type — that would put core in its published `.d.ts` and defeat
+  the point. `RemoteEngine` is typed in protocol terms, and a compile-time
+  assertion in the test file (with core as a dev dependency) checks it is a
+  drop-in.
+- **That assertion found a real, unavoidable divergence.** `RemoteEngine`
+  satisfies `CaptureEngine` exactly for every capture-driving method, but
+  `listScreenshots` cannot: the protocol carries `diffMeta.interpretation`
+  opaquely as `unknown` (Phase 2's decision), and `unknown` is not assignable to
+  core's `InterpretResult`. Rather than weaken core's type or fake the
+  assertion, the guard is split in two — an exact assertion for the run-driving
+  surface, and a narrower one for `listScreenshots` documenting the one
+  deliberate difference.
+- **`next`/`prev` had to be added to the protocol.** The server computes them,
+  but zod strips unknown keys, so the client was silently dropping them — the
+  review UI's keyboard navigation would have quietly stopped working in Phase 5.
+  Caught by an integration test asserting they survive the round trip.
+- **Error codes moved into the protocol.** `ERROR_CODES` now lives in
+  `@cappa/protocol` and rides on error response bodies, so the client maps a
+  conflict without importing the engine. A protocol test asserts it still equals
+  core's `ENGINE_ERROR_CODES`.
+
+**Verification.** 55 client tests (26 unit, 13 SSE parser, 16 integration
+against a live Fastify server over a real socket), 464 across the repo, with
+lint, `tsc` and `attw` green. An end-to-end smoke test drove the built client
+against the real `cappa review` binary with a real browser: version handshake,
+plugin and target listing, a full run watched live over SSE with monotonic
+sequence numbers and per-task statuses, a subset re-capture with
+`clearActual: false`, `RunInProgressError` and `UnknownTargetsError` mapped back
+from real HTTP responses, cancellation, and batch approval.
 
 ## Phase 5 — `apps/web` capture surface
 

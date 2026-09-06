@@ -1,7 +1,13 @@
 import type * as core from "@cappa/core";
+import { ENGINE_ERROR_CODES } from "@cappa/core";
 import { describe, expect, it } from "vitest";
 import type * as protocol from "./index";
-import { runEventSchema, runSummarySchema, screenshotSchema } from "./index";
+import {
+  ERROR_CODES,
+  runEventSchema,
+  runSummarySchema,
+  screenshotSchema,
+} from "./index";
 
 /**
  * `@cappa/protocol` declares the wire shapes independently of `@cappa/core` so
@@ -221,5 +227,13 @@ describe("protocol schemas reject malformed input", () => {
         expectedPath: "expected/a.png",
       }).success,
     ).toBe(false);
+  });
+});
+
+describe("error codes stay in sync with the engine", () => {
+  it("matches @cappa/core's ENGINE_ERROR_CODES", () => {
+    // The client maps HTTP responses onto these codes without installing the
+    // engine, so the two definitions must not drift.
+    expect(ERROR_CODES).toEqual(ENGINE_ERROR_CODES);
   });
 });

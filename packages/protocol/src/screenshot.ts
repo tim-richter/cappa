@@ -40,6 +40,15 @@ const screenshotBase = {
   id: z.string(),
   name: z.string(),
   approved: z.boolean().optional(),
+  /**
+   * Neighbours in the full, unfiltered list, so the UI can walk every
+   * screenshot with the arrow keys regardless of the current filter.
+   *
+   * Computed by the server rather than the engine — but they must be described
+   * here, or a client parsing a response would silently drop them.
+   */
+  next: z.string().optional(),
+  prev: z.string().optional(),
 };
 
 export const newScreenshotSchema = z.object({
