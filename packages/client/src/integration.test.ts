@@ -373,6 +373,36 @@ describe("client against a live server", () => {
     ).resolves.toHaveLength(1);
   });
 
+  it("fetches one screenshot by id, with its neighbours", async () => {
+    const { client } = await start();
+
+    const screenshot = await client.getScreenshot("2");
+
+    expect(screenshot).toMatchObject({
+      id: "2",
+      name: "card",
+      category: "changed",
+      // Rewritten to an asset URL by the server, as in the list response.
+      diffPath: "/assets/screenshots/diff/card.png",
+      prev: "1",
+    });
+  });
+
+  it("returns undefined rather than throwing for an unknown id", async () => {
+    const { client } = await start();
+
+    await expect(client.getScreenshot("nope")).resolves.toBeUndefined();
+  });
+
+  it("serves a single screenshot on a read-only server", async () => {
+    // Reading is not a mutation; only capture and approval are refused.
+    const { client } = await start(createScriptedEngine(), { readOnly: true });
+
+    await expect(client.getScreenshot("1")).resolves.toMatchObject({
+      name: "button",
+    });
+  });
+
   it("approves through the batch endpoint", async () => {
     const { client } = await start();
 

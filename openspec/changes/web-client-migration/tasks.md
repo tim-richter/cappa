@@ -48,16 +48,40 @@ written to `sessionStorage`, no page errors.
 and every `GET /api/screenshots` from the review pages. Those are the raw-`fetch`
 call sites, and they are what Phases 3 and 4 migrate.
 
-## Phase 2 — Close the client gaps
+## Phase 2 — Close the client gaps ✅
 
-- [ ] `@cappa/client`: `getScreenshot(id)` against `routes.screenshot`, parsed
+- [x] `@cappa/client`: `getScreenshot(id)` against `routes.screenshot`, parsed
       with the protocol screenshot schema (including `next`/`prev`).
-- [ ] `@cappa/client`: `getConfig()` against `routes.config`, parsed with
-      `configResponseSchema`.
-- [ ] Tests in `client.test.ts` (unit) and `integration.test.ts` (against a live
+- [x] ~~`getConfig()`~~ — already shipped in Phase 4 of `interactive-capture-ui`
+      as `config()`. Nothing to add; the plan double-counted it.
+- [x] Tests in `client.test.ts` (unit) and `integration.test.ts` (against a live
       Fastify server): 404 mapping for an unknown id, `next`/`prev` round trip,
-      `readOnly` surfaced from `getConfig`.
-- [ ] Changeset for `@cappa/client` (minor).
+      `readOnly` surfaced from `config()`.
+- [x] Changeset for `@cappa/client` (minor).
+
+**Deviations and findings**
+
+- **Only one gap was real.** `config()` already existed and `apps/web` already
+  uses it through `useServerConfig`; the plan listed it from reading the raw
+  `fetch` in `main.tsx` without checking the client's surface first. Phase 2 is
+  therefore one method, not two.
+- **`getScreenshot` is not on `CaptureEngine`, deliberately.** An engine
+  discovers and captures; addressing one screenshot by a server-assigned view
+  id, and getting `next`/`prev` back with it, is a review concern that only
+  exists over HTTP. `LocalEngine` has no equivalent and should not grow one.
+  The existing `Omit<CaptureEngine, "listScreenshots">` assertion still holds —
+  an extra method does not break assignability.
+- **The `404` check was duplicated, so it became a helper.** `getRun` already
+  duck-typed `error.status === 404` rather than using `instanceof
+  CappaHttpError`, because dual ESM/CJS builds mean a consumer can hold two
+  copies of the class — the hazard that turned a `409` into a `500` in Phase 3.
+  `isNotFound` now carries that reasoning in one place and both callers use it.
+
+**Verification.** 64 client tests (up from 55): a single fetch by id, `next`/
+`prev` surviving the zod parse, id encoding, `404` → `undefined`, a non-404
+rethrown, `config()`, plus three against a live Fastify server — asset-URL
+rewriting on the single-screenshot route, an unknown id, and a read-only server
+still serving reads. Lint, `tsc` and `attw` green.
 
 ## Phase 3 — Migrate the read paths
 
