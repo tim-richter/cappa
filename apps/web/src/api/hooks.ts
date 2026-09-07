@@ -1,5 +1,15 @@
-import { RunInProgressError, UnknownTargetsError } from "@cappa/client";
-import type { ScreenshotCategory, StartRunRequest } from "@cappa/protocol";
+import {
+  ProtocolMismatchError,
+  RunInProgressError,
+  UnauthorizedError,
+  UnknownTargetsError,
+} from "@cappa/client";
+import type {
+  RunState,
+  RunSummary,
+  ScreenshotCategory,
+  StartRunRequest,
+} from "@cappa/protocol";
 import {
   type UseQueryResult,
   useMutation,
@@ -13,6 +23,15 @@ import {
   type RunViewState,
   runStateReducer,
 } from "./runState";
+
+/**
+ * Errors that will give the same answer however many times they are asked.
+ *
+ * Shared with the query client's default `retry` so a hook overriding it does
+ * not quietly reintroduce the retry loop it exists to prevent.
+ */
+export const isTerminalQueryError = (error: unknown): boolean =>
+  error instanceof UnauthorizedError || error instanceof ProtocolMismatchError;
 
 export const captureKeys = {
   config: ["config"] as const,
@@ -109,15 +128,44 @@ export const useTargets = (options: { enabled?: boolean } = {}) =>
     queryKey: captureKeys.targets,
     queryFn: () => client.listTargets(),
     enabled: options.enabled ?? true,
+    // `RunInProgressError` is expected rather than broken, and a rejected
+    // token or a version mismatch will not resolve itself either — none of the
+    // three is worth a second attempt.
     retry: (failureCount, error) =>
-      !(error instanceof RunInProgressError) && failureCount < 2,
+      !isTerminalQueryError(error) &&
+      !(error instanceof RunInProgressError) &&
+      failureCount < 2,
   });
 
+/**
+ * Run history, newest first.
+ *
+ * Polled, because a run is not always started from this tab: `cappa capture` in
+ * another terminal, a second browser tab, or this same tab before a reload all
+ * hold the engine's single run slot, and a UI that only knows about runs it
+ * started offers a "Start capture" button that can do nothing but 409.
+ */
 export const useRuns = () =>
   useQuery({
     queryKey: captureKeys.runs,
     queryFn: () => client.listRuns(),
+    refetchInterval: 5000,
   });
+
+/** States in which a run still holds the engine. */
+const isRunActiveState = (state: RunState) =>
+  state === "running" || state === "discovering";
+
+/**
+ * The run currently holding the engine, whoever started it.
+ *
+ * This is what lets the capture page survive a reload: the run id lives on the
+ * server, not in component state, so re-attaching is a matter of asking.
+ */
+export const useActiveRun = (): RunSummary | undefined => {
+  const { data: runs } = useRuns();
+  return runs?.find((run) => isRunActiveState(run.state));
+};
 
 export const useStartRun = () => {
   const queryClient = useQueryClient();

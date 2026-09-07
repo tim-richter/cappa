@@ -28,6 +28,26 @@ export const mockRunSummary: RunSummary = {
   anyTasksRan: true,
 };
 
+/**
+ * What `GET /api/runs` answers by default.
+ *
+ * Finished, because the capture page reads this list to decide whether the
+ * engine is busy: a "running" run here is the server saying "somebody else has
+ * the browser", which correctly disables the whole panel. Tests that want that
+ * state say so with `runsHandler`.
+ */
+export const mockFinishedRunSummary: RunSummary = {
+  ...mockRunSummary,
+  state: "completed",
+  completedTasks: 3,
+  durationMs: 361,
+  finishedAt: 361,
+};
+
+/** Override the run list, for tests about an already-running capture. */
+export const runsHandler = (runs: RunSummary[]) =>
+  http.get("/api/runs", () => HttpResponse.json(runs));
+
 /** A whole successful run, in the order the server would emit it. */
 export const mockRunEvents = (): RunEvent[] => {
   const base = { runId: "run-1", at: 0 };
@@ -146,7 +166,7 @@ export const captureHandlers = [
 
   http.get("/api/targets", () => HttpResponse.json(mockTargets)),
 
-  http.get("/api/runs", () => HttpResponse.json([mockRunSummary])),
+  http.get("/api/runs", () => HttpResponse.json([mockFinishedRunSummary])),
 
   http.post("/api/runs", () =>
     HttpResponse.json({ runId: "run-1", run: mockRunSummary }, { status: 201 }),

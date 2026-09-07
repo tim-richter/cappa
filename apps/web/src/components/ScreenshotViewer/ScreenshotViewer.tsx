@@ -190,7 +190,7 @@ export function ScreenshotComparison({
 
         {/* Right side */}
         <div className="flex items-center gap-4 justify-end">
-          <RecaptureButton taskId={screenshot.name} />
+          <RecaptureButton taskId={screenshot.taskId} />
 
           {!screenshot.approved && canApprove && (
             <Tooltip>

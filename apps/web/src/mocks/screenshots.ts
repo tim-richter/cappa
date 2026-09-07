@@ -174,6 +174,9 @@ export const handlers = [
         diffPath: "/images/4diff.png",
         category: "changed",
         diffMeta: mockDiffMeta,
+        // Deliberately unlike the name, as every real plugin's ids are.
+        taskId: "Screenshot 3",
+        plugin: "docs",
 
         next: "4",
         prev: "2",
@@ -194,6 +197,8 @@ export const handlers = [
       });
     }
 
+    // No `taskId`: a screenshot captured before the manifest existed. The
+    // re-capture button has nothing to ask for and must not offer itself.
     if (params.id === "5") {
       return HttpResponse.json<Screenshot & { next: string; prev: string }>({
         name: params.id as string,

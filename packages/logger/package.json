@@ -28,6 +28,7 @@
     "build": "tsdown",
     "tsc": "tsc",
     "test": "vitest",
+    "test:run": "vitest --run",
     "attw": "attw --pack --profile node16 ."
   },
   "devDependencies": {

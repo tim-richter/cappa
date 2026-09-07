@@ -43,6 +43,7 @@
   },
   "scripts": {
     "test": "vitest",
+    "test:run": "vitest --run",
     "build": "tsdown",
     "tsc": "tsc",
     "attw": "attw --pack --profile node16 ."

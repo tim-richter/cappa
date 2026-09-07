@@ -26,6 +26,7 @@
   },
   "scripts": {
     "test": "vitest",
+    "test:run": "vitest --run",
     "test:ui": "vitest --ui",
     "test:coverage": "vitest --coverage",
     "example:basic": "node examples/basic-usage.js",

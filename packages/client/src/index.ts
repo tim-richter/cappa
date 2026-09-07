@@ -11,6 +11,7 @@ export {
   ProtocolMismatchError,
   RunInProgressError,
   toClientError,
+  UnauthorizedError,
   UnknownTargetsError,
 } from "./errors";
 export { parseSse, type SseFrame } from "./sse";

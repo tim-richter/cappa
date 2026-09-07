@@ -171,14 +171,26 @@ export class RemoteEngine {
       return Promise.resolve();
     }
 
-    this.versionCheck ??= this.health().then((health) => {
-      if (health.protocolVersion !== PROTOCOL_VERSION) {
-        throw new ProtocolMismatchError(
-          PROTOCOL_VERSION,
-          health.protocolVersion,
-        );
-      }
-    });
+    this.versionCheck ??= this.health()
+      .then((health) => {
+        if (health.protocolVersion !== PROTOCOL_VERSION) {
+          throw new ProtocolMismatchError(
+            PROTOCOL_VERSION,
+            health.protocolVersion,
+          );
+        }
+      })
+      .catch((error) => {
+        // A *failed* handshake must not be cached. A version mismatch is
+        // permanent, but a transport failure is not — a server still starting
+        // up, or a token that arrives on the next page load — and caching the
+        // rejection would make the first failed request poison every later one
+        // for the lifetime of the client.
+        if (!(error instanceof ProtocolMismatchError)) {
+          this.versionCheck = undefined;
+        }
+        throw error;
+      });
 
     return this.versionCheck;
   }

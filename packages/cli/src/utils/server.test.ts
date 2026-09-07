@@ -17,7 +17,28 @@ vi.mock("@cappa/logger", () => ({
   initLogger: () => loggerInstance,
 }));
 
-import { registerShutdownHandlers } from "./server";
+import { registerShutdownHandlers, toDisplayHost } from "./server";
+
+describe("toDisplayHost", () => {
+  it("keeps a loopback bind readable", () => {
+    expect(toDisplayHost("127.0.0.1")).toBe("localhost");
+    expect(toDisplayHost("localhost")).toBe("localhost");
+  });
+
+  it("turns a wildcard bind into something a browser can open", () => {
+    // The printed URL is the only place a generated token ever appears, so a
+    // `http://0.0.0.0:…?token=…` that no browser will load locks the user out
+    // of their own review UI.
+    expect(toDisplayHost("0.0.0.0")).toBe("localhost");
+    expect(toDisplayHost("::")).toBe("localhost");
+    expect(toDisplayHost("[::]")).toBe("localhost");
+  });
+
+  it("leaves a specific host alone", () => {
+    expect(toDisplayHost("build-host.internal")).toBe("build-host.internal");
+    expect(toDisplayHost("192.168.1.10")).toBe("192.168.1.10");
+  });
+});
 
 describe("registerShutdownHandlers", () => {
   let unregister: (() => void) | undefined;

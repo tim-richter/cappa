@@ -41,6 +41,19 @@ const screenshotBase = {
   name: z.string(),
   approved: z.boolean().optional(),
   /**
+   * The capture task that produced this screenshot.
+   *
+   * Described here because it is the only way a client can re-capture one
+   * screenshot: `startRun` accepts task ids, and a screenshot's `name` is not
+   * one — Storybook writes `example/button/primary` for the task
+   * `example-button--primary`. Optional because the engine can only know it for
+   * screenshots captured since the capture manifest existed, so a client must
+   * treat its absence as "not re-capturable" rather than substituting `name`.
+   */
+  taskId: z.string().optional(),
+  /** Plugin that owns `taskId`. Absent whenever `taskId` is. */
+  plugin: z.string().optional(),
+  /**
    * Neighbours in the full, unfiltered list, so the UI can walk every
    * screenshot with the arrow keys regardless of the current filter.
    *
