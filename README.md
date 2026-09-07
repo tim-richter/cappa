@@ -1,5 +1,5 @@
 <p align="center">
-  <img height="150" alt="cappa" src="https://github.com/user-attachments/assets/70683ad3-4a57-46b2-b829-16ec25b4ac94" />
+  <img height="350" alt="cappa" src="https://github.com/tim-richter/cappa/blob/b92b9c4d41bae55558365068c3c9558f50cbc16b/examples/IMG_0050.jpeg" />
 </p>
 
 
