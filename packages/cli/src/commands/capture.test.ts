@@ -79,14 +79,18 @@ describe("registerSignalHandlers", () => {
     return { mockClose, mockExit, mockTool };
   };
 
+  // The handler awaits an optional pre-close hook, so close and exit land on
+  // later ticks rather than synchronously with the signal.
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
   it("calls close() then exit(130) on SIGINT", async () => {
     const { mockClose, mockExit, mockTool } = makeMocks();
     unregister = registerSignalHandlers(mockTool, mockExit);
 
     process.emit("SIGINT");
+    await settle();
 
     expect(mockClose).toHaveBeenCalledOnce();
-    await Promise.resolve();
     expect(mockExit).toHaveBeenCalledWith(130);
   });
 
@@ -95,10 +99,48 @@ describe("registerSignalHandlers", () => {
     unregister = registerSignalHandlers(mockTool, mockExit);
 
     process.emit("SIGTERM");
+    await settle();
 
     expect(mockClose).toHaveBeenCalledOnce();
-    await Promise.resolve();
     expect(mockExit).toHaveBeenCalledWith(130);
+  });
+
+  it("runs the pre-close hook before closing", async () => {
+    const { mockClose, mockExit, mockTool } = makeMocks();
+    const order: string[] = [];
+    const onSignal = vi.fn(async () => {
+      order.push("hook");
+    });
+    mockClose.mockImplementation(async () => {
+      order.push("close");
+    });
+
+    unregister = registerSignalHandlers(mockTool, mockExit, onSignal);
+
+    process.emit("SIGINT");
+    await settle();
+
+    // Cancelling a remote run has to finish before the engine — and with it the
+    // event stream — goes away.
+    expect(order).toEqual(["hook", "close"]);
+  });
+
+  it("exits immediately on a second signal", async () => {
+    const { mockClose, mockExit, mockTool } = makeMocks();
+    // A hook that never settles stands in for a host that will not acknowledge.
+    const onSignal = vi.fn(() => new Promise<void>(() => {}));
+
+    unregister = registerSignalHandlers(mockTool, mockExit, onSignal);
+
+    process.emit("SIGINT");
+    await settle();
+    expect(mockExit).not.toHaveBeenCalled();
+
+    process.emit("SIGINT");
+    await settle();
+
+    expect(mockExit).toHaveBeenCalledWith(130);
+    expect(mockClose).not.toHaveBeenCalled();
   });
 
   it("does not call close() or exit() after unregister", () => {

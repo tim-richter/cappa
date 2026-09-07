@@ -191,27 +191,77 @@ capture.
 
 Docs for `serve` are Phase 4's task and are not included here.
 
-## Phase 3 — `cappa capture --server`
+## Phase 3 — `cappa capture --server` ✅
 
-- [ ] `--server <url>` and `--token <token>` on `capture`; build a `RemoteEngine`
+- [x] `--server <url>` and `--token <token>` on `capture`; build a `RemoteEngine`
       via `createClient` instead of a `LocalEngine`. Everything downstream is
       unchanged.
-- [ ] Pre-flight `GET /api/health`: distinct errors for unreachable host, bad
+- [x] Pre-flight `GET /api/health`: distinct errors for unreachable host, bad
       token (`401`), protocol mismatch, and `capabilities.capture: false`.
-- [ ] Narrowing zod parse for `diffMeta.interpretation` in
-      `utils/describeChanges.ts`; omit the region list when it does not match,
-      keep diff stats. Local behaviour unchanged.
-- [ ] `onFail` under `--server`: absolute path fields `undefined`, one
-      warning-level log explaining why. Refuse nothing — the callback still runs.
-- [ ] `SIGINT` under `--server` calls `cancelRun` and waits for the terminal
-      event (bounded, ~5s) before exiting 130; a second `SIGINT` exits at once
+- [x] Narrowing zod parse for `diffMeta.interpretation` in
+      `utils/describeChanges.ts`; omits the region list when it does not match,
+      keeps diff stats. Local behaviour unchanged.
+- [x] `onFail` under `--server`: absolute path fields `undefined`, one
+      warning-level log explaining why. The callback still runs.
+- [x] `SIGINT` under `--server` calls `cancelRun` and waits for the terminal
+      event (bounded, 5s) before exiting 130; a second `SIGINT` exits at once
       with a warning that the remote run may continue.
-- [ ] Reject `--server` together with flags that only mean something locally,
-      with a message rather than silent no-op.
-- [ ] Tests against a live `@cappa/server` with a scripted engine: identical
+- [x] Reject `--server` together with flags that do not apply.
+- [x] Tests against a live `@cappa/server` with a scripted engine: identical
       rendered output to a local run over the same event sequence, exit code 1
       on failure, cancellation, each pre-flight error.
-- [ ] Changeset (`@cappa/cli` minor).
+- [x] Changeset (`@cappa/cli` minor).
+
+**Deviations and findings**
+
+- **No capture flag is actually local-only.** The task anticipated some, but
+  `--filter` crosses the wire, `--ci` runs `onFail` (with the documented path
+  caveat), and `--max-regions` is CLI-side rendering that works fine against a
+  remote host. An empty conflict list would have been dead code. The real
+  silent no-op is the *config*: the host loads its own `cappa.config.ts`, so
+  every local capture setting is ignored. `--server` now says so in one line.
+  The one genuine flag conflict is the inverse — `--token` without `--server`
+  does nothing at all — and that is rejected.
+- **A concurrent run printed a raw stack trace.** `startRun` against a busy host
+  throws the client's `RunInProgressError`, which escaped `runCapture` and gave
+  the user a Node crash dump for what is the host's deliberate one-run-at-a-time
+  design. Reproduced by racing two remote captures, then fixed: it gets a
+  sentence naming the active run. Duck-typed on `status === 409` rather than
+  `instanceof`, for the dual ESM/CJS reason the client already documents.
+- **Cancellation had an ordering bug, found by the test.** `cancelRemoteRun`
+  originally raced `cancelRun` against a timeout, then let the handler close the
+  engine — but closing aborts the event stream, so the CLI tore the connection
+  down while the host was still winding the run down and never learned whether
+  it stopped. It now awaits `cancelRun` and then the run's *terminal event*,
+  bounded at 5s. Invisible in a live test, where `process.exit` really exits;
+  visible immediately once `process.exit` was mocked.
+- **`registerSignalHandlers` gained a pre-close hook** and `process.on` instead
+  of `process.once`, so a second signal reaches the handler and exits at once.
+  Close and exit now land a tick later than the signal, which its existing tests
+  had to be taught.
+
+**The one place output is not identical, and it is not fixable here.**
+`ScreenshotTool` writes some lines straight to its own logger rather than
+through the run's event stream: `Screenshot saved`, `Screenshot passed/failed
+visual comparison`, and the retry warnings. Those stay in the *host's* stdout.
+Verified by diffing local against remote for both an all-new and a changed run:
+the task progress, the plugin-completion line, the failure report, the changed
+report and the exit code all match exactly; only that running commentary is
+missing.
+
+Closing the gap means routing `ScreenshotTool`'s logging through the runner so
+it becomes `log` events. That needs a logger seam in `ScreenshotTool`, and — the
+blocker — `RunLogLevel` is `debug | info | warn | error` while those calls are
+`success`. Widening it changes the wire contract and needs a `PROTOCOL_VERSION`
+bump, so it is a deliberate decision rather than something to slip into this
+phase. Flagged for the maintainer.
+
+**Verification.** Beyond the 672-test suite: ran `cappa serve` and
+`cappa capture --server` as two processes and diffed the output against a local
+run for all-new and changed scenarios; confirmed the four pre-flight errors, a
+`409` on two racing captures, `CAPPA_TOKEN` end to end, and a `SIGINT` that left
+the host reporting `state=cancelled` at 1/8 tasks. The twelve capture-parity
+scenarios still match, so the local path is untouched.
 
 ## Phase 4 — Docs and end-to-end
 
