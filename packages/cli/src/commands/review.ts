@@ -1,7 +1,7 @@
 import { randomBytes } from "node:crypto";
 import path from "node:path";
-import { getConfig } from "@cappa/config";
-import { LocalEngine, type RunnablePlugin } from "@cappa/core";
+import { configToEngineOptions, getConfig } from "@cappa/config";
+import { LocalEngine } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import { createServer, isLoopbackHost } from "@cappa/server";
 
@@ -94,15 +94,7 @@ export const review = async (options: ReviewOptions = {}) => {
   // The engine holds the config's live plugin objects, so it is built here — in
   // the process that evaluated cappa.config.ts — and injected into the server.
   const engine = new LocalEngine({
-    outputDir: path.resolve(config.outputDir),
-    plugins: (config.plugins || []) as unknown as RunnablePlugin[],
-    diff: config.diff,
-    retries: config.retries,
-    concurrency: config.concurrency,
-    logConsoleEvents: config.logConsoleEvents,
-    fullPage: config.screenshot?.fullPage ?? true,
-    viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
-    connectionTimeout: config.connectionTimeout,
+    ...configToEngineOptions(config),
     browserIdleTimeoutMs: config.review.browserIdleTimeout,
   });
 

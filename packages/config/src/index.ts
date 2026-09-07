@@ -1,3 +1,4 @@
+export { configToEngineOptions } from "./configToEngineOptions";
 export { defaultConfig } from "./default";
 export {
   type GetConfigOptions,

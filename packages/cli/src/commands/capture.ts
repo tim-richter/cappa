@@ -1,18 +1,15 @@
 import path from "node:path";
-import { getConfig } from "@cappa/config";
+import { configToEngineOptions, getConfig } from "@cappa/config";
 import type {
+  CaptureEngine,
   FailedScreenshot,
+  RunDetail,
   RunEvent,
-  RunnablePlugin,
   Screenshot,
+  SerializedError,
   TaskFailure,
 } from "@cappa/core";
-import {
-  CaptureRunner,
-  collectScreenshots,
-  ScreenshotFileSystem,
-  ScreenshotTool,
-} from "@cappa/core";
+import { LocalEngine } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
@@ -154,12 +151,19 @@ type CaptureOptions = {
   maxRegions?: number;
 };
 
+/**
+ * Close `closeable` and exit 130 on SIGINT/SIGTERM.
+ *
+ * Typed structurally rather than against a concrete class so it can be handed
+ * whatever owns the browser — that is the engine now, and a remote engine
+ * later, neither of which the CLI should have to special-case here.
+ */
 export function registerSignalHandlers(
-  screenshotTool: ScreenshotTool,
+  closeable: { close(): Promise<void> },
   exitFn: (code: number) => void = process.exit,
 ): () => void {
   const handleSignal = async () => {
-    await screenshotTool.close();
+    await closeable.close();
     exitFn(130);
   };
 
@@ -237,68 +241,115 @@ export function renderRunEvent(event: RunEvent): void {
   }
 }
 
-const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
+/**
+ * Rebuild a throwable error from the run's serialized one.
+ *
+ * The engine flattens the error a plugin threw so it can cross a network
+ * boundary, but `capture` has always failed by letting that error escape — the
+ * stack is the only debugging signal for a plugin that blew up. Reinstating
+ * name, message and stack keeps that output intact.
+ */
+function toThrowable(error: SerializedError): Error {
+  const rebuilt = new Error(error.message);
+  rebuilt.name = error.name;
+  if (error.stack) {
+    rebuilt.stack = error.stack;
+  }
+  return rebuilt;
+}
+
+/**
+ * Subscribe to a run, render every event, and resolve when it terminates.
+ *
+ * Events buffered between `startRun` and this subscription are replayed
+ * synchronously, so nothing emitted during start-up is lost.
+ */
+async function renderRunToCompletion(
+  engine: CaptureEngine,
+  runId: string,
+  onEvent: (event: RunEvent) => void,
+): Promise<void> {
+  let unsubscribe: (() => void) | undefined;
+
+  try {
+    await new Promise<void>((resolve) => {
+      unsubscribe = engine.subscribeRun(runId, (event) => {
+        onEvent(event);
+
+        if (event.type === "run:complete" || event.type === "run:error") {
+          resolve();
+        }
+      });
+    });
+  } finally {
+    unsubscribe?.();
+  }
+}
+
+export const runCapture = async (
+  options: CaptureOptions = {},
+): Promise<void> => {
   const logger = getLogger();
   const captureStart = performance.now();
 
   const config = await getConfig();
 
-  const screenshotTool = new ScreenshotTool({
-    outputDir: config.outputDir,
-    diff: config.diff,
-    retries: config.retries,
-    concurrency: config.concurrency,
-    logConsoleEvents: config.logConsoleEvents,
-    fullPage: config.screenshot?.fullPage ?? true,
-    viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
-    connectionTimeout: config.connectionTimeout,
+  const engine = new LocalEngine({
+    ...configToEngineOptions(config),
+    // A one-shot capture has no next run to keep a browser warm for, so hand it
+    // back as soon as the run ends rather than leaving an idle Chromium around
+    // for the rest of the process's life.
+    browserIdleTimeoutMs: 0,
   });
 
-  const runner = new CaptureRunner({
-    screenshotTool,
-    plugins: (config.plugins || []) as unknown as RunnablePlugin[],
-    outputDir: config.outputDir,
-    fileSystem: new ScreenshotFileSystem(config.outputDir),
-  });
-
-  const unsubscribe = runner.on(renderRunEvent);
-  const unregisterSignalHandlers = registerSignalHandlers(screenshotTool);
-
-  let captureError: unknown;
-
-  try {
-    await screenshotTool.init();
-
-    await runner.run({
-      filter: options.filter,
-      clearActual: true,
-    });
-  } catch (error) {
-    captureError = error;
-    throw error;
-  } finally {
-    unregisterSignalHandlers();
-    unsubscribe();
-    await screenshotTool.close();
-  }
-
-  const { failures, deletedScreenshots } = runner.getDetail();
-  const hasScreenshotFailure = runner.hasScreenshotFailure;
+  const unregisterSignalHandlers = registerSignalHandlers(engine);
 
   const isCi = options.ci || process.env.CI === "true";
 
-  // Read back the diff metadata sidecars once and reuse them for both the
-  // onFail callback and the changed-screenshot report below.
+  let detail: RunDetail | undefined;
+  // Read the diff metadata sidecars once and reuse them for both the onFail
+  // callback and the changed-screenshot report below.
   let groupedScreenshots: Screenshot[] = [];
-  if (!captureError && (isCi || hasScreenshotFailure)) {
-    try {
-      groupedScreenshots = await collectScreenshots(config.outputDir);
-    } catch (err) {
-      logger.warn("Could not collect screenshot results:", err);
+
+  try {
+    const run = await engine.startRun({
+      filter: options.filter,
+      clearActual: true,
+    });
+
+    await renderRunToCompletion(engine, run.id, renderRunEvent);
+
+    detail = await engine.getRun(run.id);
+
+    const failedDuringRun = detail?.error !== undefined;
+    const hasFailure =
+      (detail?.failures.length ?? 0) > 0 ||
+      (detail?.deletedScreenshots.length ?? 0) > 0;
+
+    if (!failedDuringRun && (isCi || hasFailure)) {
+      try {
+        groupedScreenshots = await engine.listScreenshots();
+      } catch (err) {
+        logger.warn("Could not collect screenshot results:", err);
+      }
     }
+  } finally {
+    unregisterSignalHandlers();
+    await engine.close();
   }
 
-  if (!captureError && isCi) {
+  // A plugin that threw has always escaped this command rather than being
+  // summarised, and the browser is closed by the time it does.
+  if (detail?.error) {
+    throw toThrowable(detail.error);
+  }
+
+  const failures = detail?.failures ?? [];
+  const deletedScreenshots = detail?.deletedScreenshots ?? [];
+  const hasScreenshotFailure =
+    failures.length > 0 || deletedScreenshots.length > 0;
+
+  if (isCi) {
     await executeOnFailCallback(config, groupedScreenshots);
   }
 

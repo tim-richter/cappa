@@ -77,26 +77,68 @@ in `apps/web`'s `ScreenshotViewer.test.tsx`, unrelated — it passes on re-run a
 no web code was touched). No changeset: `@cappa/example-storybook` is in the
 changeset ignore list and `scripts/` is not a package.
 
-## Phase 1 — `cappa capture` drives a `CaptureEngine`
+## Phase 1 — `cappa capture` drives a `CaptureEngine` ✅
 
-No user-visible change. Output must be byte-identical to the recorded baseline.
+No user-visible change. Output is byte-identical to the recorded baseline.
 
-- [ ] `@cappa/config`: export `configToEngineOptions(config)`, the option
+- [x] `@cappa/config`: export `configToEngineOptions(config)`, the option
       mapping duplicated today in `capture.ts:231` and `review.ts:96`. Both
       commands call it.
-- [ ] Rewrite `runCapture` to build a `LocalEngine`, `startRun`, `subscribeRun`
+- [x] Rewrite `runCapture` to build a `LocalEngine`, `startRun`, `subscribeRun`
       with `renderRunEvent`, and take failure data from `getRun(id)` instead of
       `runner.getDetail()`.
-- [ ] Replace `collectScreenshots(config.outputDir)` with
+- [x] Replace `collectScreenshots(config.outputDir)` with
       `engine.listScreenshots()` for the `onFail` payload and the changed report.
-- [ ] `engine.close()` in a `finally`; assert no live handles keep the process
-      alive after a run (the warm browser's idle timer is the thing to watch).
-- [ ] Keep `registerSignalHandlers` behaviour: `SIGINT` closes and exits 130.
-      Wire it to `engine.close()` now that the engine owns the browser.
-- [ ] Tests: `capture.test.ts` moves onto a fake engine; assert the rendered
-      output for each event type is unchanged.
-- [ ] Diff all six parity scenarios against the Phase 0 baseline. Byte-identical
-      apart from durations and absolute paths.
+- [x] `engine.close()` in a `finally`; no live handles keep the process alive
+      after a run.
+- [x] Keep `registerSignalHandlers` behaviour: `SIGINT` closes and exits 130.
+      Wired to `engine.close()` now that the engine owns the browser.
+- [x] Tests: `capture.test.ts` drives `runCapture` against a fake engine.
+- [x] Diff all six parity scenarios, both projects, against the Phase 0
+      baseline. Byte-identical.
+
+**Parity evidence.** All twelve scenarios (six × two projects) matched their
+Phase 0 baselines byte-for-byte on the first run after the rewrite, and on four
+further passes. Nothing in the recorded output moved.
+
+**Deviations and findings**
+
+- **`browserIdleTimeoutMs` is not part of `configToEngineOptions`.** It started
+  there, but the two commands disagree about it for a reason rather than by
+  accident: `review` wants the configured timeout, and a one-shot `capture`
+  should keep no browser warm at all. Browser lifetime is a per-command policy,
+  not a config-to-engine mapping, so both callers pass it explicitly. This also
+  keeps the helper from depending on `config.review` for something capture does
+  not care about.
+- **`capture` passes `browserIdleTimeoutMs: 0`.** `WarmBrowser` already
+  `unref()`s its idle timer, so a stray timeout could not have blocked exit —
+  but `0` closes the browser at release rather than leaving an idle Chromium
+  alive for the rest of the process. A passing run exits in ~1.3s wall with no
+  lingering handles.
+- **The run error has to be rebuilt.** `capture` has always let a plugin's
+  exception escape, and the stack is the only signal for a plugin that blew up.
+  The engine deliberately flattens errors so they can cross a network boundary,
+  so `runCapture` reinstates name, message and stack from `SerializedError`
+  before rethrowing. Same console output, one indirection.
+- **`registerSignalHandlers` is now typed structurally** (`{ close(): Promise<void> }`)
+  rather than against `ScreenshotTool`, so it takes whatever owns the browser —
+  the engine now, a remote engine in Phase 3 — without special-casing.
+- **`outputDir` is resolved to an absolute path** in the shared mapping, which
+  is what `review` already did. `ScreenshotFileSystem` and `groupScreenshots`
+  both `path.resolve` internally, so this changes nothing; it was verified by
+  the parity run rather than assumed.
+- **`index.test.ts`'s nine capture tests were white-box tests of the old
+  wiring** — they asserted on the `ScreenshotTool` and `ScreenshotFileSystem`
+  instances `capture.ts` used to construct directly. Rather than delete them or
+  let them assert against an inert double, its `LocalEngine` mock became a
+  functional stand-in that drives the *real* `CaptureRunner` over the mocked
+  browser layer. The tests keep their meaning and now exercise the new code
+  path. The real `LocalEngine` cannot be used there directly: it reaches for
+  `ScreenshotTool` and `ScreenshotFileSystem` through relative imports that a
+  package-level `vi.mock` does not intercept.
+
+**Verification.** 641 tests across the repo (CLI 65 → 71, config 12 → 20),
+`pnpm lint`, `pnpm tsc` and `pnpm build` green, plus the twelve parity scenarios.
 
 ## Phase 2 — `cappa serve`
 
