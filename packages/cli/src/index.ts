@@ -5,6 +5,7 @@ import { approve } from "./commands/approve";
 import { registerCaptureCommand } from "./commands/capture";
 import { init } from "./commands/init";
 import { review } from "./commands/review";
+import { serve } from "./commands/serve";
 import { status } from "./commands/status";
 import { DEFAULT_MAX_REGIONS } from "./utils/describeChanges";
 import { parseMaxRegions } from "./utils/parseMaxRegions";
@@ -42,8 +43,32 @@ program
     "--read-only",
     "serve the UI without capture, approval or any other mutation",
   )
-  .option("--token <token>", "require this access token on every API request")
+  .option(
+    "--token <token>",
+    "require this access token on every API request (falls back to CAPPA_TOKEN)",
+  )
   .action(review);
+
+program
+  .command("serve")
+  .description("Host a capture engine for a remote `cappa capture --server`")
+  .option("-p, --port <port>", "port to listen on", (v) =>
+    Number.parseInt(v, 10),
+  )
+  .option(
+    "--host <host>",
+    "host to bind to (a non-loopback host requires an access token)",
+  )
+  .option(
+    "--read-only",
+    "serve without capture, approval or any other mutation",
+  )
+  .option(
+    "--token <token>",
+    "require this access token on every API request (falls back to CAPPA_TOKEN)",
+  )
+  .option("--no-ui", "serve the API only, without the review UI")
+  .action(serve);
 
 program
   .command("approve")

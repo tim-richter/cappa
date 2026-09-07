@@ -140,21 +140,56 @@ further passes. Nothing in the recorded output moved.
 **Verification.** 641 tests across the repo (CLI 65 → 71, config 12 → 20),
 `pnpm lint`, `pnpm tsc` and `pnpm build` green, plus the twelve parity scenarios.
 
-## Phase 2 — `cappa serve`
+## Phase 2 — `cappa serve` ✅
 
-- [ ] Extract a shared `startServer({ config, host, port, readOnly, token, ui })`
+- [x] Extract a shared `startServer({ config, host, port, readOnly, token, ui })`
       helper from `commands/review.ts`; `review` becomes a thin caller.
-- [ ] New `cappa serve` command: `--port`, `--host`, `--token`, `--read-only`,
-      `--no-ui`. Off loopback a token is **required**, never generated — error
+- [x] New `cappa serve` command: `--port`, `--host`, `--token`, `--read-only`,
+      `--no-ui`. Off loopback a token is **required**, never generated — errors
       out with a message naming `--token` / `CAPPA_TOKEN`.
-- [ ] `--token` falls back to `CAPPA_TOKEN` on both `serve` and `review`, so a
-      token need not appear in the process list.
-- [ ] `--no-ui` skips the static-file registration; `/api/*` unchanged.
-- [ ] Reuse `registerShutdownHandlers` — a `SIGTERM`'d `serve` must leave zero
-      orphaned Chromium processes, as Phase 6 verified for `review`.
-- [ ] Tests: token required off loopback, `--no-ui` serves the API and 404s the
+- [x] `--token` falls back to `CAPPA_TOKEN` on both `serve` and `review`.
+- [x] `--no-ui` skips the static-file registration; `/api/*` unchanged.
+- [x] Reuse `registerShutdownHandlers` — a `SIGTERM`'d `serve` leaves zero
+      orphaned Chromium processes.
+- [x] Tests: token required off loopback, `--no-ui` serves the API and 404s the
       index, shutdown closes the engine.
-- [ ] Changeset (`@cappa/cli` minor).
+- [x] Changeset (`@cappa/cli` minor).
+
+**Deviations and findings**
+
+- **`--no-ui` needed a new server option, not `isProd: false`.** `createServer`
+  gated the UI's static files on `opts.isProd ?? NODE_ENV === "production"`,
+  which conflates "serve the baked UI" with "run in production mode" and can be
+  flipped by an environment variable. Added an explicit `ui?: boolean` that
+  defaults to whatever `isProd` resolves to, so `review` is unchanged and
+  `serve --no-ui` turns off exactly one thing. Only the UI root and the SPA
+  fallback are skipped; the screenshot asset route is unrelated and stays.
+- **The token policy stayed in the commands.** `startServer` takes an
+  already-resolved token rather than deciding. The two policies differ
+  deliberately, and folding the decision into the shared helper would hide the
+  one thing about these commands worth reading.
+- **`ResolvedUserConfig` was lying about `review`.** It was
+  `Required<Omit<UserConfig, "onFail">>`, and `Required` is shallow — so
+  `config.review.port` typed as `number | undefined` even though `getConfig`
+  always fills all three review fields. That was invisible while `review` passed
+  the value straight to Fastify (which accepts `undefined`), and surfaced as
+  soon as the shared helper wanted a real `number`. Fixed at the source rather
+  than re-applying defaults the config had already applied.
+- **`registerShutdownHandlers` moved to `utils/server.ts`** alongside
+  `startServer`, and its tests moved with it (`commands/review.test.ts` →
+  `utils/server.test.ts`) to keep the co-location convention.
+
+**Verification.** Beyond the suite: ran `cappa serve --no-ui` against the parity
+fixture and confirmed `/api/health` and `/api/plugins` answer while `/` 404s;
+started a real capture run through `POST /api/runs`, then `SIGTERM`'d the
+process with a six-process Chromium tree alive and confirmed it dropped to zero.
+Off loopback with no token exits 1 with the expected message; with
+`CAPPA_TOKEN=s3cret` the API returns 401 unauthenticated, 200 with the header,
+401 with a wrong token. 660 tests, `pnpm lint`, `pnpm tsc` and `pnpm attw` green,
+and the twelve capture-parity scenarios still match — this phase does not touch
+capture.
+
+Docs for `serve` are Phase 4's task and are not included here.
 
 ## Phase 3 — `cappa capture --server`
 

@@ -51,6 +51,16 @@ export interface StartServerOptions {
    * this server drives a real browser and writes to disk.
    */
   token?: string;
+  /**
+   * Serve the review UI.
+   *
+   * Defaults to whatever `isProd` resolves to, which is what `cappa review`
+   * wants. A host that only exists for a remote `cappa capture` has no reader,
+   * so it turns this off and answers `/api/*` alone — the UI's static files and
+   * its SPA fallback are simply never registered, and `/` 404s like any other
+   * unknown route.
+   */
+  ui?: boolean;
 }
 
 export async function createServer(opts: StartServerOptions) {
@@ -114,7 +124,9 @@ export async function createServer(opts: StartServerOptions) {
     });
   }
 
-  if (opts.isProd ?? process.env.NODE_ENV === "production") {
+  const isProd = opts.isProd ?? process.env.NODE_ENV === "production";
+
+  if (opts.ui ?? isProd) {
     // Prod: serve baked UI
     const uiRoot =
       opts.uiRoot ?? process.env.UI_ROOT ?? resolveFromHere("../public");

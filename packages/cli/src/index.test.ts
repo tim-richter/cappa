@@ -255,6 +255,7 @@ vi.mock("@cappa/core", async (importOriginal) => {
 const createLoggerInstance = () => ({
   level: 4,
   debug: vi.fn(),
+  log: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
@@ -346,6 +347,7 @@ beforeEach(() => {
   screenshotFileSystemInstances.length = 0;
   serverInstances.length = 0;
   localEngineInstances.length = 0;
+  createServerMock.mockClear();
   globMock.mockReset();
   globMock.mockImplementation(() => Promise.resolve([]));
   loadConfigMock.mockReset();
@@ -366,6 +368,7 @@ afterEach(() => {
   process.argv = [...originalArgv];
   process.exitCode = undefined;
   delete process.env.CI;
+  delete process.env.CAPPA_TOKEN;
 });
 
 describe("cappa CLI", () => {
@@ -902,6 +905,7 @@ describe("cappa CLI", () => {
     expect(createServerMock).toHaveBeenCalledWith({
       engine: localEngineInstances[0],
       isProd: true,
+      ui: true,
       outputDir: path.resolve("/tmp/screens"),
       logger: true,
       theme: "light",
@@ -1021,6 +1025,134 @@ describe("cappa CLI", () => {
         .map(([message]) => String(message))
         .filter((message) => message.includes("Review UI available at")),
     ).toHaveLength(0);
+  });
+
+  const serveConfig = () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+  };
+
+  test("serve starts a server with the UI on by default", async () => {
+    serveConfig();
+
+    process.argv = ["node", "cappa", "serve"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ ui: true, readOnly: false, token: undefined }),
+    );
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({
+      port: 4000,
+      host: "127.0.0.1",
+    });
+    expect(loggerInstance.log).toHaveBeenCalledWith(
+      expect.stringContaining("cappa serve listening"),
+    );
+  });
+
+  test("serve --no-ui serves the API without registering the UI", async () => {
+    serveConfig();
+
+    process.argv = ["node", "cappa", "serve", "--no-ui"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ ui: false }),
+    );
+    // Nothing points a human at a URL when there is no UI to open.
+    expect(
+      loggerInstance.info.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes("Review UI available at")),
+    ).toHaveLength(0);
+  });
+
+  test("serve requires a token off loopback and never generates one", async () => {
+    serveConfig();
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
+    process.argv = ["node", "cappa", "serve", "--host", "0.0.0.0"];
+    await run();
+
+    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(createServerMock).not.toHaveBeenCalled();
+
+    const message = String(loggerInstance.error.mock.calls[0]?.[0]);
+    expect(message).toContain("--token");
+    expect(message).toContain("CAPPA_TOKEN");
+  });
+
+  test("serve accepts an explicit token off loopback", async () => {
+    serveConfig();
+
+    process.argv = [
+      "node",
+      "cappa",
+      "serve",
+      "--host",
+      "0.0.0.0",
+      "--token",
+      "secret",
+    ];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "secret" }),
+    );
+  });
+
+  test("serve reads the token from CAPPA_TOKEN", async () => {
+    serveConfig();
+    process.env.CAPPA_TOKEN = "from-env";
+
+    process.argv = ["node", "cappa", "serve", "--host", "0.0.0.0"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "from-env" }),
+    );
+  });
+
+  test("serve off loopback is allowed without a token when read-only", async () => {
+    serveConfig();
+
+    process.argv = [
+      "node",
+      "cappa",
+      "serve",
+      "--host",
+      "0.0.0.0",
+      "--read-only",
+    ];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ readOnly: true, token: undefined }),
+    );
+  });
+
+  test("review reads the token from CAPPA_TOKEN instead of generating one", async () => {
+    serveConfig();
+    process.env.CAPPA_TOKEN = "from-env";
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "from-env" }),
+    );
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "Review UI available at http://0.0.0.0:4000?token=from-env",
+    );
   });
 
   test("approve command copies filtered screenshots and cleans diffs", async () => {
