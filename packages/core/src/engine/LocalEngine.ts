@@ -352,8 +352,9 @@ export class LocalEngine implements CaptureEngine {
     }
   }
 
-  async stopWatch(): Promise<void> {
+  async stopWatch(): Promise<WatchStatus> {
     await this.endWatch("requested");
+    return this.getWatchStatus();
   }
 
   async getWatchStatus(): Promise<WatchStatus> {

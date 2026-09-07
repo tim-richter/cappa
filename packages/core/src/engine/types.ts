@@ -194,8 +194,12 @@ export interface CaptureEngine {
    */
   startWatch?(request?: StartWatchRequest): Promise<WatchStatus>;
 
-  /** Stop the active watch session. A no-op when there is none. */
-  stopWatch?(): Promise<void>;
+  /**
+   * Stop the active watch session and answer the status it left behind.
+   *
+   * A no-op when there is none — the status simply says it is inactive.
+   */
+  stopWatch?(): Promise<WatchStatus>;
 
   /** What the watch session is doing, or an inactive status when there is none. */
   getWatchStatus?(): Promise<WatchStatus>;

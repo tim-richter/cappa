@@ -18,6 +18,13 @@ export const capabilitiesSchema = z.object({
   approve: z.boolean(),
   /** The run event stream is available. */
   events: z.boolean(),
+  /**
+   * The server can watch its own filesystem and re-capture on change.
+   *
+   * Optional so a client built against this version still parses an older
+   * server's health response, which has no such field. Absent means no.
+   */
+  watch: z.boolean().optional(),
 });
 
 export type Capabilities = z.infer<typeof capabilitiesSchema>;
@@ -54,6 +61,7 @@ export type StartRunResponse = z.infer<typeof startRunResponseSchema>;
 export const ERROR_CODES = {
   runInProgress: "CAPPA_RUN_IN_PROGRESS",
   unknownTargets: "CAPPA_UNKNOWN_TARGETS",
+  watchInProgress: "CAPPA_WATCH_IN_PROGRESS",
 } as const;
 
 export type ErrorCode = (typeof ERROR_CODES)[keyof typeof ERROR_CODES];
@@ -80,6 +88,8 @@ export const routes = {
   screenshots: "/api/screenshots",
   screenshot: (id: string) => `/api/screenshots/${encodeURIComponent(id)}`,
   approveBatch: "/api/screenshots/approve-batch",
+  watch: "/api/watch",
+  watchEvents: "/api/watch/events",
 } as const;
 
 /** Prefix under which screenshot images are served. */

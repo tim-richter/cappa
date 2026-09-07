@@ -3,6 +3,7 @@ import type {
   RunLogLevel,
   RunState,
   RunSummary,
+  RunTrigger,
   SerializedError,
   TaskStatus,
 } from "@cappa/protocol";
@@ -34,6 +35,8 @@ export type RunViewState = {
   logs: RunLogLine[];
   summary?: RunSummary;
   error?: SerializedError;
+  /** What started this run, when a person did not — a watch session, today. */
+  trigger?: RunTrigger;
   /** Highest sequence number seen — the resume point for a dropped stream. */
   lastSeq: number;
 };
@@ -102,7 +105,11 @@ export const runStateReducer = (
 
   switch (event.type) {
     case "run:start":
-      return { ...base, state: "discovering" };
+      return {
+        ...base,
+        state: "discovering",
+        trigger: event.request.trigger,
+      };
 
     case "discover:start":
       return { ...base, state: "discovering", plugins: event.plugins };

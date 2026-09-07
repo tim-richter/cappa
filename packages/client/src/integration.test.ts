@@ -8,10 +8,16 @@ import type {
   Screenshot,
   ScreenshotQuery,
   StartRunRequest,
+  StartWatchRequest,
   SubscribeOptions,
   Target,
+  WatchEvent,
+  WatchStatus,
 } from "@cappa/core";
-import { RunInProgressError as EngineRunInProgressError } from "@cappa/core";
+import {
+  RunInProgressError as EngineRunInProgressError,
+  WatchInProgressError as EngineWatchInProgressError,
+} from "@cappa/core";
 import { createServer } from "@cappa/server";
 import { afterEach, describe, expect, it } from "vitest";
 import { createClient, type RemoteEngine } from "./client";
@@ -65,6 +71,9 @@ const createScriptedEngine = () => {
   ];
 
   let conflictOnNextRun = false;
+  let watching = false;
+  const watchListeners = new Set<(event: WatchEvent) => void>();
+  const watchEvents: WatchEvent[] = [];
 
   const emit = (runId: string, event: RunEvent) => {
     buffered.set(runId, [...(buffered.get(runId) ?? []), event]);
@@ -73,12 +82,21 @@ const createScriptedEngine = () => {
     }
   };
 
+  const emitWatch = (event: WatchEvent) => {
+    watchEvents.push(event);
+    for (const listener of watchListeners) {
+      listener(event);
+    }
+  };
+
   const engine: CaptureEngine & {
     emit: typeof emit;
+    emitWatch: typeof emitWatch;
     setConflict: (value: boolean) => void;
     screenshots: Screenshot[];
   } = {
     emit,
+    emitWatch,
     setConflict: (value: boolean) => {
       conflictOnNextRun = value;
     },
@@ -153,6 +171,52 @@ const createScriptedEngine = () => {
       return { approved: names, errors: [] };
     },
 
+    async startWatch(request: StartWatchRequest = {}): Promise<WatchStatus> {
+      if (watching) {
+        throw new EngineWatchInProgressError();
+      }
+      watching = true;
+      const status: WatchStatus = {
+        active: true,
+        paths: request.paths ?? ["."],
+        filter: request.filter,
+        debounceMs: request.debounceMs ?? 300,
+        startedAt: 1,
+      };
+      emitWatch({
+        type: "watch:start",
+        seq: watchEvents.length + 1,
+        at: 0,
+        paths: status.paths,
+        filter: status.filter,
+        debounceMs: status.debounceMs,
+      });
+      return status;
+    },
+
+    async stopWatch(): Promise<WatchStatus> {
+      watching = false;
+      return { active: false, paths: ["."], debounceMs: 300 };
+    },
+
+    async getWatchStatus(): Promise<WatchStatus> {
+      return { active: watching, paths: ["."], debounceMs: 300 };
+    },
+
+    subscribeWatch(
+      onEvent: (event: WatchEvent) => void,
+      options: SubscribeOptions = {},
+    ) {
+      const sinceSeq = options.sinceSeq ?? 0;
+      for (const event of watchEvents) {
+        if (event.seq > sinceSeq) {
+          onEvent(event);
+        }
+      }
+      watchListeners.add(onEvent);
+      return () => watchListeners.delete(onEvent);
+    },
+
     async close() {},
   };
 
@@ -222,6 +286,7 @@ describe("client against a live server", () => {
       capture: true,
       approve: true,
       events: true,
+      watch: true,
     });
   });
 
@@ -443,6 +508,93 @@ describe("client against a live server", () => {
     const error = await client.startRun().catch((e) => e);
 
     expect(error.status).toBe(403);
+  });
+
+  it("starts, reads and stops a watch session", async () => {
+    const { client } = await start();
+
+    await expect(client.getWatchStatus()).resolves.toMatchObject({
+      active: false,
+    });
+
+    const started = await client.startWatch({ filter: "button*" });
+    expect(started).toMatchObject({ active: true, filter: "button*" });
+    await expect(client.getWatchStatus()).resolves.toMatchObject({
+      active: true,
+    });
+
+    await client.stopWatch();
+    await expect(client.getWatchStatus()).resolves.toMatchObject({
+      active: false,
+    });
+  });
+
+  it("streams watch events, replaying what a late subscriber missed", async () => {
+    const { engine, client } = await start();
+
+    await client.startWatch();
+
+    const seen: WatchEvent[] = [];
+    const unsubscribe = client.subscribeWatch((event) => seen.push(event));
+
+    // Give the stream a moment to attach and replay `watch:start`.
+    await new Promise((resolve) => setTimeout(resolve, 60));
+
+    engine.emitWatch({
+      type: "watch:change",
+      seq: 2,
+      at: 0,
+      files: ["src/Button.stories.tsx"],
+      scope: "tasks",
+      taskIds: ["button--primary"],
+      runId: "run-1",
+    });
+
+    await new Promise((resolve) => setTimeout(resolve, 60));
+    unsubscribe();
+
+    expect(seen.map((event) => event.type)).toEqual([
+      "watch:start",
+      "watch:change",
+    ]);
+    expect(seen[1]).toMatchObject({ runId: "run-1", scope: "tasks" });
+  });
+
+  it("reports a second watch session as a conflict", async () => {
+    const { client } = await start();
+
+    await client.startWatch();
+    const error = await client.startWatch().catch((e) => e);
+
+    expect(error.status).toBe(409);
+  });
+
+  it("refuses to watch on a read-only server", async () => {
+    const { client } = await start(createScriptedEngine(), { readOnly: true });
+
+    const error = await client.startWatch().catch((e) => e);
+
+    expect(error.status).toBe(403);
+    // And says so up front, rather than only when asked to start.
+    await expect(client.health()).resolves.toMatchObject({
+      capabilities: { watch: false },
+    });
+  });
+
+  it("answers 501 when the engine cannot watch at all", async () => {
+    const engine = createScriptedEngine();
+    // A server whose engine has no watch support — a remote engine, say.
+    (engine as { startWatch?: unknown }).startWatch = undefined;
+    (engine as { subscribeWatch?: unknown }).subscribeWatch = undefined;
+
+    const { client } = await start(engine);
+
+    const error = await client.startWatch().catch((e) => e);
+
+    expect(error.status).toBe(501);
+    await expect(client.health()).resolves.toMatchObject({
+      capabilities: { watch: false },
+    });
   });
 });
 
