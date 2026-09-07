@@ -12,6 +12,7 @@ export {
   RunInProgressError,
   toClientError,
   UnauthorizedError,
+  UnknownEventTypeError,
   UnknownTargetsError,
 } from "./errors";
 export { parseSse, type SseFrame } from "./sse";

@@ -12,6 +12,7 @@ import {
   ProtocolMismatchError,
   RunInProgressError,
   UnauthorizedError,
+  UnknownEventTypeError,
   UnknownTargetsError,
 } from "./errors";
 
@@ -639,6 +640,85 @@ describe("RemoteEngine event stream", () => {
 
     expect(onError).toHaveBeenCalled();
     expect(seen).toEqual([2]);
+  });
+
+  it("skips an unknown event type without reporting it per event", async () => {
+    const unknown = (seq: number) =>
+      `id: ${seq}\ndata: ${JSON.stringify({
+        seq,
+        runId: "run-1",
+        at: 0,
+        type: "watch:change",
+        files: ["src/Button.tsx"],
+      })}\n\n`;
+
+    const { client } = build({
+      "/api/runs/run-1/events": {
+        stream: `${unknown(1)}${unknown(2)}${sseFrames([
+          runEvent(3, "run:complete"),
+        ])}`,
+      },
+    });
+
+    const onError = vi.fn();
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq), { onError });
+    await flush();
+
+    expect(seen).toEqual([3]);
+    // Two unknown frames, one report: the fact is about the connection, not
+    // about each event.
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).toBeInstanceOf(UnknownEventTypeError);
+    expect(onError.mock.calls[0][0].eventType).toBe("watch:change");
+  });
+
+  it("resumes past an unknown event rather than replaying it", async () => {
+    const unknownFrame = `id: 2\ndata: ${JSON.stringify({
+      seq: 2,
+      runId: "run-1",
+      at: 0,
+      type: "watch:change",
+    })}\n\n`;
+
+    const { client, calls } = build({
+      "/api/runs/run-1/events": [
+        // Drops after an unknown event, with no terminal event.
+        { stream: `${sseFrames([runEvent(1)])}${unknownFrame}` },
+        { stream: sseFrames([runEvent(3, "run:complete")]) },
+      ],
+    });
+
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq));
+    await flush(120);
+
+    expect(seen).toEqual([1, 3]);
+    const streamCalls = calls.filter((call) => call.url.includes("/events"));
+    // 2, not 1: the unknown event advanced the resume position.
+    expect(streamCalls[1]?.url).toContain("sinceSeq=2");
+  });
+
+  it("still reports a known event type with an invalid body", async () => {
+    const { client } = build({
+      "/api/runs/run-1/events": {
+        stream: `id: 1\ndata: ${JSON.stringify({
+          seq: 1,
+          runId: "run-1",
+          at: 0,
+          type: "task:complete",
+        })}\n\n${sseFrames([runEvent(2, "run:complete")])}`,
+      },
+    });
+
+    const onError = vi.fn();
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq), { onError });
+    await flush();
+
+    expect(seen).toEqual([2]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0][0]).not.toBeInstanceOf(UnknownEventTypeError);
   });
 
   it("close() tears down every live stream", async () => {

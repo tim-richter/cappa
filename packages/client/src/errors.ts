@@ -112,3 +112,23 @@ export const toClientError = (
 
   return new CappaHttpError(message, status, body);
 };
+
+/**
+ * The server sent an event type this client does not know.
+ *
+ * Reported once per stream rather than per event, and never fatal: an unknown
+ * type is what a newer server looks like to an older client, and the stream
+ * stays usable — the frame is skipped but its sequence number is still
+ * consumed, so a reconnect resumes from where the server actually is.
+ */
+export class UnknownEventTypeError extends Error {
+  readonly eventType: string;
+
+  constructor(eventType: string) {
+    super(
+      `Skipping unknown event type "${eventType}" — this server is newer than @cappa/client.`,
+    );
+    this.name = "UnknownEventTypeError";
+    this.eventType = eventType;
+  }
+}
