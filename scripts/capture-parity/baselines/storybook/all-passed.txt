@@ -1,0 +1,27 @@
+$ cappa capture
+
+o Found 8 stories to screenshot...
+i Found 8 tasks for StorybookPlugin
+√ Screenshot passed visual comparison
+√ Screenshot passed visual comparison
+i [1/8] captured example-button--primary
+√ Screenshot passed visual comparison
+i [2/8] captured example-button--secondary
+√ Screenshot passed visual comparison
+i [3/8] captured example-button--large
+
+ WARN  Skipping story Example/Button - Small
+
+i [4/8] captured example-button--small
+√ Screenshot passed visual comparison
+i [5/8] captured example-header--logged-in
+√ Screenshot passed visual comparison
+i [6/8] captured example-header--logged-out
+√ Screenshot passed visual comparison
+i [7/8] captured example-page--logged-out
+√ Screenshot passed visual comparison
+i [8/8] captured example-page--logged-in
+√ Plugin StorybookPlugin completed: 8 results
+√ All plugins completed successfully in <duration>
+
+--- exit code: 0

@@ -1,0 +1,68 @@
+$ cappa capture
+
+o Found 8 stories to screenshot...
+i Found 8 tasks for StorybookPlugin
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/button/primary.png
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/button/primary--small.png
+i [1/8] captured example-button--primary
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/button/secondary.png
+i [2/8] captured example-button--secondary
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/button/large.png
+i [3/8] captured example-button--large
+
+ WARN  Skipping story Example/Button - Small
+
+i [4/8] captured example-button--small
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/header/loggedin.png
+i [5/8] captured example-header--logged-in
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/header/loggedout.png
+i [6/8] captured example-header--logged-out
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/page/loggedout.png
+i [7/8] captured example-page--logged-out
+√ Screenshot saved: <repo>/examples/storybook/.screenshots/actual/example/page/loggedin.png
+i [8/8] captured example-page--logged-in
+
+ ERROR  Plugin StorybookPlugin completed with failures: 8 results
+
+
+ ╭───────────────────────────Failed Screenshots─────────────────────────────╮
+ │                                                                          │
+ │  Total failures: 7                                                       │
+ │                                                                          │
+ │                                                                          │
+ │  Plugin: StorybookPlugin                                                 │
+ │                                                                          │
+ │    Task ID: example-button--primary                                      │
+ │    Story: Example/Button - Primary                                       │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-button--secondary                                    │
+ │    Story: Example/Button - Secondary                                     │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-button--large                                        │
+ │    Story: Example/Button - Large                                         │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-header--logged-in                                    │
+ │    Story: Example/Header - Logged In                                     │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-header--logged-out                                   │
+ │    Story: Example/Header - Logged Out                                    │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-page--logged-out                                     │
+ │    Story: Example/Page - Logged Out                                      │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: example-page--logged-in                                      │
+ │    Story: Example/Page - Logged In                                       │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ ╰──────────────────────────────────────────────────────────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

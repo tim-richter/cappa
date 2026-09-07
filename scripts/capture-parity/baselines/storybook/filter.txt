@@ -1,0 +1,42 @@
+$ cappa capture --filter example-button--*
+
+o Found 8 stories to screenshot...
+i Found 8 tasks for StorybookPlugin
+
+ ╭──────────────────Filter Active─────────────────────╮
+ │                                                    │
+ │  Only capturing tasks matching: example-button--*  │
+ │                                                    │
+ ╰────────────────────────────────────────────────────╯
+
+i StorybookPlugin: 4/8 tasks match filter
+√ Screenshot passed visual comparison
+√ Screenshot passed visual comparison
+i [1/4] captured example-button--primary
+√ Screenshot passed visual comparison
+i [2/4] captured example-button--secondary
+√ Screenshot passed visual comparison
+i [3/4] captured example-button--large
+
+ WARN  Skipping story Example/Button - Small
+
+i [4/4] captured example-button--small
+√ Plugin StorybookPlugin completed: 4 results
+
+ ╭────────Failed Screenshots──────────╮
+ │                                    │
+ │  Total failures: 4                 │
+ │                                    │
+ │                                    │
+ │  Deleted baselines:                │
+ │    Name: example/page/loggedin     │
+ │    Name: example/page/loggedout    │
+ │    Name: example/header/loggedin   │
+ │    Name: example/header/loggedout  │
+ │                                    │
+ ╰────────────────────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

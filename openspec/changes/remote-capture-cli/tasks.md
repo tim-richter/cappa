@@ -5,22 +5,77 @@ Each phase independently mergeable and green (`pnpm lint`, `pnpm tsc`,
 
 ---
 
-## Phase 0 — Unblock the parity harness
+## Phase 0 — Unblock the parity harness ✅
 
-`interactive-capture-ui` Phase 1 could not verify parity against
-`examples/storybook`: its Storybook build fails on `require.resolve` in an ESM
-config, so a hand-written fixture project stood in. `examples/storybook-10`
-already has the correct form. Porting it costs three lines and gives this change
-a real project to diff against.
-
-- [ ] `examples/storybook/.storybook/main.ts`: replace `require.resolve` with
-      `import.meta.resolve` + `fileURLToPath`, matching
-      `examples/storybook-10/.storybook/main.ts`.
-- [ ] Confirm `pnpm -F @cappa/example-storybook build-storybook` succeeds and
+- [x] Fix `examples/storybook` so its Storybook builds.
+- [x] Confirm `pnpm -F @cappa/example-storybook build-storybook` succeeds and
       `cappa capture` runs against it.
-- [ ] Record the six-scenario baseline (all-new, all-passed, `--filter`,
+- [x] Record the six-scenario baseline (all-new, all-passed, `--filter`,
       changed, deleted baseline, filter matching nothing) against this example
-      and against the existing fixture, so both are available for diffing.
+      and against a fixture project, so both are available for diffing.
+
+**The ESM diagnosis was wrong.** `require.resolve` in `.storybook/main.ts` is
+*correct* for this example: Storybook 9 bundles `main.ts` to CJS, where
+`import.meta` is unavailable — porting the `storybook-10` form makes the build
+fail with "`import.meta` is not available with the cjs output format". The
+actual cause was dependency drift: Renovate had bumped `storybook` to 10.4.6 and
+`@storybook/react-vite` to 10.5.0 while the addons stayed on 9.x. Storybook 10
+loads `main.ts` as ESM, where `require` is undefined — hence the error attributed
+to the config. The v10 core with v9 addons also produced a broken preview
+(`MissingRenderToCanvasError`), so the build "succeeding" would not have been
+enough on its own.
+
+The fix is therefore in `package.json`, not `main.ts`, which is unchanged:
+realign the example on a coherent Storybook 9 stack (`storybook`,
+`@storybook/react-vite` and all three addons on `^9.1.20`), which is what
+`CLAUDE.md` documents this example to be and what keeps it distinct from
+`examples/storybook-10`. Also added the missing `react` / `react-dom`
+dependencies — the example had only `@types/react` and was resolving the runtime
+by hoisting — and an explicit `vite ^7` (Storybook 9 peers `vite ^5–^7`, so it
+cannot take the v8 that `examples/storybook-10` uses).
+
+**A second blocker: the example was not pixel-deterministic.** Headless
+Chromium does not rasterise text bit-identically between process runs. Three
+glyph-edge pixels in the two `Example/Page` stories flip between two values in
+essentially every run (29 of 30 sampled), and against the example's original
+`maxDiffPixels: 0` that reported a failed comparison — which would have made
+every storybook baseline unreliable. `examples/storybook/cappa.config.ts` now
+allows a small pixel budget, verified over 15 consecutive clean runs plus three
+consecutive full harness passes. The pixels still flip; the tolerance is what
+absorbs them, so this is structurally stable rather than luck.
+
+Worth noting for later, both out of scope here:
+
+- **CSS cannot fix this.** `-webkit-font-smoothing` is a no-op outside macOS.
+  Disabling LCD text needs a Chromium launch flag, and `ScreenshotTool.init`
+  calls `browserClass.launch({ headless })` with no `args` passthrough, so a
+  user cannot set one. That is a real gap if screenshot determinism matters.
+- **`@cappa/plugin-storybook` waits in the wrong order.** `plugin.ts` awaits
+  `waitForVisualIdle(page)` *before* `waitForPlayFunctionCompletion(page, ...)`
+  and never settles the page afterwards, so a story whose play function mutates
+  the DOM races the screenshot. Not the cause of the flake above — it hits
+  `Example/Page - Logged Out`, which has no play function — but it is a real
+  ordering bug.
+
+**The harness is committed** at `scripts/capture-parity/` (see its README)
+rather than left as a throwaway, since Phase 1 has to diff against it:
+
+- `run.mjs` drives six scenarios against a project and records or checks the
+  normalised output and exit code of each. Normalisation masks only ANSI
+  escapes, the repo root, the port and durations; whitespace stays
+  byte-faithful, because consola's box padding is part of what is being
+  defended.
+- Two projects. `projects/fixture` is self-contained — a hand-written plugin
+  over four local HTML pages, importing nothing, so a diff there points at the
+  CLI. Its `execute` result shape mirrors both shipped plugins exactly,
+  including `success: false` for a screenshot with no baseline. `storybook` is
+  `examples/storybook` driven by the real plugin.
+- Baselines for both projects are in `baselines/`.
+
+Verified: `pnpm lint`, `pnpm tsc` and `pnpm test` green (one pre-existing flake
+in `apps/web`'s `ScreenshotViewer.test.tsx`, unrelated — it passes on re-run and
+no web code was touched). No changeset: `@cappa/example-storybook` is in the
+changeset ignore list and `scripts/` is not a package.
 
 ## Phase 1 — `cappa capture` drives a `CaptureEngine`
 
