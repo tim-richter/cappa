@@ -75,6 +75,19 @@ const isTerminal = (event: RunEvent) =>
   event.type === "run:complete" || event.type === "run:error";
 
 /**
+ * A `404` from the server.
+ *
+ * Duck-typed rather than `instanceof CappaHttpError`: this package ships dual
+ * ESM/CJS builds, so a consumer can hold two copies of the error class and an
+ * identity check would silently be false — the same hazard that turned a `409`
+ * into a `500` in the server once already.
+ */
+const isNotFound = (error: unknown): boolean =>
+  typeof error === "object" &&
+  error !== null &&
+  (error as { status?: number }).status === 404;
+
+/**
  * `CaptureEngine` over HTTP and SSE.
  *
  * The same interface `LocalEngine` implements, so a UI holding this is
@@ -212,11 +225,7 @@ export class RemoteEngine {
     try {
       return await this.request(routes.run(id), runDetailSchema);
     } catch (error) {
-      if (
-        typeof error === "object" &&
-        error !== null &&
-        (error as { status?: number }).status === 404
-      ) {
+      if (isNotFound(error)) {
         return undefined;
       }
       throw error;
@@ -338,6 +347,26 @@ export class RemoteEngine {
       // The server adds `next`/`prev` and asset URLs on top of the wire shape.
       z.array(screenshotSchema),
     );
+  }
+
+  /**
+   * One screenshot by the id the server assigns it, or `undefined` when there
+   * is no such screenshot.
+   *
+   * Deliberately not part of `CaptureEngine`: an engine discovers and captures,
+   * while addressing a single screenshot by a server-assigned view id — and
+   * getting `next`/`prev` back with it — is a review concern that only exists
+   * over HTTP.
+   */
+  async getScreenshot(id: string): Promise<Screenshot | undefined> {
+    try {
+      return await this.request(routes.screenshot(id), screenshotSchema);
+    } catch (error) {
+      if (isNotFound(error)) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   async approve(names: string[]): Promise<ApproveResult> {

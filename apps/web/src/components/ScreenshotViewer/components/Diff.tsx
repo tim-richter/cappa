@@ -1,4 +1,5 @@
-import type { ChangedScreenshot } from "@cappa/core";
+import type { InterpretResult } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/protocol";
 import { useState } from "react";
 import {
   DiffRegionsOverlay,
@@ -11,7 +12,13 @@ interface DiffProps {
 }
 
 export const Diff = ({ screenshot }: DiffProps) => {
-  const interpretation = screenshot.diffMeta?.interpretation;
+  // The protocol carries the interpretation opaquely: its shape belongs to the
+  // diff engine, so pinning it in the wire contract would make every engine
+  // upgrade a breaking protocol change. This is the only place the UI renders
+  // it, so this is the only place that narrows it.
+  const interpretation = screenshot.diffMeta?.interpretation as
+    | InterpretResult
+    | undefined;
   const hasRegions = !!interpretation && interpretation.regions.length > 0;
   const [activeRegion, setActiveRegion] = useState<number | null>(null);
 

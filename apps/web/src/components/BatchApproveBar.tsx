@@ -1,7 +1,8 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { Button } from "@ui/components/button";
 import { Check } from "lucide-react";
 import type { FC } from "react";
+import { useServerConfig } from "@/api/hooks";
 
 const APPROVABLE_CATEGORIES = new Set(["new", "changed", "deleted"]);
 
@@ -27,10 +28,16 @@ export const BatchApproveBar: FC<BatchApproveBarProps> = ({
   onApproveSelected,
   isPending = false,
 }) => {
+  const { data: config } = useServerConfig();
+
   const approvableScreenshots = screenshots.filter((s) =>
     APPROVABLE_CATEGORIES.has(s.category as "new" | "changed" | "deleted"),
   );
   const showBar = approvableScreenshots.length > 0;
+
+  // A read-only server refuses approval with a 403. Offering the control
+  // anyway just hands the user a button that fails.
+  if (config?.readOnly) return null;
 
   if (!showBar) return null;
 

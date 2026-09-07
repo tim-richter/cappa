@@ -1,7 +1,9 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { HttpResponse, http } from "msw";
 import { captureHandlers } from "./capture";
 import { mockDiffMeta } from "./diffMeta";
+
+const CATEGORIES = ["new", "deleted", "changed", "passed"];
 
 export const handlers = [
   ...captureHandlers,
@@ -14,6 +16,17 @@ export const handlers = [
     const url = new URL(request.url);
     const category = url.searchParams.get("category");
     const search = url.searchParams.get("search");
+
+    // Mirror the server's zod schema: `category` is optional, but when present
+    // it must be one of the four. This mock used to accept anything and fall
+    // through to the full list, which is how a caller sending `?category=` —
+    // rejected with a 400 in production — passed every test.
+    if (category !== null && !CATEGORIES.includes(category)) {
+      return HttpResponse.json(
+        { error: `Invalid category: ${category}` },
+        { status: 400 },
+      );
+    }
 
     if (search) {
       return HttpResponse.json<Screenshot[]>([

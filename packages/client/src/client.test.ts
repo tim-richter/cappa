@@ -191,6 +191,91 @@ describe("RemoteEngine requests", () => {
     expect(calls.at(-1)?.url).toContain("category=changed");
   });
 
+  it("fetches one screenshot by id", async () => {
+    const { client, calls } = build({
+      "/api/screenshots/abc": {
+        body: {
+          id: "abc",
+          name: "Button/Primary",
+          category: "passed",
+          actualPath: "/assets/screenshots/actual/a.png",
+          expectedPath: "/assets/screenshots/expected/a.png",
+        },
+      },
+    });
+
+    await expect(client.getScreenshot("abc")).resolves.toMatchObject({
+      id: "abc",
+      name: "Button/Primary",
+    });
+    expect(calls.at(-1)?.url).toBe("http://server/api/screenshots/abc");
+  });
+
+  it("keeps next/prev on a single screenshot", async () => {
+    // zod strips unknown keys, so a field the server sends but the schema does
+    // not describe disappears silently — which is exactly how the review UI's
+    // arrow-key navigation would break without anyone noticing.
+    const { client } = build({
+      "/api/screenshots/abc": {
+        body: {
+          id: "abc",
+          name: "b",
+          category: "new",
+          actualPath: "/a.png",
+          next: "def",
+          prev: "xyz",
+        },
+      },
+    });
+
+    await expect(client.getScreenshot("abc")).resolves.toMatchObject({
+      next: "def",
+      prev: "xyz",
+    });
+  });
+
+  it("encodes an id with characters that need it", async () => {
+    const { client, calls } = build({
+      "/api/screenshots": {
+        body: { id: "a/b", name: "n", category: "new", actualPath: "/a.png" },
+      },
+    });
+
+    await client.getScreenshot("a/b");
+
+    expect(calls.at(-1)?.url).toBe("http://server/api/screenshots/a%2Fb");
+  });
+
+  it("returns undefined for a screenshot the server does not know", async () => {
+    const { client } = build({
+      "/api/screenshots/ghost": {
+        status: 404,
+        body: { error: "Screenshot not found" },
+      },
+    });
+
+    await expect(client.getScreenshot("ghost")).resolves.toBeUndefined();
+  });
+
+  it("rethrows a non-404 from getScreenshot", async () => {
+    const { client } = build({
+      "/api/screenshots/boom": { status: 500, body: { error: "kaboom" } },
+    });
+
+    await expect(client.getScreenshot("boom")).rejects.toThrow(CappaHttpError);
+  });
+
+  it("reads the server config", async () => {
+    const { client } = build({
+      "/api/config": { body: { theme: "dark", readOnly: true } },
+    });
+
+    await expect(client.config()).resolves.toEqual({
+      theme: "dark",
+      readOnly: true,
+    });
+  });
+
   it("approves by name", async () => {
     const { client, calls } = build({
       "/api/screenshots/approve-batch": {

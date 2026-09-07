@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { SidebarProvider } from "@ui/components/sidebar";
 import { Toaster } from "@ui/components/sonner";
 import { type FC, useState } from "react";

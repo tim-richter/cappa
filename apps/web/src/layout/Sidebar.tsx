@@ -1,4 +1,3 @@
-import { useQuery } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -8,18 +7,12 @@ import {
 } from "@ui/components/sidebar";
 import { Camera, Check, Plus, Trash, TriangleAlert } from "lucide-react";
 import { Link, useLocation } from "react-router";
-import { useServerConfig } from "@/api/hooks";
+import { useScreenshotTotal, useServerConfig } from "@/api/hooks";
 
 export const AppSidebar = () => {
   const pathname = useLocation().pathname;
   const { data: config } = useServerConfig();
-  const { data: count } = useQuery({
-    queryKey: ["screenshots"],
-    queryFn: () => {
-      return fetch("/api/screenshots").then((res) => res.json());
-    },
-    select: (data) => data?.length || 0,
-  });
+  const { data: count } = useScreenshotTotal();
 
   return (
     <Sidebar>

@@ -16,14 +16,14 @@
     "url": "https://github.com/tim-richter/cappa.git"
   },
   "scripts": {
-    "build": "pnpm -r build",
+    "build": "pnpm -r --filter=!@cappa/server build && pnpm -F @cappa/server build",
     "test": "pnpm -r test",
     "dev": "pnpm -r dev",
     "lint": "biome check .",
     "lint:fix": "biome check . --write",
     "tsc": "pnpm -r tsc",
     "attw": "pnpm -r attw",
-    "release": "pnpm -r build && pnpm --filter server build && changeset publish"
+    "release": "pnpm build && changeset publish"
   },
   "devDependencies": {
     "@biomejs/biome": "^2.5.4",

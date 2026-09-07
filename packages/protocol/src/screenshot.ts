@@ -79,6 +79,15 @@ export const passedScreenshotSchema = z.object({
   expectedPath: z.string(),
 });
 
+/**
+ * The changed variant on its own.
+ *
+ * Exported because the review UI's comparison views only ever render a changed
+ * screenshot, and typing them on the full union would force a narrow at every
+ * call site.
+ */
+export type ChangedScreenshot = z.infer<typeof changedScreenshotSchema>;
+
 export const screenshotSchema = z.discriminatedUnion("category", [
   newScreenshotSchema,
   deletedScreenshotSchema,

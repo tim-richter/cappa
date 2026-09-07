@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
@@ -21,6 +21,8 @@ import {
 } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
+import { client } from "@/api/client";
+import { screenshotKeys, useServerConfig } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
@@ -54,25 +56,24 @@ export function ScreenshotComparison({
   );
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: config } = useServerConfig();
+  // A read-only server refuses approval with a 403, so the control and its
+  // shortcut are both withheld rather than offered and failed.
+  const canApprove = !config?.readOnly;
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
     persistViewMode(nextMode);
   };
 
+  // Approving one screenshot is `approve` with a single name. It used to be a
+  // `PATCH` whose only non-no-op branch called the same engine method, so the
+  // route is gone and this goes through the client like everything else.
   const { mutate: approveScreenshot } = useMutation({
-    mutationFn: (approved: boolean) => {
-      return fetch(`/api/screenshots/${screenshot.id}`, {
-        method: "PATCH",
-        body: JSON.stringify({ approved }),
-        headers: {
-          "Content-Type": "application/json",
-        },
-      });
-    },
+    mutationFn: () => client.approve([screenshot.name]),
     onSuccess: () => {
       queryClient.invalidateQueries({
-        queryKey: ["screenshot", screenshot.id],
+        queryKey: screenshotKeys.detail(screenshot.id),
       });
     },
   });
@@ -86,8 +87,8 @@ export function ScreenshotComparison({
         navigate(`/screenshots/${screenshot.prev}`);
       } else if (e.key === "ArrowRight" && screenshot.next) {
         navigate(`/screenshots/${screenshot.next}`);
-      } else if (e.key === "a" && !screenshot.approved) {
-        approveScreenshot(true);
+      } else if (e.key === "a" && !screenshot.approved && canApprove) {
+        approveScreenshot();
       }
     };
 
@@ -99,6 +100,7 @@ export function ScreenshotComparison({
     screenshot.approved,
     navigate,
     approveScreenshot,
+    canApprove,
   ]);
 
   return (
@@ -190,11 +192,12 @@ export function ScreenshotComparison({
         <div className="flex items-center gap-4 justify-end">
           <RecaptureButton taskId={screenshot.name} />
 
-          {!screenshot.approved && (
+          {!screenshot.approved && canApprove && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
-                  onClick={() => approveScreenshot(true)}
+                  aria-label="Approve"
+                  onClick={() => approveScreenshot()}
                   size="icon"
                   className="fixed bottom-4 right-4 z-50 rounded-full transition-all size-16 text-green-100 bg-green-800 hover:bg-green-900 dark:bg-green-700 dark:text-green-100 dark:hover:bg-green-600"
                 >

@@ -1,4 +1,4 @@
-import type { ChangedScreenshot } from "@cappa/core";
+import type { ChangedScreenshot } from "@cappa/protocol";
 import { Slider } from "@ui/components/slider";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
 

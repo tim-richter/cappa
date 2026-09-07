@@ -1,9 +1,8 @@
-import type { Screenshot } from "@cappa/core";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "@ui/lib/utils";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
+import { useScreenshotsByCategory } from "@/api/hooks";
 import { BatchApproveBar } from "@/components/BatchApproveBar";
 import { Grid } from "@/components/Grid";
 import { List } from "@/components/List";
@@ -20,14 +19,7 @@ export const New: FC = () => {
   );
   const activeView = view ?? View.List;
   const ScreenshotComponent = activeView === View.Grid ? Grid : List;
-  const { data, isPending, isError } = useQuery<Screenshot[]>({
-    queryKey: ["screenshots", "new"],
-    queryFn: () =>
-      fetch("/api/screenshots?category=new").then((res) => {
-        if (!res.ok) throw new Error(res.statusText);
-        return res.json();
-      }),
-  });
+  const { data, isPending, isError } = useScreenshotsByCategory("new");
   const { mutate: approveBatch, isPending: isApprovePending } =
     useApproveBatch();
 
