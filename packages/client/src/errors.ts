@@ -49,6 +49,17 @@ export class UnauthorizedError extends CappaHttpError {
   }
 }
 
+/**
+ * The server already has a watch session. One at a time, for the same reason
+ * one run is: both drive the same browser.
+ */
+export class WatchInProgressError extends CappaHttpError {
+  constructor(message: string, body?: ErrorResponse) {
+    super(message, 409, body, ERROR_CODES.watchInProgress);
+    this.name = "WatchInProgressError";
+  }
+}
+
 /** The request named task ids the server never discovered. */
 export class UnknownTargetsError extends CappaHttpError {
   readonly taskIds: string[];
@@ -104,6 +115,9 @@ export const toClientError = (
   if (body?.code === ERROR_CODES.unknownTargets) {
     return new UnknownTargetsError(message, body);
   }
+  if (body?.code === ERROR_CODES.watchInProgress) {
+    return new WatchInProgressError(message, body);
+  }
   // By status rather than by code: the auth hook rejects before any route runs,
   // so there is no cappa error code on the response to key off.
   if (status === 401) {
@@ -112,3 +126,23 @@ export const toClientError = (
 
   return new CappaHttpError(message, status, body);
 };
+
+/**
+ * The server sent an event type this client does not know.
+ *
+ * Reported once per stream rather than per event, and never fatal: an unknown
+ * type is what a newer server looks like to an older client, and the stream
+ * stays usable — the frame is skipped but its sequence number is still
+ * consumed, so a reconnect resumes from where the server actually is.
+ */
+export class UnknownEventTypeError extends Error {
+  readonly eventType: string;
+
+  constructor(eventType: string) {
+    super(
+      `Skipping unknown event type "${eventType}" — this server is newer than @cappa/client.`,
+    );
+    this.name = "UnknownEventTypeError";
+    this.eventType = eventType;
+  }
+}

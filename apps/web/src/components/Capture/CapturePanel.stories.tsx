@@ -44,3 +44,48 @@ export const ManyTargets: Story = {
     })),
   },
 };
+
+export const WatchAvailable: Story = {
+  args: {
+    watch: { supported: true, active: false, onToggle: () => {} },
+  },
+};
+
+export const Watching: Story = {
+  args: {
+    watch: { supported: true, active: true, onToggle: () => {} },
+  },
+};
+
+export const WatchingAfterAChange: Story = {
+  args: {
+    watch: {
+      supported: true,
+      active: true,
+      onToggle: () => {},
+      lastChange: {
+        files: ["src/components/Button.stories.tsx"],
+        scope: "tasks",
+        taskIds: ["Screenshot 1", "Screenshot 2"],
+        runId: "run-1",
+        at: 0,
+      },
+    },
+  },
+};
+
+export const WatchCouldNotStartARun: Story = {
+  args: {
+    watch: {
+      supported: true,
+      active: true,
+      onToggle: () => {},
+      lastChange: {
+        files: ["src/components/Button.tsx"],
+        scope: "plugins",
+        error: "A capture run is already in progress (run-9)",
+        at: 0,
+      },
+    },
+  },
+};

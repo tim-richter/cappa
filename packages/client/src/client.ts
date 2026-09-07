@@ -19,15 +19,24 @@ import {
   type Screenshot,
   type ScreenshotQuery,
   type StartRunRequest,
+  type StartWatchRequest,
   screenshotSchema,
   startRunResponseSchema,
   type Target,
   TOKEN_HEADER,
   targetSchema,
+  type WatchEvent,
+  type WatchStatus,
+  watchEventSchema,
+  watchStatusSchema,
 } from "@cappa/protocol";
 import { z } from "zod";
-import { ProtocolMismatchError, toClientError } from "./errors";
-import { parseSse } from "./sse";
+import {
+  ProtocolMismatchError,
+  toClientError,
+  UnknownEventTypeError,
+} from "./errors";
+import { parseSse, type SseFrame } from "./sse";
 
 export type FetchLike = (
   input: string,
@@ -69,6 +78,52 @@ export type SubscribeRunOptions = {
 };
 
 export type ListTargetsOptions = { refresh?: boolean };
+
+/**
+ * Every event type this build of the client understands.
+ *
+ * Derived from the schema rather than listed by hand, so it cannot drift from
+ * what `runEventSchema` actually parses.
+ */
+const knownEventTypes: ReadonlySet<string> = new Set(
+  runEventSchema.options.flatMap((option) => [...option.shape.type.values]),
+);
+
+/** The same, for the watch stream. */
+const knownWatchEventTypes: ReadonlySet<string> = new Set(
+  watchEventSchema.options.flatMap((option) => [...option.shape.type.values]),
+);
+
+/**
+ * The sequence number of a frame whose body we could not parse.
+ *
+ * The SSE `id:` is the server's own `seq` for that event, so it is readable
+ * without understanding the payload — which is the point: an unknown event must
+ * still advance the resume position.
+ */
+const seqOfFrame = (frame: SseFrame, payload: unknown): number | undefined => {
+  const fromId = frame.id === undefined ? Number.NaN : Number(frame.id);
+  if (Number.isFinite(fromId)) {
+    return fromId;
+  }
+
+  const fromBody =
+    typeof payload === "object" && payload !== null
+      ? (payload as { seq?: unknown }).seq
+      : undefined;
+
+  return typeof fromBody === "number" && Number.isFinite(fromBody)
+    ? fromBody
+    : undefined;
+};
+
+/** The event type a frame declares, when it declares one at all. */
+const typeOfPayload = (payload: unknown): string | undefined =>
+  typeof payload === "object" &&
+  payload !== null &&
+  typeof (payload as { type?: unknown }).type === "string"
+    ? (payload as { type: string }).type
+    : undefined;
 
 /** Events after which there is nothing left to stream. */
 const isTerminal = (event: RunEvent) =>
@@ -263,11 +318,94 @@ export class RemoteEngine {
     onEvent: (event: RunEvent) => void,
     options: SubscribeRunOptions = {},
   ): () => void {
+    return this.subscribeEvents({
+      url: (sinceSeq) => `${routes.runEvents(id)}?sinceSeq=${sinceSeq}`,
+      label: `Event stream for run ${id}`,
+      knownTypes: knownEventTypes,
+      parse: (payload) => runEventSchema.safeParse(payload),
+      isTerminal,
+      onEvent,
+      options,
+    });
+  }
+
+  /** What the server's watch session is doing. */
+  async getWatchStatus(): Promise<WatchStatus> {
+    return this.request(routes.watch, watchStatusSchema);
+  }
+
+  /**
+   * Ask the server to watch *its own* files and re-capture on change.
+   *
+   * The server is the machine with the sources — the review UI is served by it
+   * — so this drives a watcher there, never one here. A browser has no
+   * filesystem to watch, and a `cappa serve` host on another machine watches
+   * that machine's checkout.
+   */
+  async startWatch(request: StartWatchRequest = {}): Promise<WatchStatus> {
+    return this.request(routes.watch, watchStatusSchema, {
+      method: "POST",
+      body: request,
+    });
+  }
+
+  /** Stop the server's watch session, answering the status it left behind. */
+  async stopWatch(): Promise<WatchStatus> {
+    return this.request(routes.watch, watchStatusSchema, { method: "DELETE" });
+  }
+
+  /**
+   * Stream watch events, resuming automatically if the connection drops.
+   *
+   * Unlike a run stream this one has no terminal event: a watch session ends
+   * when somebody stops it, and `watch:stop` is a fact about the session rather
+   * than the end of the stream — a later `watch:start` arrives on the same
+   * subscription.
+   */
+  subscribeWatch(
+    onEvent: (event: WatchEvent) => void,
+    options: SubscribeRunOptions = {},
+  ): () => void {
+    return this.subscribeEvents({
+      url: (sinceSeq) => `${routes.watchEvents}?sinceSeq=${sinceSeq}`,
+      label: "Watch event stream",
+      knownTypes: knownWatchEventTypes,
+      parse: (payload) => watchEventSchema.safeParse(payload),
+      isTerminal: () => false,
+      onEvent,
+      options,
+    });
+  }
+
+  /**
+   * The SSE pump behind both event streams.
+   *
+   * Shared deliberately: resume-on-drop, sequence tracking and the
+   * forward-compatibility rule for unknown event types are the parts that are
+   * easy to get subtly wrong, and having two copies of them is how one of them
+   * ends up wrong.
+   */
+  private subscribeEvents<T extends { seq: number }>(spec: {
+    url: (sinceSeq: number) => string;
+    label: string;
+    knownTypes: ReadonlySet<string>;
+    parse: (
+      payload: unknown,
+    ) => { success: true; data: T } | { success: false; error: unknown };
+    isTerminal: (event: T) => boolean;
+    onEvent: (event: T) => void;
+    options: SubscribeRunOptions;
+  }): () => void {
+    const { options } = spec;
     const controller = new AbortController();
     this.liveStreams.add(controller);
 
     let lastSeq = options.sinceSeq ?? 0;
     let stopped = false;
+    // An older client against a newer server sees every one of its new events
+    // as unknown. Reporting each of them would drown the caller in noise for a
+    // condition that is one fact about the connection, so it is said once.
+    let reportedUnknownType = false;
 
     const stop = () => {
       if (stopped) {
@@ -281,19 +419,16 @@ export class RemoteEngine {
     const pump = async () => {
       while (!stopped) {
         try {
-          const response = await this.doFetch(
-            this.url(`${routes.runEvents(id)}?sinceSeq=${lastSeq}`),
-            {
-              headers: this.headers({ accept: "text/event-stream" }),
-              signal: controller.signal,
-            },
-          );
+          const response = await this.doFetch(this.url(spec.url(lastSeq)), {
+            headers: this.headers({ accept: "text/event-stream" }),
+            signal: controller.signal,
+          });
 
           if (!response.ok) {
             throw toClientError(
               response.status,
               await this.readErrorBody(response),
-              `Event stream for run ${id} failed with ${response.status}`,
+              `${spec.label} failed with ${response.status}`,
             );
           }
 
@@ -306,7 +441,36 @@ export class RemoteEngine {
               break;
             }
 
-            const parsed = runEventSchema.safeParse(JSON.parse(frame.data));
+            let payload: unknown;
+            try {
+              payload = JSON.parse(frame.data);
+            } catch (error) {
+              options.onError?.(error);
+              continue;
+            }
+
+            const eventType = typeOfPayload(payload);
+
+            // A type this build has never heard of is a newer server, not a
+            // broken one. Skip the frame, but consume its sequence number:
+            // leaving `lastSeq` behind would make every reconnect replay from
+            // before the unknown event, forever.
+            if (eventType !== undefined && !spec.knownTypes.has(eventType)) {
+              const seq = seqOfFrame(frame, payload);
+              if (seq !== undefined && seq > lastSeq) {
+                lastSeq = seq;
+              }
+
+              if (!reportedUnknownType) {
+                reportedUnknownType = true;
+                options.onError?.(new UnknownEventTypeError(eventType));
+              }
+              continue;
+            }
+
+            // A known type with a body that does not parse is a real problem —
+            // that is a bug or a corrupted frame, and it stays on `onError`.
+            const parsed = spec.parse(payload);
             if (!parsed.success) {
               options.onError?.(parsed.error);
               continue;
@@ -315,9 +479,9 @@ export class RemoteEngine {
             // Track progress before dispatching, so a listener that throws
             // cannot make a reconnect replay the same event.
             lastSeq = parsed.data.seq;
-            onEvent(parsed.data);
+            spec.onEvent(parsed.data);
 
-            if (isTerminal(parsed.data)) {
+            if (spec.isTerminal(parsed.data)) {
               stop();
               return;
             }

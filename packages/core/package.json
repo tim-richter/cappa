@@ -44,6 +44,7 @@
     "@blazediff/core-native": "^5.2.0",
     "@blazediff/gmsd": "^1.7.1",
     "@cappa/logger": "workspace:*",
+    "chokidar": "catalog:",
     "sharp": "^0.35.3"
   },
   "devDependencies": {

@@ -5,11 +5,16 @@ import {
   describeStartRunError,
   useActiveRun,
   useCancelRun,
+  useCapabilities,
   usePlugins,
   useRunEvents,
   useServerConfig,
   useStartRun,
+  useStartWatch,
+  useStopWatch,
   useTargets,
+  useWatchEvents,
+  useWatchStatus,
 } from "@/api/hooks";
 import { isRunFinished } from "@/api/runState";
 import { CapturePanel } from "@/components/Capture/CapturePanel";
@@ -43,6 +48,26 @@ export const Capture: FC = () => {
       setRunId(activeRunId);
     }
   }, [activeRunId, runId]);
+
+  // Watch state lives on the server too, for the same reason: a reload, another
+  // tab, or `cappa capture --watch` in a terminal must not be able to disagree
+  // with what is actually watching.
+  const { data: capabilities } = useCapabilities();
+  const canWatch = capabilities?.watch === true;
+  const { data: watchStatus } = useWatchStatus({ enabled: canWatch });
+  const startWatch = useStartWatch();
+  const stopWatch = useStopWatch();
+  const isWatching = watchStatus?.active === true;
+  const { lastChange } = useWatchEvents(isWatching);
+
+  // A watch-triggered run is adopted the moment the change event names it,
+  // rather than up to five seconds later when the run list is next polled.
+  const watchRunId = lastChange?.runId;
+  useEffect(() => {
+    if (watchRunId !== undefined) {
+      setRunId(watchRunId);
+    }
+  }, [watchRunId]);
 
   const run = useRunEvents(runId);
 
@@ -98,6 +123,27 @@ export const Capture: FC = () => {
           onStart={handleStart}
           onRefreshTargets={() => {
             void refetchTargets();
+          }}
+          watch={{
+            supported: canWatch,
+            active: isWatching,
+            isPending: startWatch.isPending || stopWatch.isPending,
+            lastChange: lastChange ?? watchStatus?.lastChange,
+            onToggle: (next) => {
+              const mutation = next ? startWatch : stopWatch;
+              mutation.mutate(undefined, {
+                onSuccess: () =>
+                  toast.success(
+                    next ? "Watching for changes" : "Stopped watching",
+                  ),
+                onError: (error) =>
+                  toast.error(
+                    error instanceof Error
+                      ? error.message
+                      : "Could not change the watch session",
+                  ),
+              });
+            },
           }}
         />
 

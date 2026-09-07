@@ -21,7 +21,12 @@ describe("GET /api/health", () => {
     expect(response.json()).toEqual({
       ok: true,
       protocolVersion: PROTOCOL_VERSION,
-      capabilities: { capture: true, approve: true, events: true },
+      capabilities: {
+        capture: true,
+        approve: true,
+        events: true,
+        watch: true,
+      },
     });
   });
 
@@ -34,6 +39,8 @@ describe("GET /api/health", () => {
       capture: false,
       approve: false,
       events: true,
+      // Read-only means no browser driving of any kind, watching included.
+      watch: false,
     });
   });
 });

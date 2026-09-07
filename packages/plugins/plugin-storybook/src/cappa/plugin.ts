@@ -12,6 +12,7 @@ import type {
 } from "../types";
 import { buildStorybookIframeUrl } from "./storybook-url";
 import { buildFilename, freezeUI, waitForVisualIdle } from "./util";
+import { DEFAULT_STORY_WATCH_PATHS, resolveStoryTasks } from "./watch";
 
 /**
  * Wait for the play function to complete by checking the playAfterEach flag
@@ -61,6 +62,15 @@ export interface StorybookStory {
   kind: string;
   story: string;
   type: "story" | "docs";
+  /**
+   * The file this story was declared in, relative to the Storybook project.
+   *
+   * Storybook puts it in the index; cappa carries it onto the task so watch
+   * mode can map a saved file back to the stories it produces. Optional
+   * because an older Storybook, or a hand-written index, may not have it — a
+   * story without one simply cannot be resolved precisely.
+   */
+  importPath?: string;
 }
 
 /**
@@ -106,6 +116,14 @@ export interface StorybookPluginOptions {
   waitForSelector?: string;
   waitForTimeout?: number;
   storybook?: StorybookRenderOptions;
+  /**
+   * Globs, relative to the working directory, that watch mode should watch on
+   * top of the project sources it watches anyway.
+   *
+   * Defaults to Storybook's own default story patterns. Set this when the
+   * project's `stories` globs point somewhere those do not reach.
+   */
+  watchPaths?: string[];
 }
 
 /**
@@ -217,6 +235,18 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
           story,
         },
       }));
+    },
+
+    /**
+     * Precise watch resolution, which is what makes watch mode worth running:
+     * the story index already knows which file produced which story, so a saved
+     * story file re-captures only its own stories. Everything else — the
+     * components those stories render — resolves to `null` and re-runs the
+     * plugin, because the index cannot say more than that.
+     */
+    watch: {
+      paths: options?.watchPaths ?? DEFAULT_STORY_WATCH_PATHS,
+      resolve: resolveStoryTasks,
     },
 
     initPage: async (page, screenshotTool) => {

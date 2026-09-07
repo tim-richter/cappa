@@ -117,6 +117,17 @@ export const RunView: FC<RunViewProps> = ({
         ) : null}
       </div>
 
+      {run.trigger ? (
+        <p className="text-sm text-muted-foreground">
+          Triggered by watch:{" "}
+          <span className="font-mono text-xs">
+            {run.trigger.files.length === 1
+              ? run.trigger.files[0]
+              : `${run.trigger.files.length} files changed`}
+          </span>
+        </p>
+      ) : null}
+
       <RunProgress
         value={runProgress(run)}
         state={run.state}

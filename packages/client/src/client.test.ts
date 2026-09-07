@@ -12,7 +12,9 @@ import {
   ProtocolMismatchError,
   RunInProgressError,
   UnauthorizedError,
+  UnknownEventTypeError,
   UnknownTargetsError,
+  WatchInProgressError,
 } from "./errors";
 
 /**
@@ -529,6 +531,59 @@ const runEvent = (seq: number, type = "log") => ({
 const flush = async (ms = 40) =>
   new Promise((resolve) => setTimeout(resolve, ms));
 
+describe("RemoteEngine watch", () => {
+  const status = {
+    active: true,
+    paths: ["."],
+    filter: "button*",
+    debounceMs: 300,
+    startedAt: 1,
+  };
+
+  it("starts a watch session on the server", async () => {
+    const { client, calls } = build({ "/api/watch": { body: status } });
+
+    await expect(client.startWatch({ filter: "button*" })).resolves.toEqual(
+      status,
+    );
+
+    const call = calls.at(-1);
+    expect(call?.init?.method).toBe("POST");
+    expect(JSON.parse(call?.init?.body as string)).toEqual({
+      filter: "button*",
+    });
+  });
+
+  it("reads and stops the session", async () => {
+    const { client, calls } = build({
+      "/api/watch": [{ body: status }, { body: { ...status, active: false } }],
+    });
+
+    await expect(client.getWatchStatus()).resolves.toMatchObject({
+      active: true,
+    });
+    await expect(client.stopWatch()).resolves.toMatchObject({ active: false });
+    expect(calls.at(-1)?.init?.method).toBe("DELETE");
+  });
+
+  it("maps a 409 onto WatchInProgressError", async () => {
+    const { client } = build({
+      "/api/watch": {
+        status: 409,
+        body: {
+          error: "A watch session is already running",
+          code: "CAPPA_WATCH_IN_PROGRESS",
+        },
+      },
+    });
+
+    const error = await client.startWatch().catch((e) => e);
+
+    expect(error).toBeInstanceOf(WatchInProgressError);
+    expect(error.status).toBe(409);
+  });
+});
+
 describe("RemoteEngine event stream", () => {
   it("delivers events from the stream", async () => {
     const { client } = build({
@@ -639,6 +694,124 @@ describe("RemoteEngine event stream", () => {
 
     expect(onError).toHaveBeenCalled();
     expect(seen).toEqual([2]);
+  });
+
+  it("skips an unknown event type without reporting it per event", async () => {
+    const unknown = (seq: number) =>
+      `id: ${seq}\ndata: ${JSON.stringify({
+        seq,
+        runId: "run-1",
+        at: 0,
+        type: "watch:change",
+        files: ["src/Button.tsx"],
+      })}\n\n`;
+
+    const { client } = build({
+      "/api/runs/run-1/events": {
+        stream: `${unknown(1)}${unknown(2)}${sseFrames([
+          runEvent(3, "run:complete"),
+        ])}`,
+      },
+    });
+
+    const onError = vi.fn();
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq), { onError });
+    await flush();
+
+    expect(seen).toEqual([3]);
+    // Two unknown frames, one report: the fact is about the connection, not
+    // about each event.
+    expect(onError).toHaveBeenCalledTimes(1);
+    const reported = onError.mock.calls[0]?.[0];
+    expect(reported).toBeInstanceOf(UnknownEventTypeError);
+    expect((reported as UnknownEventTypeError).eventType).toBe("watch:change");
+  });
+
+  it("resumes past an unknown event rather than replaying it", async () => {
+    const unknownFrame = `id: 2\ndata: ${JSON.stringify({
+      seq: 2,
+      runId: "run-1",
+      at: 0,
+      type: "watch:change",
+    })}\n\n`;
+
+    const { client, calls } = build({
+      "/api/runs/run-1/events": [
+        // Drops after an unknown event, with no terminal event.
+        { stream: `${sseFrames([runEvent(1)])}${unknownFrame}` },
+        { stream: sseFrames([runEvent(3, "run:complete")]) },
+      ],
+    });
+
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq));
+    await flush(120);
+
+    expect(seen).toEqual([1, 3]);
+    const streamCalls = calls.filter((call) => call.url.includes("/events"));
+    // 2, not 1: the unknown event advanced the resume position.
+    expect(streamCalls[1]?.url).toContain("sinceSeq=2");
+  });
+
+  it("still reports a known event type with an invalid body", async () => {
+    const { client } = build({
+      "/api/runs/run-1/events": {
+        stream: `id: 1\ndata: ${JSON.stringify({
+          seq: 1,
+          runId: "run-1",
+          at: 0,
+          type: "task:complete",
+        })}\n\n${sseFrames([runEvent(2, "run:complete")])}`,
+      },
+    });
+
+    const onError = vi.fn();
+    const seen: number[] = [];
+    client.subscribeRun("run-1", (event) => seen.push(event.seq), { onError });
+    await flush();
+
+    expect(seen).toEqual([2]);
+    expect(onError).toHaveBeenCalledTimes(1);
+    expect(onError.mock.calls[0]?.[0]).not.toBeInstanceOf(
+      UnknownEventTypeError,
+    );
+  });
+
+  it("streams watch events, which have no terminal event", async () => {
+    const watchFrame = (seq: number, type: string, rest: object = {}) =>
+      `id: ${seq}\ndata: ${JSON.stringify({ seq, at: 0, type, ...rest })}\n\n`;
+
+    const { client, calls } = build({
+      "/api/watch/events": [
+        {
+          stream:
+            watchFrame(1, "watch:start", { paths: ["."], debounceMs: 300 }) +
+            watchFrame(2, "watch:change", {
+              files: ["src/Button.stories.tsx"],
+              scope: "tasks",
+              taskIds: ["button--primary"],
+              runId: "run-1",
+            }) +
+            watchFrame(3, "watch:stop", { reason: "requested" }),
+        },
+        // A session that has stopped still holds the stream open, waiting for
+        // the next `watch:start`.
+        { stream: "" },
+      ],
+    });
+
+    const seen: string[] = [];
+    const unsubscribe = client.subscribeWatch((event) => seen.push(event.type));
+    await flush();
+    unsubscribe();
+
+    expect(seen).toEqual(["watch:start", "watch:change", "watch:stop"]);
+    // `watch:stop` ends a session, not the stream: a later `watch:start`
+    // arrives on the same subscription, so the client reconnects past it.
+    expect(
+      calls.filter((call) => call.url.includes("/watch/events")).length,
+    ).toBeGreaterThan(1);
   });
 
   it("close() tears down every live stream", async () => {

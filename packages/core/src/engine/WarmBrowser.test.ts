@@ -187,3 +187,84 @@ describe("WarmBrowser", () => {
     expect(warm.isWarm).toBe(true);
   });
 });
+
+describe("WarmBrowser eviction leases", () => {
+  it("keeps the browser warm past the idle timeout while held", async () => {
+    const { warm, tools } = createWarm(1000);
+
+    await warm.acquire();
+    const release = warm.hold();
+    warm.release();
+
+    // A watch session left idle over a coffee break.
+    await vi.advanceTimersByTimeAsync(60_000);
+
+    expect(warm.isWarm).toBe(true);
+    expect(tools[0]?.close).not.toHaveBeenCalled();
+    expect(warm.isHeld).toBe(true);
+
+    release();
+    await warm.close();
+  });
+
+  it("holds the browser even when warm reuse is otherwise disabled", async () => {
+    // `idleTimeoutMs: 0` is the CLI's one-shot setting; watch mode must not
+    // inherit a cold start per save from it.
+    const { warm, tools } = createWarm(0);
+
+    await warm.acquire();
+    const release = warm.hold();
+    warm.release();
+    await vi.advanceTimersByTimeAsync(1000);
+
+    expect(warm.isWarm).toBe(true);
+    expect(tools[0]?.close).not.toHaveBeenCalled();
+
+    release();
+    await warm.close();
+  });
+
+  it("restores the idle policy when the lease is released", async () => {
+    const { warm, tools } = createWarm(1000);
+
+    await warm.acquire();
+    const release = warm.hold();
+    warm.release();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(warm.isWarm).toBe(true);
+
+    release();
+    await vi.advanceTimersByTimeAsync(1001);
+
+    expect(warm.isWarm).toBe(false);
+    expect(tools[0]?.close).toHaveBeenCalledOnce();
+  });
+
+  it("releases only once, however many times it is called", async () => {
+    const { warm } = createWarm(1000);
+
+    await warm.acquire();
+    const first = warm.hold();
+    const second = warm.hold();
+    first();
+    first();
+
+    expect(warm.isHeld).toBe(true);
+
+    second();
+    expect(warm.isHeld).toBe(false);
+
+    await warm.close();
+  });
+
+  it("still closes on an explicit close while held", async () => {
+    const { warm, tools } = createWarm(1000);
+
+    await warm.acquire();
+    warm.hold();
+    await warm.close();
+
+    expect(warm.isWarm).toBe(false);
+    expect(tools[0]?.close).toHaveBeenCalledOnce();
+  });
+});

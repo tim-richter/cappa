@@ -36,6 +36,101 @@ export type SubscribeOptions = {
 };
 
 /**
+ * How a watch iteration decided what to capture.
+ *
+ * - `tasks` — an explicit set of task ids, resolved by the plugins.
+ * - `plugins` — every task of one or more plugins, because at least one could
+ *   not attribute the change (or ships no `watch` at all).
+ * - `all` — everything under the session's filter: the resolved set was larger
+ *   than the cap, or discovery itself failed.
+ * - `none` — nothing to capture.
+ */
+export type WatchScope = "tasks" | "plugins" | "all" | "none";
+
+/** What one settled batch of file changes led to. */
+export type WatchChange = {
+  /** Changed files, relative to the watch root. */
+  files: string[];
+  scope: WatchScope;
+  /** Resolved task ids, when the scope is `tasks`. */
+  taskIds?: string[];
+  /** The run the change started, absent when none could be started. */
+  runId?: string;
+  /** Why no run was started, when that is what happened. */
+  error?: string;
+  at: number;
+};
+
+type WatchEventBase = {
+  /** Monotonic, 1-based, per engine. Used for replay, like run events. */
+  seq: number;
+  at: number;
+};
+
+/**
+ * The watch event stream.
+ *
+ * Separate from `RunEvent` because these events belong to a session that
+ * outlives any single run — a watch session is a scheduler for runs, and the
+ * runs it starts report themselves through the ordinary run stream.
+ */
+export type WatchEvent =
+  | (WatchEventBase & {
+      type: "watch:start";
+      paths: string[];
+      filter?: string;
+      debounceMs: number;
+    })
+  | (WatchEventBase & { type: "watch:change" } & Omit<WatchChange, "at">)
+  | (WatchEventBase & {
+      type: "watch:stop";
+      reason: "requested" | "engine-closed";
+    });
+
+export type WatchEventType = WatchEvent["type"];
+
+type DistributiveOmit<T, K extends PropertyKey> = T extends unknown
+  ? Omit<T, K>
+  : never;
+
+/** A watch event before the engine stamps it with `seq` and `at`. */
+export type EmittableWatchEvent = DistributiveOmit<WatchEvent, "seq" | "at">;
+
+/** What a watch session is doing, readable at any time. */
+export type WatchStatus = {
+  active: boolean;
+  /** Roots being watched, relative to the working directory. */
+  paths: string[];
+  filter?: string;
+  debounceMs: number;
+  startedAt?: number;
+  /** The most recent settled batch of changes, when there has been one. */
+  lastChange?: WatchChange;
+};
+
+/** Options for `startWatch`. */
+export type StartWatchRequest = {
+  /**
+   * Directories to watch, relative to the working directory.
+   * @default ["."]
+   */
+  paths?: string[];
+  /** Glob every watch-triggered run is restricted to (`path.matchesGlob`). */
+  filter?: string;
+  /**
+   * How long changes must settle before a run starts.
+   * @default 300
+   */
+  debounceMs?: number;
+  /**
+   * Above this many resolved task ids, capture everything under `filter`
+   * instead. A branch switch is what this guards against.
+   * @default 200
+   */
+  maxTasks?: number;
+};
+
+/**
  * Everything a UI needs to drive and observe captures.
  *
  * There are two implementations: `LocalEngine` runs the browser in-process, and
@@ -87,6 +182,39 @@ export interface CaptureEngine {
 
   approve(names: string[]): Promise<ApproveResult>;
 
+  /**
+   * Re-capture on file change until `stopWatch`.
+   *
+   * Optional, because only an engine that can see the files is able to do it:
+   * a remote engine drives the watcher on the *host*, and an engine with no
+   * local filesystem at all has nothing to offer. Callers must feature-detect
+   * rather than assume.
+   *
+   * @throws {WatchInProgressError} when a session is already active.
+   */
+  startWatch?(request?: StartWatchRequest): Promise<WatchStatus>;
+
+  /**
+   * Stop the active watch session and answer the status it left behind.
+   *
+   * A no-op when there is none — the status simply says it is inactive.
+   */
+  stopWatch?(): Promise<WatchStatus>;
+
+  /** What the watch session is doing, or an inactive status when there is none. */
+  getWatchStatus?(): Promise<WatchStatus>;
+
+  /**
+   * Observe the watch event stream. Returns an unsubscribe function.
+   *
+   * Buffered events are replayed synchronously before live delivery, exactly
+   * as `subscribeRun` does.
+   */
+  subscribeWatch?(
+    onEvent: (event: WatchEvent) => void,
+    options?: SubscribeOptions,
+  ): () => void;
+
   /** Release resources (browser, timers). Safe to call more than once. */
   close(): Promise<void>;
 }
@@ -104,6 +232,7 @@ export interface CaptureEngine {
 export const ENGINE_ERROR_CODES = {
   runInProgress: "CAPPA_RUN_IN_PROGRESS",
   unknownTargets: "CAPPA_UNKNOWN_TARGETS",
+  watchInProgress: "CAPPA_WATCH_IN_PROGRESS",
 } as const;
 
 /** Thrown by `startRun` when the engine is already running something. */
@@ -130,6 +259,16 @@ export class UnknownTargetsError extends Error {
   }
 }
 
+/** Thrown by `startWatch` when a watch session is already running. */
+export class WatchInProgressError extends Error {
+  readonly code = ENGINE_ERROR_CODES.watchInProgress;
+
+  constructor() {
+    super("A watch session is already running");
+    this.name = "WatchInProgressError";
+  }
+}
+
 const hasCode = (error: unknown, code: string): boolean =>
   error instanceof Error && (error as { code?: unknown }).code === code;
 
@@ -148,3 +287,9 @@ export const isUnknownTargetsError = (
   error: unknown,
 ): error is UnknownTargetsError =>
   hasCode(error, ENGINE_ERROR_CODES.unknownTargets);
+
+/** Identity-independent check for `WatchInProgressError`. */
+export const isWatchInProgressError = (
+  error: unknown,
+): error is WatchInProgressError =>
+  hasCode(error, ENGINE_ERROR_CODES.watchInProgress);

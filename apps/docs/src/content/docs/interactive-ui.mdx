@@ -70,6 +70,38 @@ the same clean state the CLI would use.
 
 Tune the idle window with [`review.browserIdleTimeout`](/configuration#reviewbrowseridletimeout).
 
+An active watch session suspends that timer entirely: a session left idle over a coffee
+break would otherwise pay a full browser start-up on the next save, which is the cost watch
+mode exists to avoid. The timer resumes when watching stops.
+
+## Watch mode
+
+Turn on **Watch files** in the capture panel and every save re-captures what it affects. The
+run streams into the same run view a capture you started by hand does, and the run header
+says which file triggered it.
+
+The session lives on the server, not in the tab, which is what makes it survive a reload —
+and what makes a second tab, or a `cappa capture --watch` in a terminal, show the same
+state rather than disagreeing with it. The status line under the toggle says what the last
+change re-captured:
+
+```
+src/components/Button.stories.tsx changed — re-capturing 2 tasks
+```
+
+How much gets re-captured depends on what the plugins can tell Cappa about the file you
+saved — precise for a story file with `@cappa/plugin-storybook`, a whole-plugin re-run for
+a component it cannot attribute. [Watch mode](/cli#watch-mode) covers the rules, and
+[Custom Plugins](/custom-plugins#watch-support) covers teaching your own plugin the
+mapping.
+
+Two things watch mode deliberately does not do: it never clears `actual/` between
+iterations, so the diffs you are looking at for screenshots you did not touch stay where
+they are; and it never approves anything. Watch captures — a human still approves.
+
+The toggle is hidden when the server cannot watch: a read-only server refuses every
+mutation, and an engine with no local filesystem has nothing to watch.
+
 ## Serving a report without capture
 
 Capture drives a real browser and writes to disk. When you only want to share a report —

@@ -9,9 +9,13 @@ import type {
   Screenshot,
   ScreenshotQuery,
   StartRunRequest,
+  StartWatchRequest,
   SubscribeOptions,
   Target,
+  WatchEvent,
+  WatchStatus,
 } from "@cappa/core";
+import { WatchInProgressError } from "@cappa/core";
 import { vi } from "vitest";
 
 /**
@@ -31,6 +35,9 @@ export type FakeEngine = CaptureEngine & {
   /** Buffered events, replayed to new subscribers. */
   events: Map<string, RunEvent[]>;
   startRunImpl: (request: StartRunRequest) => Promise<RunSummary>;
+  /** Push a watch event to every live watch subscriber. */
+  emitWatch: (event: WatchEvent) => void;
+  watchEvents: WatchEvent[];
 };
 
 export const summary = (
@@ -65,6 +72,9 @@ export const createFakeEngine = (
   const subscribers = new Map<string, Set<(event: RunEvent) => void>>();
   const events = new Map<string, RunEvent[]>();
   const runs = new Map<string, RunDetail>();
+  const watchSubscribers = new Set<(event: WatchEvent) => void>();
+  const watchEvents: WatchEvent[] = [];
+  let watching = false;
 
   let nextRunId = 1;
 
@@ -74,6 +84,7 @@ export const createFakeEngine = (
     plugins: [],
     runs,
     events,
+    watchEvents,
 
     emit: (runId, partial) => {
       const event = {
@@ -175,6 +186,59 @@ export const createFakeEngine = (
 
       return { approved, errors };
     }),
+
+    emitWatch: (event: WatchEvent) => {
+      watchEvents.push(event);
+      for (const listener of watchSubscribers) {
+        listener(event);
+      }
+    },
+
+    startWatch: vi.fn(async (request: StartWatchRequest = {}) => {
+      if (watching) {
+        throw new WatchInProgressError();
+      }
+      watching = true;
+      return {
+        active: true,
+        paths: request.paths ?? ["."],
+        filter: request.filter,
+        debounceMs: request.debounceMs ?? 300,
+        startedAt: 0,
+      } satisfies WatchStatus;
+    }),
+
+    stopWatch: vi.fn(async () => {
+      watching = false;
+      return {
+        active: false,
+        paths: ["."],
+        debounceMs: 300,
+      } satisfies WatchStatus;
+    }),
+
+    getWatchStatus: vi.fn(async () => ({
+      active: watching,
+      paths: ["."],
+      debounceMs: 300,
+    })),
+
+    subscribeWatch: (
+      onEvent: (event: WatchEvent) => void,
+      options: SubscribeOptions = {},
+    ) => {
+      const sinceSeq = options.sinceSeq ?? 0;
+      for (const event of watchEvents) {
+        if (event.seq > sinceSeq) {
+          onEvent(event);
+        }
+      }
+
+      watchSubscribers.add(onEvent);
+      return () => {
+        watchSubscribers.delete(onEvent);
+      };
+    },
 
     close: vi.fn(async () => {}),
 

@@ -1,11 +1,23 @@
-import type { StartRunRequest, Target } from "@cappa/protocol";
+import type { StartRunRequest, Target, WatchChange } from "@cappa/protocol";
 import { Button } from "@ui/components/button";
 import { Checkbox } from "@ui/components/checkbox";
 import { Input } from "@ui/components/input";
+import { Switch } from "@ui/components/switch";
 import { toast } from "@ui/lib/utils";
-import { Camera, RefreshCw } from "lucide-react";
+import { Camera, Eye, RefreshCw } from "lucide-react";
 import { type FC, useMemo, useState } from "react";
 import { describeStartRunError } from "@/api/hooks";
+
+/** The watch session, as far as this panel is concerned. */
+export interface CaptureWatchProps {
+  /** False when the server's engine cannot see the files. */
+  supported: boolean;
+  active: boolean;
+  isPending?: boolean;
+  /** The last settled batch of changes, whoever is watching. */
+  lastChange?: WatchChange;
+  onToggle: (next: boolean) => void;
+}
 
 export interface CapturePanelProps {
   targets: Target[];
@@ -16,7 +28,35 @@ export interface CapturePanelProps {
   isRunActive?: boolean;
   onStart: (request: StartRunRequest) => void;
   onRefreshTargets?: () => void;
+  watch?: CaptureWatchProps;
 }
+
+/** One line describing what a watch iteration did, for the panel's status row. */
+export const describeWatchChange = (change: WatchChange): string => {
+  const files =
+    change.files.length === 1
+      ? (change.files[0] ?? "a file")
+      : `${change.files.length} files`;
+
+  if (change.error) {
+    return `${files} changed — could not start a run: ${change.error}`;
+  }
+
+  switch (change.scope) {
+    case "tasks": {
+      const count = change.taskIds?.length ?? 0;
+      return `${files} changed — re-capturing ${count} task${
+        count === 1 ? "" : "s"
+      }`;
+    }
+    case "plugins":
+      return `${files} changed — re-capturing every task of the affected plugin(s)`;
+    case "all":
+      return `${files} changed — re-capturing everything`;
+    default:
+      return `${files} changed — nothing to re-capture`;
+  }
+};
 
 /**
  * Picks what to capture and starts a run.
@@ -33,6 +73,7 @@ export const CapturePanel: FC<CapturePanelProps> = ({
   isRunActive,
   onStart,
   onRefreshTargets,
+  watch,
 }) => {
   const [filter, setFilter] = useState("");
   const [selectedPlugins, setSelectedPlugins] = useState<Set<string>>(
@@ -106,6 +147,23 @@ export const CapturePanel: FC<CapturePanelProps> = ({
         </div>
 
         <div className="flex items-center gap-2">
+          {watch?.supported ? (
+            <label
+              className="flex items-center gap-2 text-sm"
+              htmlFor="watch-toggle"
+            >
+              <Switch
+                id="watch-toggle"
+                checked={watch.active}
+                disabled={watch.isPending}
+                onCheckedChange={(next) => watch.onToggle(next === true)}
+              />
+              <span className="flex items-center gap-1">
+                <Eye className="size-4" /> Watch files
+              </span>
+            </label>
+          ) : null}
+
           {onRefreshTargets ? (
             <Button
               variant="ghost"
@@ -123,6 +181,17 @@ export const CapturePanel: FC<CapturePanelProps> = ({
           </Button>
         </div>
       </div>
+
+      {watch?.active ? (
+        <p
+          className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+          role="status"
+        >
+          {watch.lastChange
+            ? describeWatchChange(watch.lastChange)
+            : "Watching for file changes — save a file to re-capture what it affects."}
+        </p>
+      ) : null}
 
       {plugins.length > 1 ? (
         <div className="flex flex-wrap items-center gap-3">

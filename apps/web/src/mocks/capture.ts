@@ -1,4 +1,10 @@
-import type { RunEvent, RunSummary, Target } from "@cappa/protocol";
+import type {
+  RunEvent,
+  RunSummary,
+  Target,
+  WatchEvent,
+  WatchStatus,
+} from "@cappa/protocol";
 import { HttpResponse, http } from "msw";
 
 export const mockTargets: Target[] = [
@@ -141,6 +147,42 @@ export const mockRunEvents = (): RunEvent[] => {
   ] as RunEvent[];
 };
 
+export const mockWatchStatus: WatchStatus = {
+  active: false,
+  paths: ["."],
+  debounceMs: 300,
+};
+
+/** Override the watch status, for tests about a session that is already on. */
+export const watchStatusHandler = (status: WatchStatus) =>
+  http.get("/api/watch", () => HttpResponse.json(status));
+
+/** A watch session that saw one story file change and started a run for it. */
+export const mockWatchEvents = (): WatchEvent[] => [
+  { seq: 1, at: 0, type: "watch:start", paths: ["."], debounceMs: 300 },
+  {
+    seq: 2,
+    at: 0,
+    type: "watch:change",
+    files: ["src/Button.stories.tsx"],
+    scope: "tasks",
+    taskIds: ["Screenshot 1"],
+    runId: "run-1",
+  },
+];
+
+/** Override the watch event stream. */
+export const watchEventsHandler = (events: WatchEvent[]) =>
+  http.get("/api/watch/events", () => {
+    const body = events
+      .map((event) => `id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`)
+      .join("");
+
+    return new HttpResponse(body, {
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  });
+
 const sseBody = (events: RunEvent[]) =>
   events
     .map((event) => `id: ${event.seq}\ndata: ${JSON.stringify(event)}\n\n`)
@@ -158,7 +200,12 @@ export const captureHandlers = [
     HttpResponse.json({
       ok: true,
       protocolVersion: 1,
-      capabilities: { capture: true, approve: true, events: true },
+      capabilities: {
+        capture: true,
+        approve: true,
+        events: true,
+        watch: true,
+      },
     }),
   ),
 
@@ -184,6 +231,25 @@ export const captureHandlers = [
   http.post("/api/runs/:id/cancel", ({ params }) =>
     HttpResponse.json({ runId: params.id }, { status: 202 }),
   ),
+
+  http.get("/api/watch", () => HttpResponse.json(mockWatchStatus)),
+
+  http.post("/api/watch", () =>
+    HttpResponse.json(
+      { ...mockWatchStatus, active: true, startedAt: 1 },
+      { status: 201 },
+    ),
+  ),
+
+  http.delete("/api/watch", () => HttpResponse.json(mockWatchStatus)),
+
+  // An empty stream by default: a test that wants watch events says so with
+  // `watchEventsHandler`.
+  http.get("/api/watch/events", () => {
+    return new HttpResponse("", {
+      headers: { "Content-Type": "text/event-stream" },
+    });
+  }),
 
   http.get("/api/runs/:id/events", ({ request }) => {
     const sinceSeq = Number.parseInt(

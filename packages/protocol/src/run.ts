@@ -38,11 +38,25 @@ export const pluginInfoSchema = z.object({
 
 export type PluginInfo = z.infer<typeof pluginInfoSchema>;
 
+/**
+ * Why a run started, when a person did not start it.
+ *
+ * Carried on the request rather than as a separate lookup, so a run list can
+ * say "this one came from saving Button.stories.tsx" from what it already has.
+ */
+export const runTriggerSchema = z.object({
+  source: z.literal("watch"),
+  files: z.array(z.string()),
+});
+
+export type RunTrigger = z.infer<typeof runTriggerSchema>;
+
 export const startRunRequestSchema = z.object({
   plugins: z.array(z.string()).optional(),
   filter: z.string().optional(),
   taskIds: z.array(z.string()).optional(),
   clearActual: z.boolean().optional(),
+  trigger: runTriggerSchema.optional(),
 });
 
 export type StartRunRequest = z.infer<typeof startRunRequestSchema>;
@@ -230,3 +244,86 @@ export const runEventSchema = z.discriminatedUnion("type", [
 export type RunEvent = z.infer<typeof runEventSchema>;
 
 export type RunEventType = RunEvent["type"];
+
+/**
+ * How a watch iteration decided what to capture.
+ *
+ * `tasks` is the precise case; `plugins` means at least one plugin could not
+ * attribute the change; `all` means the resolved set was too large or discovery
+ * failed; `none` means there was nothing to capture.
+ */
+export const watchScopeSchema = z.enum(["tasks", "plugins", "all", "none"]);
+
+export type WatchScope = z.infer<typeof watchScopeSchema>;
+
+export const watchChangeSchema = z.object({
+  files: z.array(z.string()),
+  scope: watchScopeSchema,
+  taskIds: z.array(z.string()).optional(),
+  runId: z.string().optional(),
+  error: z.string().optional(),
+  at: z.number(),
+});
+
+export type WatchChange = z.infer<typeof watchChangeSchema>;
+
+const watchEventBase = {
+  /** Monotonic, 1-based, per server. Used for SSE `Last-Event-ID` replay. */
+  seq: z.number(),
+  at: z.number(),
+};
+
+/**
+ * The watch event stream, exactly as `@cappa/core`'s engine emits it.
+ *
+ * Separate from `runEventSchema` because a watch session outlives any single
+ * run: the runs it starts report themselves on the ordinary run stream, and
+ * these events say why they started.
+ */
+export const watchEventSchema = z.discriminatedUnion("type", [
+  z.object({
+    ...watchEventBase,
+    type: z.literal("watch:start"),
+    paths: z.array(z.string()),
+    filter: z.string().optional(),
+    debounceMs: z.number(),
+  }),
+  z.object({
+    ...watchEventBase,
+    type: z.literal("watch:change"),
+    files: z.array(z.string()),
+    scope: watchScopeSchema,
+    taskIds: z.array(z.string()).optional(),
+    runId: z.string().optional(),
+    error: z.string().optional(),
+  }),
+  z.object({
+    ...watchEventBase,
+    type: z.literal("watch:stop"),
+    reason: z.enum(["requested", "engine-closed"]),
+  }),
+]);
+
+export type WatchEvent = z.infer<typeof watchEventSchema>;
+
+export type WatchEventType = WatchEvent["type"];
+
+export const watchStatusSchema = z.object({
+  active: z.boolean(),
+  paths: z.array(z.string()),
+  filter: z.string().optional(),
+  debounceMs: z.number(),
+  startedAt: z.number().optional(),
+  lastChange: watchChangeSchema.optional(),
+});
+
+export type WatchStatus = z.infer<typeof watchStatusSchema>;
+
+export const startWatchRequestSchema = z.object({
+  paths: z.array(z.string()).optional(),
+  filter: z.string().optional(),
+  debounceMs: z.number().optional(),
+  maxTasks: z.number().optional(),
+});
+
+export type StartWatchRequest = z.infer<typeof startWatchRequestSchema>;

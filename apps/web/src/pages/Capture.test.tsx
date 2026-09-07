@@ -1,6 +1,12 @@
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
-import { mockRunSummary, runsHandler } from "../mocks/capture";
+import {
+  mockRunSummary,
+  mockWatchEvents,
+  runsHandler,
+  watchEventsHandler,
+  watchStatusHandler,
+} from "../mocks/capture";
 import { server } from "../test/setup";
 import { renderPage } from "../test/utils";
 import { Capture } from "./Capture";
@@ -158,5 +164,85 @@ describe("Capture page", () => {
         .element(screen.getByRole("button", { name: "Start capture" }))
         .toBeEnabled();
     });
+  });
+});
+
+describe("Capture page watch mode", () => {
+  it("starts a watch session from the toggle", async () => {
+    const screen = await renderPage(<Capture />, { route: "/capture" });
+
+    await screen.getByLabelText("Watch files").click();
+
+    await expect
+      .element(screen.getByText(/Watching for file changes/))
+      .toBeVisible();
+  });
+
+  it("reads an existing session back from the server", async () => {
+    // A session started elsewhere — another tab, or `cappa capture --watch`.
+    server.use(
+      watchStatusHandler({
+        active: true,
+        paths: ["."],
+        debounceMs: 300,
+        startedAt: 1,
+      }),
+    );
+
+    const screen = await renderPage(<Capture />, { route: "/capture" });
+
+    await expect
+      .element(screen.getByText(/Watching for file changes/))
+      .toBeVisible();
+  });
+
+  it("adopts the run a file change started", async () => {
+    server.use(
+      watchStatusHandler({
+        active: true,
+        paths: ["."],
+        debounceMs: 300,
+        startedAt: 1,
+      }),
+      watchEventsHandler(mockWatchEvents()),
+    );
+
+    const screen = await renderPage(<Capture />, { route: "/capture" });
+
+    await expect
+      .element(
+        screen.getByText(
+          "src/Button.stories.tsx changed — re-capturing 1 task",
+        ),
+      )
+      .toBeVisible();
+
+    // The run the change started is streamed straight into the run view,
+    // without waiting for the next poll of the run list.
+    await expect.element(screen.getByText("Completed")).toBeVisible();
+  });
+
+  it("hides the toggle when the server cannot watch", async () => {
+    server.use(
+      http.get("/api/health", () =>
+        HttpResponse.json({
+          ok: true,
+          protocolVersion: 1,
+          capabilities: {
+            capture: true,
+            approve: true,
+            events: true,
+            watch: false,
+          },
+        }),
+      ),
+    );
+
+    const screen = await renderPage(<Capture />, { route: "/capture" });
+
+    await expect.element(screen.getByText("Screenshot 1")).toBeVisible();
+    await expect
+      .element(screen.getByLabelText("Watch files"))
+      .not.toBeInTheDocument();
   });
 });

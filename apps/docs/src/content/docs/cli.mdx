@@ -70,6 +70,49 @@ cappa capture --max-regions 20
 cappa capture --max-regions 0
 ```
 
+### Watch mode
+
+Use `--watch` (or `-w`) to capture once and then re-capture whenever files change. The browser
+stays warm between iterations, so a save costs a capture rather than a Chromium start-up.
+
+```bash
+# capture, then re-capture on every save
+cappa capture --watch
+
+# narrow the whole session to one component
+cappa capture --watch --filter "button*"
+```
+
+Each iteration prints one line for what changed, one line per non-passing task, and a summary:
+
+```
+↻ 2 tasks · src/components/Button.stories.tsx changed
+  changed Example/Button/Primary
+2/2 captured, 1 to review — 1.42s
+```
+
+A failing screenshot does **not** stop the session or set a non-zero exit code — it is the thing
+you are working on. Press Ctrl-C to stop; that closes the browser and exits `0`.
+
+How much gets re-captured depends on what the plugins can tell Cappa about the file you saved:
+
+| You changed | What runs |
+| --- | --- |
+| A story file, with `@cappa/plugin-storybook` | Only the stories that file declares |
+| A component, or any file no plugin can attribute | Every task of the plugins that could not tell |
+| Anything, with a plugin that has no watch support (`@cappa/plugin-pages`) | Every task of that plugin |
+| Hundreds of files at once (a branch switch, a formatter) | Everything, under `--filter` |
+
+Changes are debounced for 300ms and coalesced, so a branch switch produces one run rather than a
+storm. A save that lands while a capture is still running is queued for the next iteration instead
+of being rejected. `actual/` is never cleared between iterations, so the diffs you are looking at
+for screenshots you did not touch stay where they are.
+
+`--watch` cannot be combined with `--ci` (CI captures once and exits) or with `--server` (a remote
+host cannot see the files on your machine). Both combinations fail with a message rather than
+quietly doing half of what you asked. See [Custom Plugins](/custom-plugins#watch-support) for
+teaching your own plugin which tasks a file affects.
+
 ### Capturing against a remote host
 
 Use `--server` to run the browser on another machine — one running

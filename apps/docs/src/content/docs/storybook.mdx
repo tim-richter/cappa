@@ -129,6 +129,35 @@ recommended to build storybook before running cappa capture, and then run cappa 
 > pnpm start-server-and-test storybook "pnpm cappa capture"
 > ```
 
+## Watch mode
+
+`cappa capture --watch` — and the review UI's watch toggle — re-capture on file change,
+and this plugin can be precise about it. Storybook's story index records the `importPath`
+of every story, so saving a story file re-captures only the stories that file declares:
+
+```
+↻ 2 tasks · src/components/Button.stories.tsx changed
+```
+
+Saving anything else — the component a story renders, a token file, a decorator — cannot be
+attributed from the index, so the plugin says so and every story is re-captured. That is
+deliberate: a mapping that guessed would quietly miss the regression you are hunting.
+
+By default the watcher additionally watches `**/*.stories.*` and `**/*.story.*` on top of
+the project sources it watches anyway. Point `watchPaths` somewhere else when your
+`stories` globs do not reach:
+
+```ts
+cappaPluginStorybook({
+  storybookUrl: 'http://localhost:6006',
+  watchPaths: ['packages/ui/src/**/*.stories.tsx'],
+});
+```
+
+Note that a story added since the last discovery re-runs the whole plugin rather than
+capturing nothing — the index cannot know about it yet, and doing nothing on a saved file
+is the more confusing answer.
+
 ## Control per-story behaviour
 
 Story-specific parameters can override how Cappa captures each story. Define them in your story file

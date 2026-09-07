@@ -160,3 +160,82 @@ describe("CapturePanel", () => {
     expect(screen.getByText("Plugins:").elements()).toHaveLength(0);
   });
 });
+
+describe("CapturePanel watch toggle", () => {
+  it("is absent when the server cannot watch", async () => {
+    const { screen } = await setup({
+      watch: { supported: false, active: false, onToggle: vi.fn() },
+    });
+
+    // A control that could only ever fail is worse than no control.
+    await expect
+      .element(screen.getByLabelText("Watch files"))
+      .not.toBeInTheDocument();
+  });
+
+  it("turns watching on and off", async () => {
+    const onToggle = vi.fn();
+    const { screen } = await setup({
+      watch: { supported: true, active: false, onToggle },
+    });
+
+    await screen.getByLabelText("Watch files").click();
+
+    expect(onToggle).toHaveBeenCalledWith(true);
+  });
+
+  it("says what it is doing while watching", async () => {
+    const { screen } = await setup({
+      watch: { supported: true, active: true, onToggle: vi.fn() },
+    });
+
+    await expect
+      .element(screen.getByText(/Watching for file changes/))
+      .toBeVisible();
+  });
+
+  it("reports the last change and what it re-captured", async () => {
+    const { screen } = await setup({
+      watch: {
+        supported: true,
+        active: true,
+        onToggle: vi.fn(),
+        lastChange: {
+          files: ["src/Button.stories.tsx"],
+          scope: "tasks",
+          taskIds: ["a", "b"],
+          runId: "run-2",
+          at: 0,
+        },
+      },
+    });
+
+    await expect
+      .element(
+        screen.getByText(
+          "src/Button.stories.tsx changed — re-capturing 2 tasks",
+        ),
+      )
+      .toBeVisible();
+  });
+
+  it("reports a change that could not start a run", async () => {
+    const { screen } = await setup({
+      watch: {
+        supported: true,
+        active: true,
+        onToggle: vi.fn(),
+        lastChange: {
+          files: ["a.tsx", "b.tsx"],
+          scope: "all",
+          error: "A capture run is already in progress (run-9)",
+          at: 0,
+        },
+      },
+    });
+
+    await expect
+      .element(screen.getByText(/could not start a run/))
+      .toBeVisible();
+  });
+});

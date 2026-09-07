@@ -7,6 +7,8 @@ import {
   runEventSchema,
   runSummarySchema,
   screenshotSchema,
+  watchEventSchema,
+  watchStatusSchema,
 } from "./index";
 
 /**
@@ -42,6 +44,22 @@ export type _TaskFailure = AssertAssignable<
   core.TaskFailure
 >;
 export type _Target = AssertAssignable<protocol.Target, core.Target>;
+export type _WatchEvent = AssertAssignable<
+  protocol.WatchEvent,
+  core.WatchEvent
+>;
+export type _WatchStatus = AssertAssignable<
+  protocol.WatchStatus,
+  core.WatchStatus
+>;
+export type _WatchScope = AssertAssignable<
+  protocol.WatchScope,
+  core.WatchScope
+>;
+export type _RunTrigger = AssertAssignable<
+  protocol.RunTrigger,
+  core.RunTrigger
+>;
 export type _SerializedError = AssertAssignable<
   protocol.SerializedError,
   core.SerializedError
@@ -55,6 +73,10 @@ export type _PluginCaptureResult = AssertAssignable<
 export type _StartRunRequest = AssertAssignable<
   core.StartRunRequest,
   protocol.StartRunRequest
+>;
+export type _StartWatchRequest = AssertAssignable<
+  core.StartWatchRequest,
+  protocol.StartWatchRequest
 >;
 
 // Screenshots, in both directions — the review UI reads them, the server writes them.
@@ -110,6 +132,41 @@ describe("protocol schemas accept what core produces", () => {
     expect(parsed).toMatchObject({
       result: { customPluginField: 42, storyId: "s" },
     });
+  });
+
+  it("round-trips a watch event", () => {
+    const event: core.WatchEvent = {
+      type: "watch:change",
+      seq: 3,
+      at: 1_700_000_000_000,
+      files: ["src/Button.stories.tsx"],
+      scope: "tasks",
+      taskIds: ["button--primary"],
+      runId: "run-2",
+    };
+
+    expect(watchEventSchema.parse(event)).toMatchObject({
+      type: "watch:change",
+      scope: "tasks",
+      runId: "run-2",
+    });
+  });
+
+  it("round-trips a watch status", () => {
+    const status: core.WatchStatus = {
+      active: true,
+      paths: ["."],
+      filter: "button*",
+      debounceMs: 300,
+      startedAt: 1,
+      lastChange: {
+        files: ["src/Button.tsx"],
+        scope: "plugins",
+        at: 2,
+      },
+    };
+
+    expect(watchStatusSchema.parse(status)).toEqual(status);
   });
 
   it("round-trips a run summary", () => {

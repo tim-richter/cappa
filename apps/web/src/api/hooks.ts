@@ -9,6 +9,8 @@ import type {
   RunSummary,
   ScreenshotCategory,
   StartRunRequest,
+  StartWatchRequest,
+  WatchChange,
 } from "@cappa/protocol";
 import {
   type UseQueryResult,
@@ -35,6 +37,8 @@ export const isTerminalQueryError = (error: unknown): boolean =>
 
 export const captureKeys = {
   config: ["config"] as const,
+  health: ["health"] as const,
+  watch: ["watch"] as const,
   plugins: ["plugins"] as const,
   targets: ["targets"] as const,
   runs: ["runs"] as const,
@@ -165,6 +169,112 @@ const isRunActiveState = (state: RunState) =>
 export const useActiveRun = (): RunSummary | undefined => {
   const { data: runs } = useRuns();
   return runs?.find((run) => isRunActiveState(run.state));
+};
+
+/**
+ * What this server can do, as it advertises it.
+ *
+ * Capabilities are not preferences: a server whose engine cannot see the files
+ * has no watch to offer, and the UI must not show a control that can only fail.
+ */
+export const useCapabilities = () =>
+  useQuery({
+    queryKey: captureKeys.health,
+    queryFn: () => client.health(),
+    select: (health) => health.capabilities,
+    staleTime: Number.POSITIVE_INFINITY,
+  });
+
+/**
+ * The server's watch session.
+ *
+ * Read from the server rather than remembered here, for the same reason the
+ * active run is: the session belongs to the engine, so a reload — or a second
+ * tab, or `cappa capture --watch` in a terminal — must not be able to disagree
+ * with it.
+ */
+export const useWatchStatus = (options: { enabled?: boolean } = {}) =>
+  useQuery({
+    queryKey: captureKeys.watch,
+    queryFn: () => client.getWatchStatus(),
+    enabled: options.enabled ?? true,
+    retry: (failureCount, error) =>
+      !isTerminalQueryError(error) && failureCount < 2,
+  });
+
+export const useStartWatch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: (request: StartWatchRequest = {}) => client.startWatch(request),
+    onSuccess: (status) => {
+      queryClient.setQueryData(captureKeys.watch, status);
+    },
+  });
+};
+
+export const useStopWatch = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: () => client.stopWatch(),
+    onSuccess: (status) => {
+      queryClient.setQueryData(captureKeys.watch, status);
+    },
+  });
+};
+
+export type UseWatchEventsResult = {
+  /** The most recent settled batch of changes, and what it started. */
+  lastChange?: WatchChange;
+  /** True while the watch event stream is attached. */
+  isStreaming: boolean;
+};
+
+/**
+ * Follow the watch event stream.
+ *
+ * The run list is polled every five seconds, which is fine for a run somebody
+ * started by hand and far too slow for a session that starts one per save. This
+ * is what makes a watch-triggered run appear the moment it starts.
+ */
+export const useWatchEvents = (enabled: boolean): UseWatchEventsResult => {
+  const queryClient = useQueryClient();
+  const [lastChange, setLastChange] = useState<WatchChange | undefined>();
+  const [isStreaming, setIsStreaming] = useState(false);
+
+  useEffect(() => {
+    if (!enabled) {
+      return;
+    }
+
+    setIsStreaming(true);
+
+    const unsubscribe = client.subscribeWatch((event) => {
+      if (event.type === "watch:change") {
+        setLastChange({
+          files: event.files,
+          scope: event.scope,
+          taskIds: event.taskIds,
+          runId: event.runId,
+          error: event.error,
+          at: event.at,
+        });
+        queryClient.invalidateQueries({ queryKey: captureKeys.runs });
+      }
+
+      if (event.type === "watch:start" || event.type === "watch:stop") {
+        queryClient.invalidateQueries({ queryKey: captureKeys.watch });
+      }
+    });
+
+    return () => {
+      unsubscribe();
+      setIsStreaming(false);
+    };
+  }, [enabled, queryClient]);
+
+  return { lastChange, isStreaming };
 };
 
 export const useStartRun = () => {

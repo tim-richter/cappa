@@ -22,9 +22,12 @@ import {
   ENGINE_ERROR_CODES,
   isRunInProgressError,
   isUnknownTargetsError,
+  isWatchInProgressError,
   RunInProgressError,
   UnknownTargetsError,
+  type WatchEvent,
 } from "./types";
+import type { FileWatcher } from "./WatchSession";
 
 /**
  * A real, writable directory for each test.
@@ -529,5 +532,217 @@ describe("engine error guards", () => {
       isRunInProgressError({ code: ENGINE_ERROR_CODES.runInProgress }),
     ).toBe(false);
     expect(isRunInProgressError(new Error("boom"))).toBe(false);
+  });
+});
+
+/** A watcher the test drives, standing in for chokidar. */
+class FakeWatcher implements FileWatcher {
+  closeCount = 0;
+  private allListeners: ((event: string, path: string) => void)[] = [];
+
+  on(event: string, listener: (...args: any[]) => void): unknown {
+    if (event === "all") {
+      this.allListeners.push(listener);
+    }
+    if (event === "ready") {
+      listener();
+    }
+    return this;
+  }
+
+  async close(): Promise<void> {
+    this.closeCount += 1;
+  }
+
+  save(path: string): void {
+    for (const listener of this.allListeners) {
+      listener("change", path);
+    }
+  }
+}
+
+const watchPlugin = (
+  name: string,
+  tasks: PluginTask[],
+  watch?: RunnablePlugin["watch"],
+): RunnablePlugin => ({
+  ...createPlugin(name, tasks),
+  watch,
+});
+
+const byStoryFile: RunnablePlugin["watch"] = {
+  paths: ["**/*.stories.tsx"],
+  resolve: (file, tasks) => {
+    const affected = tasks
+      .filter((entry) => (entry.data as { file?: string })?.file === file)
+      .map((entry) => entry.id);
+    return affected.length > 0 ? affected : null;
+  },
+};
+
+const storyTask = (id: string, file: string): PluginTask => ({
+  ...task(id),
+  data: { file },
+});
+
+const tick = (ms = 30) => new Promise((resolve) => setTimeout(resolve, ms));
+
+describe("LocalEngine watch", () => {
+  const createWatchEngine = (plugins: RunnablePlugin[]) => {
+    const watcher = new FakeWatcher();
+    const { engine, tools } = createEngine(plugins, {
+      cwd: "/project",
+      createWatcher: () => watcher,
+    });
+    return { engine, tools, watcher };
+  };
+
+  it("captures the affected tasks through an ordinary run", async () => {
+    const { engine, watcher } = createWatchEngine([
+      watchPlugin(
+        "storybook",
+        [
+          storyTask("button--primary", "src/Button.stories.tsx"),
+          storyTask("input--default", "src/Input.stories.tsx"),
+        ],
+        byStoryFile,
+      ),
+    ]);
+
+    await engine.startWatch({ debounceMs: 1 });
+    watcher.save("src/Button.stories.tsx");
+    await tick(80);
+
+    const runs = await engine.listRuns();
+    expect(runs).toHaveLength(1);
+    // A watch capture is a normal run: same store, same summary, and it says
+    // what triggered it.
+    expect(runs[0]?.request).toMatchObject({
+      taskIds: ["button--primary"],
+      clearActual: false,
+      trigger: { source: "watch", files: ["src/Button.stories.tsx"] },
+    });
+
+    await engine.close();
+  });
+
+  it("keeps the browser warm across iterations", async () => {
+    const { engine, tools, watcher } = createWatchEngine([
+      watchPlugin("storybook", [storyTask("a", "a.stories.tsx")], byStoryFile),
+    ]);
+
+    await engine.startWatch({ debounceMs: 1 });
+    watcher.save("a.stories.tsx");
+    await tick(80);
+    watcher.save("a.stories.tsx");
+    await tick(80);
+
+    // One browser for discovery and both runs — the whole point of holding the
+    // eviction lease.
+    expect(tools).toHaveLength(1);
+    expect(engine.isWarm).toBe(true);
+
+    await engine.close();
+  });
+
+  it("survives the idle timeout while watching", async () => {
+    const watcher = new FakeWatcher();
+    const { engine } = createEngine(
+      [
+        watchPlugin(
+          "storybook",
+          [storyTask("a", "a.stories.tsx")],
+          byStoryFile,
+        ),
+      ],
+      // Zero is the CLI's one-shot setting: without a lease it would close the
+      // browser the moment a run released it.
+      { browserIdleTimeoutMs: 0, createWatcher: () => watcher },
+    );
+
+    await engine.startWatch({ debounceMs: 1 });
+    watcher.save("a.stories.tsx");
+    await tick(80);
+
+    expect(engine.isWarm).toBe(true);
+
+    await engine.close();
+  });
+
+  it("streams watch events, with replay from a sequence number", async () => {
+    const { engine, watcher } = createWatchEngine([
+      watchPlugin("storybook", [storyTask("a", "a.stories.tsx")], byStoryFile),
+    ]);
+
+    const seen: WatchEvent[] = [];
+    await engine.startWatch({ debounceMs: 1 });
+    watcher.save("a.stories.tsx");
+    await tick(80);
+
+    const unsubscribe = engine.subscribeWatch((event) => seen.push(event));
+
+    expect(seen.map((event) => event.type)).toEqual([
+      "watch:start",
+      "watch:change",
+    ]);
+    expect(seen[0]?.seq).toBe(1);
+
+    const late: WatchEvent[] = [];
+    engine.subscribeWatch((event) => late.push(event), { sinceSeq: 1 });
+    expect(late.map((event) => event.type)).toEqual(["watch:change"]);
+
+    unsubscribe();
+    await engine.close();
+  });
+
+  it("refuses a second watch session", async () => {
+    const { engine } = createWatchEngine([watchPlugin("storybook", [])]);
+
+    await engine.startWatch({ debounceMs: 1 });
+    const error = await engine.startWatch().catch((e) => e);
+
+    expect(isWatchInProgressError(error)).toBe(true);
+
+    await engine.close();
+  });
+
+  it("reports status, and stops on request", async () => {
+    const { engine, watcher } = createWatchEngine([
+      watchPlugin("storybook", []),
+    ]);
+
+    await expect(engine.getWatchStatus()).resolves.toMatchObject({
+      active: false,
+    });
+
+    await engine.startWatch({ debounceMs: 1, filter: "Button/*" });
+    await expect(engine.getWatchStatus()).resolves.toMatchObject({
+      active: true,
+      filter: "Button/*",
+    });
+
+    await engine.stopWatch();
+
+    expect(watcher.closeCount).toBe(1);
+    await expect(engine.getWatchStatus()).resolves.toMatchObject({
+      active: false,
+    });
+    // Stoppable again, and startable again.
+    await engine.stopWatch();
+    await engine.startWatch({ debounceMs: 1 });
+
+    await engine.close();
+  });
+
+  it("stops the watch session when the engine closes", async () => {
+    const { engine, watcher } = createWatchEngine([
+      watchPlugin("storybook", []),
+    ]);
+
+    await engine.startWatch({ debounceMs: 1 });
+    await engine.close();
+
+    expect(watcher.closeCount).toBe(1);
+    expect(engine.isWarm).toBe(false);
   });
 });

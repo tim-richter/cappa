@@ -13,6 +13,7 @@ import Fastify from "fastify";
 import { runsPlugin } from "./runs";
 import { screenshotsPlugin } from "./screenshots";
 import { isLoopbackHost, resolveFromHere } from "./util";
+import { watchPlugin } from "./watch";
 
 declare module "fastify" {
   interface FastifyInstance {
@@ -96,6 +97,9 @@ export async function createServer(opts: StartServerOptions) {
     capture: !readOnly,
     approve: !readOnly,
     events: true,
+    // Only an engine that can see the files can watch them. A remote engine
+    // behind this server cannot, and the UI has to be able to tell.
+    watch: !readOnly && typeof opts.engine.startWatch === "function",
   };
 
   app.get("/api/health", async () => ({
@@ -110,6 +114,8 @@ export async function createServer(opts: StartServerOptions) {
   }));
 
   await app.register(runsPlugin, { prefix: "/api" });
+
+  await app.register(watchPlugin, { prefix: "/api" });
 
   await app.register(screenshotsPlugin, { prefix: "/api/screenshots" });
 

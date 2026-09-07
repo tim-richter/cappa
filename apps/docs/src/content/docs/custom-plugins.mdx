@@ -58,3 +58,46 @@ export function myPlugin(): CappaPlugin {
 
 Register the plugin in `cappa.config.ts` and iterate on the callbacks until they match your use
 case. Combine plugins to orchestrate complex capture flows without bloating the core CLI.
+
+## Watch support
+
+`cappa capture --watch` re-captures on file change. Cappa has no idea which of your tasks a
+saved file affects — the plugin does — so a plugin can teach it, through one optional member:
+
+```ts
+watch: {
+  /** Extra globs, relative to cwd, added to what the watcher watches. */
+  paths: ['**/*.stories.@(js|jsx|ts|tsx)'],
+  /**
+   * Map one changed file onto the task ids it affects.
+   * `null` means "cannot tell" — re-run everything this plugin owns.
+   */
+  resolve: (file, tasks) => {
+    const affected = tasks
+      .filter((task) => task.data?.source === file)
+      .map((task) => task.id);
+    return affected.length > 0 ? affected : null;
+  },
+},
+```
+
+Things worth knowing:
+
+- **`resolve` is called for every changed file**, not only for files matching `paths`. `paths`
+  widens what gets watched; it does not narrow what you are asked about. So a plugin sees the
+  component a story renders, too — and answers `null` for it.
+- **`null` is the safe answer.** A `resolve` that returns too few ids produces a watch mode that
+  silently misses regressions, which is worse than one that re-runs too much. Return `null`
+  whenever the mapping is uncertain — including for a file that looks like one of yours but
+  matches no discovered task, which is what a freshly created source file looks like before the
+  next discovery.
+- **`watch` is optional.** A plugin without it contributes its whole task set whenever anything
+  in the watched set changes. That is the right behaviour when tasks have no local source at all:
+  `@cappa/plugin-pages` captures URLs served by a dev server it knows nothing about, so it ships
+  no `watch` and re-captures its pages.
+- Task ids you return must be ids discovery produced. Unknown ids are rejected, which is the same
+  boundary that stops the review UI steering the browser somewhere arbitrary.
+
+`@cappa/plugin-storybook` implements this against Storybook's story index, which already records
+the `importPath` of every story: saving a story file re-captures only that file's stories, and
+saving anything else re-runs the plugin.
