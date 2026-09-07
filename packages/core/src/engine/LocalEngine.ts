@@ -1,4 +1,5 @@
 import { ScreenshotFileSystem } from "../filesystem";
+import type { PluginTask } from "../plugin";
 import { CaptureRunner } from "../runner/CaptureRunner";
 import type {
   RunDetail,
@@ -15,14 +16,24 @@ import { RunStore, type RunStoreOptions } from "./RunStore";
 import {
   type ApproveResult,
   type CaptureEngine,
+  type EmittableWatchEvent,
   type ListTargetsOptions,
   type PluginInfo,
   RunInProgressError,
   type ScreenshotQuery,
+  type StartWatchRequest,
   type SubscribeOptions,
   UnknownTargetsError,
+  type WatchEvent,
+  WatchInProgressError,
+  type WatchStatus,
 } from "./types";
 import { WarmBrowser } from "./WarmBrowser";
+import {
+  type CreateFileWatcher,
+  DEFAULT_DEBOUNCE_MS,
+  WatchSession,
+} from "./WatchSession";
 
 export type LocalEngineOptions = {
   outputDir: string;
@@ -42,6 +53,12 @@ export type LocalEngineOptions = {
   runStore?: RunStoreOptions;
   /** Overrides the screenshot tool factory. Tests use this. */
   createScreenshotTool?: () => ScreenshotTool;
+  /** Working directory a watch session watches. @default process.cwd() */
+  cwd?: string;
+  /** Overrides the file watcher factory. Tests use this. */
+  createWatcher?: CreateFileWatcher;
+  /** Watch events buffered for replay to a (re)connecting subscriber. @default 200 */
+  maxWatchEvents?: number;
 };
 
 /**
@@ -70,7 +87,21 @@ export class LocalEngine implements CaptureEngine {
   private busy = false;
   private activeRunId: string | null = null;
   private targetsCache: Target[] | null = null;
+  /**
+   * The tasks behind `targetsCache`, kept whole.
+   *
+   * A `Target` is what crosses the wire; a plugin's `watch.resolve` needs the
+   * task it came from, `data` included — that is where a story's `importPath`
+   * lives. Same discovery, two shapes, one cache lifetime.
+   */
+  private taskCache: Map<string, PluginTask[]> | null = null;
   private closed = false;
+
+  private watchSession: WatchSession | null = null;
+  private releaseBrowserHold: (() => void) | null = null;
+  private readonly watchListeners = new Set<(event: WatchEvent) => void>();
+  private watchEvents: WatchEvent[] = [];
+  private watchSeq = 0;
 
   constructor(options: LocalEngineOptions) {
     this.options = options;
@@ -156,6 +187,7 @@ export class LocalEngine implements CaptureEngine {
 
         // Discovery results may be stale after a run changed what exists.
         this.targetsCache = null;
+        this.taskCache = null;
         this.runs.finalize(runner.id);
         this.activeRunId = null;
         this.busy = false;
@@ -271,8 +303,90 @@ export class LocalEngine implements CaptureEngine {
     return { approved, errors };
   }
 
+  /**
+   * Re-capture affected tasks on file change until `stopWatch`.
+   *
+   * Every iteration goes through `startRun`, so a watch-triggered capture is an
+   * ordinary run: same events, same run store, same single-run rule, visible in
+   * `listRuns` and in the UI. Watch is a scheduler, not a second orchestrator.
+   */
+  async startWatch(request: StartWatchRequest = {}): Promise<WatchStatus> {
+    this.assertOpen();
+
+    if (this.watchSession) {
+      throw new WatchInProgressError();
+    }
+
+    // Held for the session's whole life: without it the idle timer closes the
+    // browser between saves, and the next save pays a cold start — the exact
+    // cost watch mode exists to avoid.
+    const release = this.browser.hold();
+
+    const session = new WatchSession({
+      plugins: this.plugins,
+      cwd: this.options.cwd,
+      paths: request.paths,
+      // Captures write into `outputDir`. Watching it would make every run
+      // trigger the next one, forever.
+      ignoredPaths: [this.options.outputDir],
+      filter: request.filter,
+      debounceMs: request.debounceMs,
+      maxTasks: request.maxTasks,
+      createWatcher: this.options.createWatcher,
+      discover: () => this.discoverTasks(),
+      startRun: (runRequest) => this.startRun(runRequest),
+      waitForRun: (runId) => this.waitForRun(runId),
+      emit: (event) => this.emitWatchEvent(event),
+    });
+
+    this.watchSession = session;
+    this.releaseBrowserHold = release;
+
+    try {
+      return await session.start();
+    } catch (error) {
+      this.watchSession = null;
+      this.releaseBrowserHold = null;
+      release();
+      throw error;
+    }
+  }
+
+  async stopWatch(): Promise<void> {
+    await this.endWatch("requested");
+  }
+
+  async getWatchStatus(): Promise<WatchStatus> {
+    return (
+      this.watchSession?.getStatus() ?? {
+        active: false,
+        paths: [],
+        debounceMs: DEFAULT_DEBOUNCE_MS,
+      }
+    );
+  }
+
+  subscribeWatch(
+    onEvent: (event: WatchEvent) => void,
+    options: SubscribeOptions = {},
+  ): () => void {
+    const sinceSeq = options.sinceSeq ?? 0;
+    for (const event of this.watchEvents) {
+      if (event.seq > sinceSeq) {
+        onEvent(event);
+      }
+    }
+
+    this.watchListeners.add(onEvent);
+    return () => {
+      this.watchListeners.delete(onEvent);
+    };
+  }
+
   async close(): Promise<void> {
     this.closed = true;
+
+    await this.endWatch("engine-closed");
 
     const runner = this.activeRunId
       ? this.runs.getRunner(this.activeRunId)
@@ -280,6 +394,67 @@ export class LocalEngine implements CaptureEngine {
     runner?.abort();
 
     await this.browser.close();
+  }
+
+  private async endWatch(reason: "requested" | "engine-closed"): Promise<void> {
+    const session = this.watchSession;
+    const release = this.releaseBrowserHold;
+    this.watchSession = null;
+    this.releaseBrowserHold = null;
+
+    try {
+      await session?.stop(reason);
+    } finally {
+      release?.();
+    }
+  }
+
+  private emitWatchEvent(event: EmittableWatchEvent): void {
+    this.watchSeq += 1;
+    const full = { ...event, seq: this.watchSeq, at: Date.now() } as WatchEvent;
+
+    this.watchEvents.push(full);
+    const max = this.options.maxWatchEvents ?? 200;
+    if (this.watchEvents.length > max) {
+      this.watchEvents = this.watchEvents.slice(-max);
+    }
+
+    for (const listener of this.watchListeners) {
+      try {
+        listener(full);
+      } catch {
+        // A failing subscriber must not stop the watch session.
+      }
+    }
+  }
+
+  /** Resolve once a run reaches a terminal event. */
+  private waitForRun(id: string): Promise<void> {
+    return new Promise<void>((resolve) => {
+      let unsubscribe: (() => void) | undefined;
+      let finished = false;
+
+      const finish = () => {
+        if (finished) {
+          return;
+        }
+        finished = true;
+        unsubscribe?.();
+        resolve();
+      };
+
+      unsubscribe = this.runs.subscribe(id, (event) => {
+        if (event.type === "run:complete" || event.type === "run:error") {
+          finish();
+        }
+      });
+
+      // Buffered events replay synchronously, so a run that is already over
+      // finished before `unsubscribe` existed.
+      if (finished) {
+        unsubscribe();
+      }
+    });
   }
 
   /** True while a browser process is alive. Exposed for tests and diagnostics. */
@@ -316,6 +491,16 @@ export class LocalEngine implements CaptureEngine {
     }
   }
 
+  /** Discovered tasks per plugin, whole. Cached with `targetsCache`. */
+  private async discoverTasks(): Promise<Map<string, PluginTask[]>> {
+    if (this.taskCache) {
+      return this.taskCache;
+    }
+
+    await this.discoverTargets();
+    return this.taskCache ?? new Map();
+  }
+
   private async discoverTargets(): Promise<Target[]> {
     const tool = await this.browser.acquire();
 
@@ -323,15 +508,21 @@ export class LocalEngine implements CaptureEngine {
       const discovered = await Promise.all(
         this.plugins.map(async (plugin) => {
           const tasks = await plugin.discover(tool);
-          return tasks.map((task) => ({
-            id: task.id,
-            url: task.url,
-            plugin: plugin.name,
-          }));
+          return { plugin: plugin.name, tasks };
         }),
       );
 
-      this.targetsCache = discovered.flat();
+      this.taskCache = new Map(
+        discovered.map(({ plugin, tasks }) => [plugin, tasks]),
+      );
+
+      this.targetsCache = discovered.flatMap(({ plugin, tasks }) =>
+        tasks.map((task) => ({
+          id: task.id,
+          url: task.url,
+          plugin,
+        })),
+      );
       return this.targetsCache;
     } finally {
       this.browser.release();

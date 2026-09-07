@@ -73,15 +73,15 @@ describe("resolveStoryTasks", () => {
   });
 
   it("does not leak into a co-located story file", () => {
-    expect(resolveStoryTasks("src/components/Input.stories.tsx", tasks)).toEqual(
-      ["example-input--default"],
-    );
+    expect(
+      resolveStoryTasks("src/components/Input.stories.tsx", tasks),
+    ).toEqual(["example-input--default"]);
   });
 
   it("resolves a re-exported story to the file that re-exports it", () => {
-    expect(resolveStoryTasks("src/legacy/Reexports.stories.ts", tasks)).toEqual([
-      "legacy-button--primary",
-    ]);
+    expect(resolveStoryTasks("src/legacy/Reexports.stories.ts", tasks)).toEqual(
+      ["legacy-button--primary"],
+    );
   });
 
   it("matches an index path written with a leading ./", () => {
@@ -94,13 +94,19 @@ describe("resolveStoryTasks", () => {
     // `importPath` is relative to the Storybook project; the watcher reports
     // paths relative to wherever cappa was started.
     expect(
-      resolveStoryTasks("apps/storybook/src/components/Button.stories.tsx", tasks),
+      resolveStoryTasks(
+        "apps/storybook/src/components/Button.stories.tsx",
+        tasks,
+      ),
     ).toEqual(["example-button--primary", "example-button--secondary"]);
   });
 
   it("matches an absolute path from the watcher", () => {
     expect(
-      resolveStoryTasks("/repo/apps/sb/src/components/Input.stories.tsx", tasks),
+      resolveStoryTasks(
+        "/repo/apps/sb/src/components/Input.stories.tsx",
+        tasks,
+      ),
     ).toEqual(["example-input--default"]);
   });
 
@@ -118,7 +124,9 @@ describe("resolveStoryTasks", () => {
 
   it("returns null for a story file the index has never seen", () => {
     // What a freshly created story looks like until discovery runs again.
-    expect(resolveStoryTasks("src/components/Badge.stories.tsx", tasks)).toBeNull();
+    expect(
+      resolveStoryTasks("src/components/Badge.stories.tsx", tasks),
+    ).toBeNull();
   });
 
   it("never matches an entry without an importPath", () => {
@@ -127,7 +135,9 @@ describe("resolveStoryTasks", () => {
   });
 
   it("returns null when there are no tasks at all", () => {
-    expect(resolveStoryTasks("src/components/Button.stories.tsx", [])).toBeNull();
+    expect(
+      resolveStoryTasks("src/components/Button.stories.tsx", []),
+    ).toBeNull();
   });
 });
 

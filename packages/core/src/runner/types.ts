@@ -39,6 +39,19 @@ export type Target = {
 };
 
 /**
+ * Why a run was started, when it was not started by hand.
+ *
+ * Purely informational — the runner does nothing with it. It rides along on the
+ * request so a run list can say "this one came from saving Button.stories.tsx"
+ * without a second lookup or a parallel event stream.
+ */
+export type RunTrigger = {
+  source: "watch";
+  /** Changed files that triggered the run, relative to the watch root. */
+  files: string[];
+};
+
+/**
  * Describes which subset of the discovered tasks a run should capture.
  *
  * `filter` and `taskIds` compose: a task must satisfy both when both are given.
@@ -58,6 +71,8 @@ export type StartRunRequest = {
    * @default true
    */
   clearActual?: boolean;
+  /** What started this run, when it was not a person. */
+  trigger?: RunTrigger;
 };
 
 /** An error flattened into something that survives a structured-clone or JSON. */

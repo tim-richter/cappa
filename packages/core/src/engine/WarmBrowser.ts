@@ -31,6 +31,8 @@ export class WarmBrowser {
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
   private inUse = false;
   private closed = false;
+  /** Outstanding `hold()` leases. While any is held, eviction is suspended. */
+  private holds = 0;
   /** Serializes acquire/close so concurrent callers cannot race the browser. */
   private pending: Promise<unknown> = Promise.resolve();
 
@@ -80,12 +82,52 @@ export class WarmBrowser {
       return;
     }
 
+    // A lease outranks the idle policy in both directions, including
+    // `idleTimeoutMs: 0` — the CLI's one-shot setting, which watch mode
+    // otherwise turns into a cold Chromium start on every save.
+    if (this.holds > 0) {
+      this.cancelIdleTimer();
+      return;
+    }
+
     if (this.idleTimeoutMs <= 0) {
       void this.close();
       return;
     }
 
     this.startIdleTimer();
+  }
+
+  /**
+   * Suspend idle eviction until the returned function is called.
+   *
+   * Held by an active watch session. Without it, `WarmBrowser` closes the
+   * browser between saves during a coffee break and the next save pays full
+   * start-up — which is the entire premise of watch mode, defeated by its own
+   * idle handling.
+   */
+  hold(): () => void {
+    this.holds += 1;
+    this.cancelIdleTimer();
+
+    let released = false;
+    return () => {
+      if (released) {
+        return;
+      }
+      released = true;
+      this.holds -= 1;
+
+      // Back to the normal idle policy for a browser nobody is using.
+      if (this.holds === 0 && !this.inUse) {
+        this.release();
+      }
+    };
+  }
+
+  /** True while at least one lease suspends idle eviction. */
+  get isHeld(): boolean {
+    return this.holds > 0;
   }
 
   /** Shut the browser down now. Safe to call repeatedly. */
@@ -109,7 +151,7 @@ export class WarmBrowser {
 
     const timer = setTimeout(() => {
       this.idleTimer = null;
-      if (this.inUse || this.closed || !this.tool) {
+      if (this.inUse || this.closed || this.holds > 0 || !this.tool) {
         return;
       }
 
@@ -134,7 +176,7 @@ export class WarmBrowser {
   /** Shut the browser down but stay usable — the next acquire starts cold. */
   private async evict(): Promise<void> {
     await this.serialize(async () => {
-      if (this.inUse || this.closed) {
+      if (this.inUse || this.closed || this.holds > 0) {
         return;
       }
 
