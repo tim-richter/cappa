@@ -155,6 +155,21 @@ describe("registerSignalHandlers", () => {
     expect(mockClose).not.toHaveBeenCalled();
   });
 
+  it("exits cleanly when close() itself fails", async () => {
+    const { mockExit, mockTool } = makeMocks();
+    // A Ctrl-C reaches Chromium too — the terminal signals the whole process
+    // group — so by the time this runs the browser is often already gone.
+    const mockClose = vi.fn().mockRejectedValue(new Error("Target closed"));
+    const closeable = { ...mockTool, close: mockClose };
+
+    unregister = registerSignalHandlers(closeable as never, mockExit);
+
+    process.emit("SIGINT");
+    await settle();
+
+    expect(mockExit).toHaveBeenCalledWith(130);
+  });
+
   it("does not call close() or exit() after unregister", () => {
     const { mockClose, mockExit, mockTool } = makeMocks();
     unregister = registerSignalHandlers(mockTool, mockExit);

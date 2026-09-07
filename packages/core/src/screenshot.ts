@@ -360,12 +360,31 @@ class ScreenshotTool {
   /**
    * Closes browser
    * If not closed, the process will not exit
+   *
+   * Tolerant of a browser that is already gone. A Ctrl-C in a terminal is
+   * delivered to the whole foreground process group, Chromium included, so by
+   * the time a signal handler gets here every context can already be dead and
+   * closing one throws `Failed to find context with id …`. Letting that escape
+   * turns a clean shutdown into an uncaught exception, which is the one thing
+   * teardown must never do.
    */
   async close() {
-    await this.closeContexts();
+    try {
+      await this.closeContexts();
+    } catch (error) {
+      getLogger().debug("Error closing browser contexts:", error);
+      this.contexts = [];
+      this.pages = [];
+      this.context = null;
+      this.page = null;
+    }
 
     if (this.browser) {
-      await this.browser.close();
+      try {
+        await this.browser.close();
+      } catch (error) {
+        getLogger().debug("Error closing the browser:", error);
+      }
       this.browser = null;
     }
   }

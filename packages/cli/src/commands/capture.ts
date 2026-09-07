@@ -230,8 +230,14 @@ export function registerSignalHandlers(
     }
     handling = true;
 
-    await onSignal?.();
-    await closeable.close();
+    try {
+      await onSignal?.();
+      await closeable.close();
+    } catch (error) {
+      // Teardown that fails must not become an uncaught exception: the point of
+      // the handler is to leave cleanly, and the user has already asked to go.
+      getLogger().debug("Error during shutdown:", error);
+    }
     exitFn(130);
   };
 
@@ -455,6 +461,10 @@ export async function watchCapture(
     try {
       await engine.stopWatch();
       await engine.close();
+    } catch (error) {
+      // Same reason as `registerSignalHandlers`: a browser that is already gone
+      // is not a reason to exit with a stack trace.
+      logger.debug("Error stopping the watch session:", error);
     } finally {
       release?.();
     }

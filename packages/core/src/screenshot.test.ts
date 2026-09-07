@@ -478,6 +478,28 @@ describe("ScreenshotTool context lifecycle", () => {
     expect(browser.close).toHaveBeenCalledOnce();
     expect(tool.browser).toBeNull();
   });
+
+  it("close survives a browser that is already gone", async () => {
+    // What a Ctrl-C looks like from here: a terminal signals the whole
+    // foreground process group, so Chromium dies first and every context close
+    // fails with "Failed to find context with id …". Teardown that throws turns
+    // a clean quit into an uncaught exception.
+    const tool = new ScreenshotTool({ outputDir: "/tmp", concurrency: 1 });
+    const { browser, contexts } = createFakeBrowser();
+    attachBrowser(tool, browser);
+
+    await (tool as any).createContexts();
+    contexts[0]?.close.mockRejectedValue(
+      new Error("Protocol error (Target.disposeBrowserContext)"),
+    );
+    browser.close.mockRejectedValue(new Error("Target closed"));
+
+    await expect(tool.close()).resolves.toBeUndefined();
+
+    expect(tool.browser).toBeNull();
+    expect(tool.contexts).toEqual([]);
+    expect(tool.pages).toEqual([]);
+  });
 });
 
 describe("setLogSink", () => {

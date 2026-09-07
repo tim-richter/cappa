@@ -195,6 +195,17 @@ export default defineConfig({
 Here the `dashboard` page keeps the global `waitForNetworkIdle` behaviour but
 adds its own selector‑based and stability checks before capturing.
 
+## Watch mode
+
+This plugin ships no watch support, on purpose. A task here is a URL, and the source behind
+it lives in a dev server the plugin knows nothing about — there is no file-to-task mapping
+to give. Under `cappa capture --watch` (or the review UI's watch toggle) a change in the
+watched set therefore re-captures **every** page.
+
+Honest rather than precise: a plugin that guessed which page a file affects would quietly
+miss the regression you are watching for. Narrow the session with `--filter` when the full
+set is more than you want per save.
+
 ## How screenshots are named
 
 For each page, the plugin builds a filename from the `name` you provide. If
