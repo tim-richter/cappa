@@ -1,0 +1,137 @@
+---
+title: Remote capture
+description: Run the browser on one machine and the CI job on another with cappa serve and cappa capture --server.
+---
+
+Cappa can run the browser on a different machine from the job that asks for the screenshots. One
+machine runs [`cappa serve`](/cli#cappa-serve); the other runs
+[`cappa capture --server`](/cli#capturing-against-a-remote-host) and gets the same live output,
+the same failure report and the same exit code it would get locally.
+
+This is useful when the machine that renders is not the machine that builds — a CI runner without
+a browser, a shared box with the right fonts and GPU, or a container you would rather not install
+Playwright into.
+
+## The two-machine setup
+
+On the host that has the browser and the screenshots:
+
+```bash
+export CAPPA_TOKEN="$(openssl rand -base64 24)"
+cappa serve --host 0.0.0.0 --no-ui
+```
+
+On the machine running the job:
+
+```bash
+export CAPPA_TOKEN=…   # the same value
+cappa capture --server http://build-host:3000
+```
+
+That is the whole setup. `--no-ui` is optional — it just skips serving the review UI on a host
+nobody is going to open in a browser.
+
+## The host loads its own config
+
+**Plugins are live closures.** A plugin is a function in your `cappa.config.ts`, and a function
+cannot be sent over a network — so the config is never uploaded. Whichever process runs the engine
+is the one that loaded the config, which means the *host* loads `cappa.config.ts` and the client
+does not use its own at all.
+
+Everything that describes a capture therefore belongs to the host: `plugins`, `outputDir`, `diff`,
+`concurrency`, `retries`, `screenshot`. Your local config's capture settings have no effect under
+`--server`, and Cappa says so on every remote run rather than letting you wonder:
+
+```
+Capturing on http://build-host:3000, which uses its own cappa.config.ts.
+Local capture settings do not apply.
+```
+
+In practice this means the host needs a checkout of the project — the same one you would run
+`cappa capture` in — and the screenshots live there.
+
+## Access tokens
+
+Off loopback a token is **required**, and `cappa serve` never generates one. `cappa review`
+generates a token because a human is reading the URL it prints; `serve` has no such reader, so
+generating one would leave you with a daemon nobody can authenticate against.
+
+Both `serve` and `capture --server` read `--token`, falling back to `CAPPA_TOKEN`. Prefer the
+environment variable: a token passed as a flag is visible in the process list to anything else on
+the machine.
+
+The token gates every `/api/*` request. A wrong or missing one is reported before any capture
+starts, not part-way through a run.
+
+## What a remote run checks first
+
+`--server` makes one `GET /api/health` request before capturing anything. It costs a round trip
+and turns four different problems into four different messages, up front:
+
+| Problem | Message |
+| --- | --- |
+| Nothing listening | `Could not reach a cappa server at <url>: …` |
+| Wrong or missing token | `<url> rejected the access token. Pass --token <token>, or set CAPPA_TOKEN.` |
+| Version skew | `<url> speaks protocol version N, this CLI expects M. Upgrade whichever is older.` |
+| Host started `--read-only` | `<url> is running read-only and cannot capture. Restart it without --read-only.` |
+
+A host that is already running a capture reports that too — one run at a time is deliberate, since
+the browser pool is the real constraint:
+
+```
+ERROR  http://build-host:3000 is already running a capture (run 6b0efc96…).
+       Wait for it to finish, or cancel it, and try again.
+```
+
+## Two ways a remote run differs
+
+Everything else is identical. These two are worth knowing before you rely on them.
+
+### `onFail` receives relative paths only
+
+The `onFail` callback normally gets `absoluteActualPath`, `absoluteExpectedPath` and
+`absoluteDiffPath` alongside each failing screenshot. Under `--server` those files are on the host,
+so resolving them against your local `outputDir` would produce paths to files that do not exist —
+and a callback that uploads them would upload nothing.
+
+So the absolute fields are `undefined`, the relative paths and the rest of the screenshot data are
+unchanged, and Cappa logs the reason once per run:
+
+```
+WARN  Capturing against a remote server: onFail receives relative paths only,
+      because the screenshot files live on the host rather than this machine.
+```
+
+The callback still runs. If it needs the image bytes, fetch them from the host rather than the
+local filesystem.
+
+### Diff regions are best effort
+
+The [change report](/cli#change-report)'s diff statistics — percentage and pixel count — are part
+of the wire contract and always render.
+
+The structured *interpretation* is not. Its shape belongs to the diff engine, and pinning it in a
+versioned protocol would turn every diff-engine upgrade into a breaking change, so it crosses the
+wire opaquely. The CLI narrows whatever arrives against the fields it renders; when they do not
+match, it prints the diff statistics and omits the region breakdown rather than failing. A host
+running a different Cappa version therefore degrades to "what changed" without "where".
+
+## Interrupting a remote run
+
+Ctrl-C does not stop a process on another machine by itself, so Cappa asks the host to cancel and
+waits — briefly — for it to confirm before exiting `130`:
+
+```
+i Cancelling the remote run…
+```
+
+A second Ctrl-C leaves immediately and warns that the remote run may still be going. That matters
+if you then start another capture against the same host: it may answer that a run is already in
+progress until the first one finishes winding down.
+
+## Serving a read-only report
+
+`cappa serve --read-only` refuses capture, approval and every other mutation while still serving
+the API and, unless you pass `--no-ui`, the review UI. It is the right shape for publishing a CI
+run's results somewhere people can look at them without being able to change them. A
+`capture --server` pointed at such a host is refused at pre-flight rather than part-way through.

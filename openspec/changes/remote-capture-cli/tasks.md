@@ -263,19 +263,45 @@ run for all-new and changed scenarios; confirmed the four pre-flight errors, a
 the host reporting `state=cancelled` at 1/8 tasks. The twelve capture-parity
 scenarios still match, so the local path is untouched.
 
-## Phase 4 — Docs and end-to-end
+## Phase 4 — Docs and end-to-end ✅
 
-- [ ] `apps/docs`: `cappa serve` in the CLI page; a "Remote capture" section
-      covering the two-machine setup, tokens, the config-locality constraint
-      (the host loads its own `cappa.config.ts`), and the two documented
-      differences — `onFail` absolute paths and best-effort diff regions.
-- [ ] End-to-end on two ports as two machines: `cappa serve --token` on one,
-      `cappa capture --server --token` on the other. Verify a full run, live
-      output, a failing run's report and exit code, `409` on a concurrent run,
-      Ctrl-C cancellation, and a `--read-only` host refused at pre-flight.
-- [ ] Full suite, `pnpm lint`, `pnpm tsc`, `pnpm attw` green.
+- [x] `apps/docs`: `cappa serve` on the CLI page, `--server` under `capture`,
+      and a "Remote capture" guide covering the two-machine setup, tokens, the
+      config-locality constraint and the two documented differences.
+- [x] End-to-end on two ports as two machines: a full run, live output, a
+      failing run's report and exit code, `409` on a concurrent run, Ctrl-C
+      cancellation, and a `--read-only` host refused at pre-flight.
+- [x] Full suite, `pnpm lint`, `pnpm tsc`, `pnpm attw` green.
 
----
+**The end-to-end is committed**, at `scripts/remote-capture-e2e.mjs`, rather
+than run once by hand. It starts two `cappa serve` processes (one token-gated,
+one `--read-only`) plus the fixture's page server, drives the real CLI against
+them, and asserts 21 things — including the ones no unit test reaches: that the
+host actually wrote the screenshots, that a cancelled run reaches `state:
+cancelled` on the host, and that `SIGTERM`ing both hosts leaves zero Chromium
+processes behind.
+
+**Deviations and findings**
+
+- **The first e2e run failed four checks, all in cancellation.** Interrupting on
+  a fixed 700ms delay raced the fixture — it captures four local HTML pages in
+  under a second, so the run had already finished. Now it polls `/api/runs` and
+  signals the moment a run is actually in flight, and asserts separately that
+  there *was* one to interrupt, so a future timing change fails loudly instead
+  of silently testing nothing.
+- **The orphaned-browser check needed a settle window.** A browser tree takes a
+  moment to disappear after its parent exits, so counting immediately reported
+  processes that were already dying. It now retries for up to five seconds — a
+  leak stays leaked, a dying process does not.
+- **Docs gained a page rather than a section.** The remote-capture material —
+  two-machine setup, tokens, config locality, the two differences, cancellation,
+  read-only hosts — did not fit as a subsection of the CLI page without burying
+  it. `remote-capture.mdx` is linked from `capture --server` and sits in the
+  Guides sidebar next to Interactive UI.
+
+**Verification.** 672 tests, `pnpm lint`, `pnpm tsc`, `pnpm attw` and the docs
+build all green; the twelve capture-parity scenarios still match; the
+21-check end-to-end passes on consecutive runs.
 
 ## Follow-ups (not in this change)
 

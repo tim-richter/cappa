@@ -25,6 +25,7 @@ export default defineConfig({
           items: [
             { label: "CLI", link: "/cli" },
             { label: "Interactive UI", link: "/interactive-ui" },
+            { label: "Remote capture", link: "/remote-capture" },
             { label: "Configuration", link: "/configuration" },
           ],
         },

@@ -85,3 +85,15 @@ The static server (`lib/static-server.mjs`) is dependency-free and sends
 The `storybook` project must be served on port 8080 and the `fixture` on 8081 —
 those are the ports their own `cappa.config.ts` files point at. The harness
 fails loudly if a port is already taken.
+
+## Related
+
+`scripts/remote-capture-e2e.mjs` is the sibling check for remote capture: it
+runs `cappa serve` and `cappa capture --server` as two processes on two ports
+and asserts the full round trip — a passing run, a failing run's report and exit
+code, each pre-flight error, a `409` on a concurrent run, Ctrl-C cancellation
+reaching the host, and a `SIGTERM`'d host leaving no orphaned browsers.
+
+```bash
+pnpm build && node scripts/remote-capture-e2e.mjs
+```
