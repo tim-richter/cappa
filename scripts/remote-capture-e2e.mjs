@@ -181,6 +181,14 @@ const main = async () => {
       "the host wrote the screenshots",
       existsSync(path.join(OUTPUT, "actual/alpha.png")),
     );
+    check(
+      "the host's own capture commentary reaches the client",
+      // `ScreenshotTool` writes this straight to its logger. It only reaches a
+      // remote client because `CaptureRunner` routes the tool's output through
+      // the run's event stream — without that it stays in the host's terminal.
+      /Screenshot saved: .*alpha\.png/.test(firstRun.output),
+      firstRun.output,
+    );
 
     // --- approve, then a clean remote run --------------------------------
     await runCli(["approve"]);

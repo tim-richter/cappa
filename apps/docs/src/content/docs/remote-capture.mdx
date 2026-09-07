@@ -85,7 +85,16 @@ ERROR  http://build-host:3000 is already running a capture (run 6b0efc96…).
 
 ## Two ways a remote run differs
 
-Everything else is identical. These two are worth knowing before you rely on them.
+Everything else is identical, including the running commentary: `Screenshot saved`, `Screenshot
+passed visual comparison` and the retry warnings all travel from the host as part of the run's
+event stream.
+
+The exception is a plugin that logs on its own account. Cappa's own output crosses the wire; a
+line a plugin writes with `getLogger()` directly stays in the host's terminal. A plugin that wants
+its output to reach a remote client should log through `screenshotTool.logger`, which is routed
+into the run while one is in flight.
+
+These two differences are worth knowing before you rely on them.
 
 ### `onFail` receives relative paths only
 

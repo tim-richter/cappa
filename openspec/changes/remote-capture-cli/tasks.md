@@ -240,21 +240,11 @@ Docs for `serve` are Phase 4's task and are not included here.
   Close and exit now land a tick later than the signal, which its existing tests
   had to be taught.
 
-**The one place output is not identical, and it is not fixable here.**
-`ScreenshotTool` writes some lines straight to its own logger rather than
-through the run's event stream: `Screenshot saved`, `Screenshot passed/failed
-visual comparison`, and the retry warnings. Those stay in the *host's* stdout.
-Verified by diffing local against remote for both an all-new and a changed run:
-the task progress, the plugin-completion line, the failure report, the changed
-report and the exit code all match exactly; only that running commentary is
-missing.
-
-Closing the gap means routing `ScreenshotTool`'s logging through the runner so
-it becomes `log` events. That needs a logger seam in `ScreenshotTool`, and — the
-blocker — `RunLogLevel` is `debug | info | warn | error` while those calls are
-`success`. Widening it changes the wire contract and needs a `PROTOCOL_VERSION`
-bump, so it is a deliberate decision rather than something to slip into this
-phase. Flagged for the maintainer.
+**Output was not identical at the end of this phase, and was fixed afterwards.**
+`ScreenshotTool` wrote some lines straight to its own logger rather than through
+the run's event stream — `Screenshot saved`, `Screenshot passed/failed visual
+comparison`, the retry warnings — so they stayed in the *host's* stdout. See
+the Phase 3b note below.
 
 **Verification.** Beyond the 672-test suite: ran `cappa serve` and
 `cappa capture --server` as two processes and diffed the output against a local
@@ -262,6 +252,53 @@ run for all-new and changed scenarios; confirmed the four pre-flight errors, a
 `409` on two racing captures, `CAPPA_TOKEN` end to end, and a `SIGINT` that left
 the host reporting `state=cancelled` at 1/8 tasks. The twelve capture-parity
 scenarios still match, so the local path is untouched.
+
+## Phase 3b — `RunLogLevel` gains `success` ✅
+
+Closes the output gap Phase 3 documented and left open.
+
+- [x] `RunLogLevel` and `runLogLevelSchema` gain `success`, the level
+      `ScreenshotTool` uses.
+- [x] `ScreenshotTool.setLogSink()` — swap the tool's logger for a shim that
+      forwards into a sink. `CaptureRunner` installs one for the duration of a
+      run and removes it in a `finally`.
+- [x] Tests: the tool's output becomes `log` events during a run; the sink is
+      detached when the run finishes *and* when it throws; `setLogSink(null)`
+      restores the original logger instance.
+- [x] Changeset (`@cappa/core` / `@cappa/protocol` minor).
+
+**No protocol version bump.** Adding an enum value is a wire change, but
+`PROTOCOL_VERSION` 1 has never been published: the last released
+`@cappa/server` is 0.8.6, whose changelog predates the engine work, and every
+protocol/client/server changeset is still pending. So this is part of what v1
+will be rather than a bump. A later widening, after v1 ships, does need one —
+the note on `RunLogLevel` says so.
+
+**Only `success` was added.** `start` and `log` would be needed to route
+*plugin* output too, and that is a separate decision (see below), so adding
+them now would be speculative surface on a versioned enum.
+
+**The seam is the tool's `logger` field, not its call sites.** `setLogSink`
+swaps `this.logger` for a forwarding shim, so none of the ~17 logging calls in
+`screenshot.ts` changed. `setLogSink(null)` restores the *same* instance rather
+than calling `getLogger()` again, so an existing spy on `tool.logger` keeps
+working — `screenshot.test.ts` has several.
+
+**What still does not cross: plugin output.** A plugin that calls `getLogger()`
+directly still writes to the host's terminal. In `examples/storybook` that is
+two lines (`Found 8 stories to screenshot…` and `Skipping story …`). Closing it
+means adding `start` to the enum and switching the shipped plugins to
+`screenshotTool.logger` — which is already routed — but a third-party plugin
+using `getLogger()` would still be outside it, so the guarantee stays
+conditional either way. Documented as a convention for plugin authors instead.
+
+**Verification.** All twelve capture-parity scenarios still byte-identical, so
+routing the tool's output through the event stream changed nothing locally. A
+local-vs-remote diff of the fixture project is now empty apart from the
+intentional config-locality notice, for both an all-new and a changed run — the
+retry warnings and comparison results included. The end-to-end gained a check
+that asserts `Screenshot saved` reaches the client, so this cannot silently
+regress. 676 tests, lint, tsc, attw and the docs build green.
 
 ## Phase 4 — Docs and end-to-end ✅
 

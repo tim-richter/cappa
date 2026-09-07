@@ -479,3 +479,30 @@ describe("ScreenshotTool context lifecycle", () => {
     expect(tool.browser).toBeNull();
   });
 });
+
+describe("setLogSink", () => {
+  it("routes the tool's output to the sink and restores the logger", () => {
+    const tool = new ScreenshotTool({ outputDir: "/out" });
+    const baseLogger = tool.logger;
+    const calls: Array<[string, string, unknown[]]> = [];
+
+    tool.setLogSink((level, message, ...args) => {
+      calls.push([level, message, args]);
+    });
+
+    expect(tool.logger).not.toBe(baseLogger);
+
+    tool.logger.success("Screenshot saved: /out/a.png");
+    tool.logger.error("Error taking screenshot of x:", "boom");
+
+    expect(calls).toEqual([
+      ["success", "Screenshot saved: /out/a.png", []],
+      ["error", "Error taking screenshot of x:", ["boom"]],
+    ]);
+
+    // Restoring must hand back the same instance, so anything holding a
+    // reference (a spy, say) keeps working.
+    tool.setLogSink(null);
+    expect(tool.logger).toBe(baseLogger);
+  });
+});
