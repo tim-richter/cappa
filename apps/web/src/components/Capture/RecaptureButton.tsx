@@ -73,7 +73,10 @@ export const RecaptureButton: FC<RecaptureButtonProps> = ({
     setRunId(undefined);
   }, [runId, finished, run.state, run.error, taskId]);
 
-  if (config?.readOnly || taskId === undefined) {
+  // `config === undefined` means the server has not answered yet, and a
+  // read-only server refuses capture with a 403 — so the button waits to be
+  // told it is allowed rather than assuming it.
+  if (config === undefined || config.readOnly || taskId === undefined) {
     return null;
   }
 

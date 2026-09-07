@@ -1,4 +1,4 @@
-import { HttpResponse, http } from "msw";
+import { delay, HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Screenshot } from "@/pages/Screenshot";
@@ -67,6 +67,30 @@ describe("read-only mode withholds approval", () => {
 
     const screen = await openDetail();
     // Wait for the screenshot itself to render before asserting an absence.
+    await expect.element(screen.getByRole("img").first()).toBeVisible();
+
+    expect(
+      await screen.getByRole("button", { name: /approve/i }).elements(),
+    ).toHaveLength(0);
+  });
+
+  /**
+   * Regression: `canApprove` was `!config?.readOnly`, which reads as "allowed"
+   * while `/api/config` is still in flight. On a read-only server that put a
+   * live approve button and a live `a` shortcut on screen for the duration of
+   * that request — offering exactly what the server answers with a 403. The
+   * delay makes the window wide enough to observe deterministically; without
+   * it this only failed on a loaded CI machine.
+   */
+  it("does not offer approval while the server is still answering", async () => {
+    server.use(
+      http.get("/api/config", async () => {
+        await delay(300);
+        return HttpResponse.json({ theme: "light", readOnly: true });
+      }),
+    );
+
+    const screen = await openDetail();
     await expect.element(screen.getByRole("img").first()).toBeVisible();
 
     expect(
