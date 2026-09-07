@@ -482,7 +482,10 @@ describe("ScreenshotTool context lifecycle", () => {
 
 describe("setLogSink", () => {
   it("routes the tool's output to the sink and restores the logger", () => {
-    const tool = new ScreenshotTool({ outputDir: "/out" });
+    // `/tmp`, like every other test here: `ScreenshotFileSystem`'s constructor
+    // creates the output directory's parent, so a root-level path fails with
+    // EACCES anywhere the tests do not run as root.
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
     const baseLogger = tool.logger;
     const calls: Array<[string, string, unknown[]]> = [];
 
@@ -492,11 +495,11 @@ describe("setLogSink", () => {
 
     expect(tool.logger).not.toBe(baseLogger);
 
-    tool.logger.success("Screenshot saved: /out/a.png");
+    tool.logger.success("Screenshot saved: /tmp/a.png");
     tool.logger.error("Error taking screenshot of x:", "boom");
 
     expect(calls).toEqual([
-      ["success", "Screenshot saved: /out/a.png", []],
+      ["success", "Screenshot saved: /tmp/a.png", []],
       ["error", "Error taking screenshot of x:", ["boom"]],
     ]);
 
