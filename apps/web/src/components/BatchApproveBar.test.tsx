@@ -1,8 +1,27 @@
-import type { Screenshot } from "@cappa/core";
+import type { Screenshot } from "@cappa/protocol";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { HttpResponse, http } from "msw";
+import type { ReactElement } from "react";
 import { describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
-import { render } from "vitest-browser-react";
+import { render as renderRaw } from "vitest-browser-react";
+import { server } from "../test/setup";
 import { BatchApproveBar } from "./BatchApproveBar";
+
+/**
+ * The bar reads the server config to hide itself on a read-only server, so it
+ * needs a query client. Everything else about it is still driven by props.
+ */
+const render = (ui: ReactElement) =>
+  renderRaw(
+    <QueryClientProvider
+      client={
+        new QueryClient({ defaultOptions: { queries: { retry: false } } })
+      }
+    >
+      {ui}
+    </QueryClientProvider>,
+  );
 
 const newScreenshot: Screenshot = {
   id: "1",
@@ -156,5 +175,21 @@ describe("BatchApproveBar", () => {
     );
     await userEvent.click(screen.getByText("Select all"));
     expect(onSelectAll).toHaveBeenCalled();
+  });
+});
+
+describe("BatchApproveBar on a read-only server", () => {
+  it("renders nothing — approval is refused with a 403", async () => {
+    server.use(
+      http.get("/api/config", () =>
+        HttpResponse.json({ theme: "light", readOnly: true }),
+      ),
+    );
+
+    const screen = await render(<BatchApproveBar {...defaultProps} />);
+
+    await expect
+      .poll(async () => (await screen.getByText("Select").elements()).length)
+      .toBe(0);
   });
 });

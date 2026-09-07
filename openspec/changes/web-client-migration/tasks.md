@@ -215,21 +215,53 @@ real browser, opened once on the printed URL and then navigated bare:
 
 No page errors in either flow.
 
-## Phase 5 — Verification and docs
+## Phase 5 — Verification and docs ✅
 
-- [ ] Full repo suite, `pnpm lint`, `pnpm tsc`, `pnpm attw` green.
-- [ ] Grep for `fetch(` under `apps/web/src` — only `@cappa/client` and the msw
+- [x] Full repo suite, `pnpm lint`, `pnpm tsc`, `pnpm attw` green.
+- [x] Grep for `fetch(` under `apps/web/src` — only `@cappa/client` and the msw
       service worker should remain.
-- [ ] Real-browser pass against `cappa review` on loopback: every page, sidebar
+- [x] Real-browser pass against `cappa review` on loopback: every page, sidebar
       counts, search, detail navigation, single approve, batch approve.
-- [ ] Repeat the same pass against `cappa review --host 0.0.0.0` with a
+- [x] Repeat the same pass against `cappa review --host 0.0.0.0` with a
       generated token — this is the scenario that is broken today.
-- [ ] `cappa review --read-only`: review works, approval controls hidden, no
+- [x] `cappa review --read-only`: review works, approval controls hidden, no
       `403`s in the console.
-- [ ] `apps/docs`: note in the Interactive UI page that exposing the UI off
+- [x] `apps/docs`: note in the Interactive UI page that exposing the UI off
       loopback works for the whole UI, not just capture.
 
----
+**Findings**
+
+- **Read-only never hid the approval controls.** The capture surface was hidden
+  (`interactive-capture-ui` Phase 5 did that), but the detail page's approve
+  button, its `A` shortcut, and the batch bar on every list page were all still
+  offered — and the server answers `403`. So a read-only server handed the user
+  three controls that could only fail. This acceptance criterion was written as
+  a check and turned out to be a bug report; both are gated on
+  `config.readOnly` now.
+- **Gating the batch bar broke its contract, which was the right signal.**
+  `BatchApproveBar` is written as a fully controlled component, so adding
+  `useServerConfig` to it made ten prop-driven tests fail for want of a query
+  client. Keeping the gate inside the component still won over threading a
+  `readOnly` prop through five pages: a page cannot forget it, and `Sidebar`
+  already reads the config the same way. The tests get a provider wrapper.
+
+**Verification.** 159 web tests (up from 156), 361 across the repo plus 212 in
+core; lint, `tsc`, `attw`, a clean `pnpm build` and the docs build all green.
+No raw `fetch` remains under `apps/web/src` outside the mocks.
+
+Three real-browser passes against the real binary:
+
+- **loopback** — all six pages, sidebar total, header count, "All Screenshots"
+  on `/`, search filtering, arrow-key navigation both directions, single approve
+  (`approve-batch` `200`, zero `PATCH`, category flipped) and batch approve
+  (`Select` → `Select all` → `Approve selected`, category flipped). No console
+  or page errors.
+- **`--host 0.0.0.0` with a generated token** — opened once on the printed URL,
+  then navigated bare: every page renders, zero 4xx. This is the scenario that
+  `401`ed across the whole review surface before this change.
+- **`--read-only`** — review pages work, capture page reports itself disabled,
+  and the sidebar entry, re-capture button, approve button and batch bar are all
+  absent. No `403`s reach the console because nothing offers the action.
 
 ## Follow-ups (not in this change)
 

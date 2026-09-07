@@ -77,8 +77,14 @@ cappa review --host 0.0.0.0
 ```
 
 Cappa generates one and prints it as part of the URL. Pass your own with `--token <value>`
-if you would rather choose it. Every `/api/*` request needs it; the UI picks it up from the
-URL automatically.
+if you would rather choose it. Every `/api/*` request needs it — the whole UI, not just the
+capture page.
+
+Open the URL the server printed and the UI takes care of the token from there. It keeps it
+for the tab, so reloading or navigating still works once the token has left the address
+bar — and it removes it from the address bar as soon as it has been read, to keep it out of
+bookmarks, screenshots and the referer header. A new tab needs the printed URL again: the
+token is not stored beyond the tab it was opened in.
 
 A request can only capture tasks that discovery produced — the UI selects from that list
 and never supplies a URL of its own — so a client cannot point the browser somewhere

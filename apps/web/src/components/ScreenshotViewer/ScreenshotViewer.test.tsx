@@ -11,6 +11,13 @@ import { renderPageWithRoute } from "../../test/utils";
  * a request that fell through to the real network passed silently. It is now
  * `approve-batch` with one name, which the handlers do cover.
  */
+const readOnlyServer = () =>
+  server.use(
+    http.get("/api/config", () =>
+      HttpResponse.json({ theme: "light", readOnly: true }),
+    ),
+  );
+
 describe("approving one screenshot", () => {
   const openDetail = () =>
     renderPageWithRoute("/screenshots/:id", "/screenshots/1", <Screenshot />);
@@ -48,5 +55,40 @@ describe("approving one screenshot", () => {
     await userEvent.keyboard("a");
 
     await expect.poll(() => calls).toBeGreaterThan(0);
+  });
+});
+
+describe("read-only mode withholds approval", () => {
+  const openDetail = () =>
+    renderPageWithRoute("/screenshots/:id", "/screenshots/1", <Screenshot />);
+
+  it("hides the approve button", async () => {
+    readOnlyServer();
+
+    const screen = await openDetail();
+    // Wait for the screenshot itself to render before asserting an absence.
+    await expect.element(screen.getByRole("img").first()).toBeVisible();
+
+    expect(
+      await screen.getByRole("button", { name: /approve/i }).elements(),
+    ).toHaveLength(0);
+  });
+
+  it("ignores the A shortcut", async () => {
+    readOnlyServer();
+    let calls = 0;
+    server.use(
+      http.post("/api/screenshots/approve-batch", () => {
+        calls += 1;
+        return HttpResponse.json({ approved: [], errors: [] });
+      }),
+    );
+
+    const screen = await openDetail();
+    await expect.element(screen.getByRole("img").first()).toBeVisible();
+    await userEvent.keyboard("a");
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
+    expect(calls).toBe(0);
   });
 });

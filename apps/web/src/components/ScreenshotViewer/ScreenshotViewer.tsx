@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { client } from "@/api/client";
-import { screenshotKeys } from "@/api/hooks";
+import { screenshotKeys, useServerConfig } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
@@ -56,6 +56,10 @@ export function ScreenshotComparison({
   );
   const queryClient = useQueryClient();
   const navigate = useNavigate();
+  const { data: config } = useServerConfig();
+  // A read-only server refuses approval with a 403, so the control and its
+  // shortcut are both withheld rather than offered and failed.
+  const canApprove = !config?.readOnly;
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
@@ -83,7 +87,7 @@ export function ScreenshotComparison({
         navigate(`/screenshots/${screenshot.prev}`);
       } else if (e.key === "ArrowRight" && screenshot.next) {
         navigate(`/screenshots/${screenshot.next}`);
-      } else if (e.key === "a" && !screenshot.approved) {
+      } else if (e.key === "a" && !screenshot.approved && canApprove) {
         approveScreenshot();
       }
     };
@@ -96,6 +100,7 @@ export function ScreenshotComparison({
     screenshot.approved,
     navigate,
     approveScreenshot,
+    canApprove,
   ]);
 
   return (
@@ -187,7 +192,7 @@ export function ScreenshotComparison({
         <div className="flex items-center gap-4 justify-end">
           <RecaptureButton taskId={screenshot.name} />
 
-          {!screenshot.approved && (
+          {!screenshot.approved && canApprove && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
