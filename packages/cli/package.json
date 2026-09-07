@@ -45,13 +45,15 @@
     "attw": "attw --pack --profile node16 ."
   },
   "dependencies": {
+    "@cappa/client": "workspace:*",
     "@cappa/config": "workspace:*",
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
     "@cappa/server": "workspace:*",
     "chalk": "^5.6.2",
     "commander": "15.0.0",
-    "picocolors": "1.1.1"
+    "picocolors": "1.1.1",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",

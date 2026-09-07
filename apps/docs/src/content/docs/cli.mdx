@@ -70,6 +70,51 @@ cappa capture --max-regions 20
 cappa capture --max-regions 0
 ```
 
+### Capturing against a remote host
+
+Use `--server` to run the browser on another machine — one running
+[`cappa serve`](#cappa-serve) — instead of starting one locally. The output, the failure report
+and the exit code are the same as a local run.
+
+```bash
+cappa capture --server http://build-host:3000 --token "$CAPPA_TOKEN"
+```
+
+See [Remote capture](/remote-capture) for the full setup and the two ways a remote run differs.
+
+## `cappa serve`
+
+Hosts a capture engine for [`cappa capture --server`](#capturing-against-a-remote-host). It is
+`cappa review` without the assumption that a person is about to open a browser: it prints one
+structured line and then stays quiet until you stop it.
+
+```bash
+cappa serve                                  # loopback, UI included
+cappa serve --no-ui                          # API only
+cappa serve --host 0.0.0.0 --token <value>   # reachable from other machines
+cappa serve --read-only                      # serve a report; refuse captures
+```
+
+| Flag | Meaning |
+| --- | --- |
+| `--port <port>` | Port to listen on. Defaults to `review.port`. |
+| `--host <host>` | Host to bind. A non-loopback host **requires** a token. |
+| `--token <token>` | Access token required on every `/api/*` request. Falls back to `CAPPA_TOKEN`. |
+| `--read-only` | Refuse capture, approval and every other mutation. |
+| `--no-ui` | Serve the API only; skip the review UI's static files. |
+
+Unlike `cappa review`, `serve` never generates a token for you. `review` generates one because a
+human is reading the URL it prints; `serve` has no such reader, so a generated token would produce
+a daemon nobody can authenticate against. Off loopback it refuses to start without one:
+
+```
+ERROR  Binding to 0.0.0.0 exposes capture control beyond this machine, so an access token
+       is required. Pass --token <token>, or set CAPPA_TOKEN to keep it out of the process list.
+```
+
+`SIGINT` and `SIGTERM` shut the server down cleanly, closing the browser before exiting — a
+`SIGTERM`'d `serve` leaves no orphaned Chromium processes behind.
+
 ## `cappa review`
 
 Launches an interface for comparing the latest screenshots against the approved baseline. The review
@@ -99,7 +144,8 @@ cappa review --token <value>    # supply the token yourself instead of generatin
 
 Binding to anything other than a loopback host exposes control of a browser that reads local
 files, so Cappa requires an access token there and generates one — printed as part of the URL —
-when you do not pass `--token`.
+when you do not pass `--token`. `--token` also reads `CAPPA_TOKEN` from the environment, so the
+token need not appear in the process list.
 
 ## `cappa approve`
 

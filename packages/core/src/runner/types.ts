@@ -137,7 +137,16 @@ export type RunDetail = RunSummary & {
   failures: TaskFailure[];
 };
 
-export type RunLogLevel = "debug" | "info" | "warn" | "error";
+/**
+ * Levels the run event stream can carry.
+ *
+ * `success` is here because `ScreenshotTool` uses it — "Screenshot saved",
+ * "Screenshot passed visual comparison" — and those lines have to reach a
+ * remote client, not just the host's own terminal. Adding a level is a wire
+ * change: this one lands before `PROTOCOL_VERSION` 1 has ever been published,
+ * so it is part of what v1 will be. A later addition needs a version bump.
+ */
+export type RunLogLevel = "debug" | "info" | "warn" | "error" | "success";
 
 type RunEventBase = {
   /** Monotonic, 1-based, per run. Used for SSE `Last-Event-ID` replay. */

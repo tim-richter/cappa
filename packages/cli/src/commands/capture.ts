@@ -1,27 +1,35 @@
 import path from "node:path";
-import { getConfig } from "@cappa/config";
+import { configToEngineOptions, getConfig } from "@cappa/config";
 import type {
   FailedScreenshot,
+  RunDetail,
   RunEvent,
-  RunnablePlugin,
   Screenshot,
+  SerializedError,
   TaskFailure,
 } from "@cappa/core";
-import {
-  CaptureRunner,
-  collectScreenshots,
-  ScreenshotFileSystem,
-  ScreenshotTool,
-} from "@cappa/core";
+import { LocalEngine } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
-import { DEFAULT_MAX_REGIONS, describeChanges } from "../utils/describeChanges";
+import {
+  DEFAULT_MAX_REGIONS,
+  describeChanges,
+  type ReportableScreenshot,
+} from "../utils/describeChanges";
 import { parseMaxRegions } from "../utils/parseMaxRegions";
+import {
+  type CaptureCliEngine,
+  connectToServer,
+  isRunInProgress,
+  RemoteServerError,
+} from "../utils/remoteEngine";
+import { resolveToken } from "../utils/server";
 
 async function executeOnFailCallback(
   config: Awaited<ReturnType<typeof getConfig>>,
-  groupedScreenshots: Screenshot[],
+  groupedScreenshots: ReportableScreenshot[],
+  { remote = false }: { remote?: boolean } = {},
 ): Promise<void> {
   const logger = getLogger();
 
@@ -29,23 +37,41 @@ async function executeOnFailCallback(
     return;
   }
 
-  const failingScreenshots: FailedScreenshot[] = groupedScreenshots
+  // The screenshots are on the host, not here, so resolving them against the
+  // local `outputDir` would hand the callback paths to files that do not exist.
+  // An upload of nothing is the one outcome worth ruling out, so the absolute
+  // fields are left undefined and the callback is told why — once, not per
+  // screenshot.
+  if (remote && groupedScreenshots.length > 0) {
+    logger.warn(
+      "Capturing against a remote server: onFail receives relative paths only, " +
+        "because the screenshot files live on the host rather than this machine.",
+    );
+  }
+
+  const resolveLocal = (relative: string | undefined) =>
+    !remote && relative ? path.resolve(config.outputDir, relative) : undefined;
+
+  // `interpretation` arrives opaque from a remote host, and `FailedScreenshot`
+  // types it as the diff engine's `InterpretResult`. The runtime shape is
+  // whatever the host's diff engine produced either way; a consumer that reads
+  // it should narrow, exactly as the changed-screenshot reporter does.
+  const failingScreenshots = (groupedScreenshots as Screenshot[])
     .filter((screenshot) => screenshot.category !== "passed")
-    .map((screenshot) => ({
-      ...screenshot,
-      absoluteActualPath:
-        "actualPath" in screenshot && screenshot.actualPath
-          ? path.resolve(config.outputDir, screenshot.actualPath)
-          : undefined,
-      absoluteExpectedPath:
-        "expectedPath" in screenshot && screenshot.expectedPath
-          ? path.resolve(config.outputDir, screenshot.expectedPath)
-          : undefined,
-      absoluteDiffPath:
-        "diffPath" in screenshot && screenshot.diffPath
-          ? path.resolve(config.outputDir, screenshot.diffPath)
-          : undefined,
-    }));
+    .map(
+      (screenshot): FailedScreenshot => ({
+        ...screenshot,
+        absoluteActualPath: resolveLocal(
+          "actualPath" in screenshot ? screenshot.actualPath : undefined,
+        ),
+        absoluteExpectedPath: resolveLocal(
+          "expectedPath" in screenshot ? screenshot.expectedPath : undefined,
+        ),
+        absoluteDiffPath: resolveLocal(
+          "diffPath" in screenshot ? screenshot.diffPath : undefined,
+        ),
+      }),
+    );
 
   if (failingScreenshots.length > 0) {
     logger.debug(
@@ -152,19 +178,45 @@ type CaptureOptions = {
   ci?: boolean;
   filter?: string;
   maxRegions?: number;
+  server?: string;
+  token?: string;
 };
 
+/**
+ * Close `closeable` and exit 130 on SIGINT/SIGTERM.
+ *
+ * Typed structurally rather than against a concrete class so it can be handed
+ * whatever owns the browser — that is the engine now, and a remote engine
+ * later, neither of which the CLI should have to special-case here.
+ */
 export function registerSignalHandlers(
-  screenshotTool: ScreenshotTool,
+  closeable: { close(): Promise<void> },
   exitFn: (code: number) => void = process.exit,
+  onSignal?: () => Promise<void>,
 ): () => void {
+  let handling = false;
+
   const handleSignal = async () => {
-    await screenshotTool.close();
+    // A second signal means the first teardown is taking too long — most likely
+    // waiting on a remote run to acknowledge cancellation. Leave immediately
+    // rather than making the user reach for `kill -9`, but say what that costs.
+    if (handling) {
+      getLogger().warn(
+        "Interrupted again — exiting now. The remote run may still be going.",
+      );
+      exitFn(130);
+      return;
+    }
+    handling = true;
+
+    await onSignal?.();
+    await closeable.close();
     exitFn(130);
   };
 
-  process.once("SIGINT", handleSignal);
-  process.once("SIGTERM", handleSignal);
+  // `on`, not `once`: a second Ctrl-C must reach the handler to force the exit.
+  process.on("SIGINT", handleSignal);
+  process.on("SIGTERM", handleSignal);
 
   return () => {
     process.off("SIGINT", handleSignal);
@@ -237,69 +289,211 @@ export function renderRunEvent(event: RunEvent): void {
   }
 }
 
-const runCapture = async (options: CaptureOptions = {}): Promise<void> => {
+/**
+ * Rebuild a throwable error from the run's serialized one.
+ *
+ * The engine flattens the error a plugin threw so it can cross a network
+ * boundary, but `capture` has always failed by letting that error escape — the
+ * stack is the only debugging signal for a plugin that blew up. Reinstating
+ * name, message and stack keeps that output intact.
+ */
+function toThrowable(error: SerializedError): Error {
+  const rebuilt = new Error(error.message);
+  rebuilt.name = error.name;
+  if (error.stack) {
+    rebuilt.stack = error.stack;
+  }
+  return rebuilt;
+}
+
+/**
+ * Subscribe to a run, render every event, and resolve when it terminates.
+ *
+ * Events buffered between `startRun` and this subscription are replayed
+ * synchronously, so nothing emitted during start-up is lost.
+ */
+async function renderRunToCompletion(
+  engine: CaptureCliEngine,
+  runId: string,
+  onEvent: (event: RunEvent) => void,
+): Promise<void> {
+  let unsubscribe: (() => void) | undefined;
+
+  try {
+    await new Promise<void>((resolve) => {
+      unsubscribe = engine.subscribeRun(runId, (event) => {
+        onEvent(event);
+
+        if (event.type === "run:complete" || event.type === "run:error") {
+          resolve();
+        }
+      });
+    });
+  } finally {
+    unsubscribe?.();
+  }
+}
+
+/** How long a `SIGINT` waits for a remote host to acknowledge cancellation. */
+const REMOTE_CANCEL_TIMEOUT_MS = 5000;
+
+export const runCapture = async (
+  options: CaptureOptions = {},
+): Promise<void> => {
   const logger = getLogger();
   const captureStart = performance.now();
 
   const config = await getConfig();
 
-  const screenshotTool = new ScreenshotTool({
-    outputDir: config.outputDir,
-    diff: config.diff,
-    retries: config.retries,
-    concurrency: config.concurrency,
-    logConsoleEvents: config.logConsoleEvents,
-    fullPage: config.screenshot?.fullPage ?? true,
-    viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
-    connectionTimeout: config.connectionTimeout,
-  });
+  const remote = options.server !== undefined;
 
-  const runner = new CaptureRunner({
-    screenshotTool,
-    plugins: (config.plugins || []) as unknown as RunnablePlugin[],
-    outputDir: config.outputDir,
-    fileSystem: new ScreenshotFileSystem(config.outputDir),
-  });
+  let engine: CaptureCliEngine;
 
-  const unsubscribe = runner.on(renderRunEvent);
-  const unregisterSignalHandlers = registerSignalHandlers(screenshotTool);
-
-  let captureError: unknown;
-
-  try {
-    await screenshotTool.init();
-
-    await runner.run({
-      filter: options.filter,
-      clearActual: true,
-    });
-  } catch (error) {
-    captureError = error;
-    throw error;
-  } finally {
-    unregisterSignalHandlers();
-    unsubscribe();
-    await screenshotTool.close();
+  // `--token` authenticates against a host. Without one it does nothing, and
+  // silently ignoring it is how a user ends up believing a capture was
+  // authenticated when it was never remote in the first place.
+  if (options.token && !options.server) {
+    logger.error("--token only applies with --server.");
+    process.exit(1);
+    return;
   }
 
-  const { failures, deletedScreenshots } = runner.getDetail();
-  const hasScreenshotFailure = runner.hasScreenshotFailure;
+  if (options.server) {
+    // The host loads its own `cappa.config.ts`: plugins are live closures and
+    // cannot be sent anywhere. Every capture setting in the local config —
+    // plugins, outputDir, diff, concurrency — belongs to the host instead, and
+    // a user who does not know that will wonder why theirs had no effect.
+    logger.info(
+      `Capturing on ${options.server}, which uses its own cappa.config.ts. Local capture settings do not apply.`,
+    );
+
+    try {
+      engine = await connectToServer({
+        server: options.server,
+        token: resolveToken(options.token),
+      });
+    } catch (error) {
+      if (error instanceof RemoteServerError) {
+        logger.error(error.message);
+        process.exit(1);
+        return;
+      }
+      throw error;
+    }
+  } else {
+    engine = new LocalEngine({
+      ...configToEngineOptions(config),
+      // A one-shot capture has no next run to keep a browser warm for, so hand
+      // it back as soon as the run ends rather than leaving an idle Chromium
+      // around for the rest of the process's life.
+      browserIdleTimeoutMs: 0,
+    });
+  }
 
   const isCi = options.ci || process.env.CI === "true";
 
-  // Read back the diff metadata sidecars once and reuse them for both the
-  // onFail callback and the changed-screenshot report below.
-  let groupedScreenshots: Screenshot[] = [];
-  if (!captureError && (isCi || hasScreenshotFailure)) {
-    try {
-      groupedScreenshots = await collectScreenshots(config.outputDir);
-    } catch (err) {
-      logger.warn("Could not collect screenshot results:", err);
+  let detail: RunDetail | undefined;
+  // Read the diff metadata sidecars once and reuse them for both the onFail
+  // callback and the changed-screenshot report below.
+  let groupedScreenshots: ReportableScreenshot[] = [];
+  let activeRunId: string | undefined;
+  let runCompleted: Promise<void> | undefined;
+
+  // Ctrl-C locally does not stop a run on another machine, so ask the host to
+  // cancel and wait for it to say it has.
+  //
+  // Waiting for the *terminal event* rather than for `cancelRun` to return is
+  // the point: closing the engine aborts the event stream, so returning early
+  // would tear down the connection while the host is still winding the run
+  // down — and the CLI would never learn whether it stopped. Bounded, because
+  // a wedged host must not hold the terminal hostage; a second signal skips
+  // the wait entirely.
+  const cancelRemoteRun = async () => {
+    if (!remote || !activeRunId) {
+      return;
     }
+
+    logger.info("Cancelling the remote run…");
+
+    try {
+      await engine.cancelRun(activeRunId);
+
+      await Promise.race([
+        runCompleted?.catch(() => undefined) ?? Promise.resolve(),
+        new Promise((resolve) => {
+          setTimeout(resolve, REMOTE_CANCEL_TIMEOUT_MS).unref?.();
+        }),
+      ]);
+    } catch (error) {
+      logger.debug("Error cancelling the remote run:", error);
+    }
+  };
+
+  const unregisterSignalHandlers = registerSignalHandlers(
+    engine,
+    process.exit,
+    cancelRemoteRun,
+  );
+
+  try {
+    let run: Awaited<ReturnType<CaptureCliEngine["startRun"]>>;
+
+    try {
+      run = await engine.startRun({
+        filter: options.filter,
+        clearActual: true,
+      });
+    } catch (error) {
+      // One run at a time is the host's deliberate design, not a fault, so it
+      // gets a sentence rather than a stack trace.
+      if (isRunInProgress(error)) {
+        const active = error.activeRunId ? ` (run ${error.activeRunId})` : "";
+        logger.error(
+          `${options.server} is already running a capture${active}. Wait for it to finish, or cancel it, and try again.`,
+        );
+        process.exit(1);
+        return;
+      }
+      throw error;
+    }
+
+    activeRunId = run.id;
+
+    runCompleted = renderRunToCompletion(engine, run.id, renderRunEvent);
+    await runCompleted;
+
+    detail = await engine.getRun(run.id);
+
+    const failedDuringRun = detail?.error !== undefined;
+    const hasFailure =
+      (detail?.failures.length ?? 0) > 0 ||
+      (detail?.deletedScreenshots.length ?? 0) > 0;
+
+    if (!failedDuringRun && (isCi || hasFailure)) {
+      try {
+        groupedScreenshots = await engine.listScreenshots();
+      } catch (err) {
+        logger.warn("Could not collect screenshot results:", err);
+      }
+    }
+  } finally {
+    unregisterSignalHandlers();
+    await engine.close();
   }
 
-  if (!captureError && isCi) {
-    await executeOnFailCallback(config, groupedScreenshots);
+  // A plugin that threw has always escaped this command rather than being
+  // summarised, and the browser is closed by the time it does.
+  if (detail?.error) {
+    throw toThrowable(detail.error);
+  }
+
+  const failures = detail?.failures ?? [];
+  const deletedScreenshots = detail?.deletedScreenshots ?? [];
+  const hasScreenshotFailure =
+    failures.length > 0 || deletedScreenshots.length > 0;
+
+  if (isCi) {
+    await executeOnFailCallback(config, groupedScreenshots, { remote });
   }
 
   const duration = formatDuration(performance.now() - captureStart);
@@ -349,6 +543,14 @@ export const registerCaptureCommand = (program: Command): void => {
       "maximum number of interpreted diff regions listed per changed screenshot (0 to disable)",
       parseMaxRegions,
       DEFAULT_MAX_REGIONS,
+    )
+    .option(
+      "--server <url>",
+      "capture against a `cappa serve` host instead of a local browser",
+    )
+    .option(
+      "--token <token>",
+      "access token for --server (falls back to CAPPA_TOKEN)",
     )
     .action(async (options: CaptureOptions) => {
       await runCapture(options);

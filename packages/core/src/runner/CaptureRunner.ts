@@ -195,39 +195,65 @@ export class CaptureRunner {
     this.startedAt = this.now();
     this.emit({ type: "run:start", request });
 
+    // For the duration of the run, the tool's own output becomes part of the
+    // event stream rather than going straight to whatever logger this process
+    // happens to have. That is what lets a client watching a remote run see
+    // "Screenshot saved" and the retry warnings at all.
+    this.attachToolLogSink();
+
     try {
-      if (request.clearActual ?? true) {
-        this.log("debug", `Cleaning output directory: ${this.outputDir}`);
-        this.fileSystem.clearActual();
-        this.fileSystem.clearDiff();
+      try {
+        if (request.clearActual ?? true) {
+          this.log("debug", `Cleaning output directory: ${this.outputDir}`);
+          this.fileSystem.clearActual();
+          this.fileSystem.clearDiff();
+        }
+
+        const pluginTasks = await this.discover(request);
+
+        if (!this.controller.signal.aborted) {
+          await this.execute(pluginTasks);
+        }
+      } catch (error) {
+        this.error = error;
+        this.state = "failed";
+        this.finishedAt = this.now();
+        this.emit({ type: "run:error", error: toSerializedError(error) });
+        throw error;
       }
 
-      const pluginTasks = await this.discover(request);
+      await this.collectDeleted();
 
-      if (!this.controller.signal.aborted) {
-        await this.execute(pluginTasks);
-      }
-    } catch (error) {
-      this.error = error;
-      this.state = "failed";
       this.finishedAt = this.now();
-      this.emit({ type: "run:error", error: toSerializedError(error) });
-      throw error;
+      this.state = this.controller.signal.aborted ? "cancelled" : "completed";
+
+      if (this.state === "cancelled") {
+        this.emit({ type: "run:cancelled" });
+      }
+
+      const summary = this.getSummary();
+      this.emit({ type: "run:complete", summary });
+
+      return this.getDetail();
+    } finally {
+      this.detachToolLogSink();
     }
+  }
 
-    await this.collectDeleted();
+  /**
+   * Route `ScreenshotTool`'s log output through this run's events.
+   *
+   * Guarded rather than called outright: tests inject minimal stand-ins for the
+   * tool, and a fake without the method should not fail a run.
+   */
+  private attachToolLogSink(): void {
+    this.screenshotTool.setLogSink?.((level, message, ...args) => {
+      this.log(level, message, ...args);
+    });
+  }
 
-    this.finishedAt = this.now();
-    this.state = this.controller.signal.aborted ? "cancelled" : "completed";
-
-    if (this.state === "cancelled") {
-      this.emit({ type: "run:cancelled" });
-    }
-
-    const summary = this.getSummary();
-    this.emit({ type: "run:complete", summary });
-
-    return this.getDetail();
+  private detachToolLogSink(): void {
+    this.screenshotTool.setLogSink?.(null);
   }
 
   private async discover(

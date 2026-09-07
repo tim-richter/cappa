@@ -1,5 +1,11 @@
 import path from "node:path";
-import type { DiffConfig, DiffOptions, Screenshot } from "@cappa/core";
+import type {
+  DiffConfig,
+  DiffOptions,
+  RunDetail,
+  RunEvent,
+  Screenshot,
+} from "@cappa/core";
 import {
   afterEach,
   beforeAll,
@@ -55,130 +61,201 @@ const localEngineInstances: Array<{
 vi.mock("@cappa/core", async (importOriginal) => {
   const actual = await importOriginal<typeof import("@cappa/core")>();
 
+  type EngineOptions = {
+    outputDir: string;
+    plugins: unknown[];
+    diff?: DiffOptions;
+    retries?: number;
+  };
+
+  class MockScreenshotTool {
+    options: unknown;
+    close: ReturnType<typeof vi.fn<() => Promise<void>>>;
+    init: ReturnType<typeof vi.fn<() => Promise<void>>>;
+    concurrency: number;
+    getPageFromPool: ReturnType<typeof vi.fn>;
+
+    constructor(options: unknown) {
+      this.options = options;
+      this.close = vi.fn<() => Promise<void>>();
+      this.init = vi.fn<() => Promise<void>>();
+      this.concurrency = 1;
+      this.getPageFromPool = vi.fn();
+      screenshotToolInstances.push(this);
+    }
+  }
+
+  class MockScreenshotFileSystem {
+    outputDir: string;
+    clearActual: ReturnType<typeof vi.fn>;
+    clearDiff: ReturnType<typeof vi.fn>;
+    approveFromActualPath: ReturnType<typeof vi.fn>;
+    approveScreenshots: ReturnType<typeof vi.fn>;
+    getActualScreenshots: ReturnType<typeof vi.fn>;
+    getDiffScreenshots: ReturnType<typeof vi.fn>;
+    getExpectedScreenshots: ReturnType<typeof vi.fn>;
+
+    constructor(outputDir: string) {
+      this.outputDir = outputDir;
+      this.clearActual = vi.fn();
+      this.clearDiff = vi.fn();
+      const approveFromActualPath = vi.fn().mockResolvedValue({
+        actualPath: "",
+        expectedPath: "",
+        diffPath: "",
+      });
+      this.approveFromActualPath = approveFromActualPath;
+      this.getActualScreenshots = vi.fn();
+      this.getDiffScreenshots = vi.fn();
+      this.getExpectedScreenshots = vi.fn();
+      this.approveScreenshots = vi.fn(
+        async (screenshots: Screenshot[], diff: DiffOptions) => {
+          const root = path.dirname(path.join(outputDir, "actual"));
+          for (const screenshot of screenshots) {
+            if (screenshot.category === "new") {
+              await approveFromActualPath(
+                path.resolve(root, screenshot.actualPath),
+              );
+            } else if (screenshot.category === "deleted") {
+              fsMock.unlinkSync(path.resolve(root, screenshot.expectedPath));
+            } else if (screenshot.category === "changed") {
+              fsMock.unlinkSync(path.resolve(root, screenshot.diffPath));
+              await approveFromActualPath(
+                path.resolve(root, screenshot.actualPath),
+              );
+            } else if (screenshot.category === "passed") {
+              if (!screenshot.expectedPath) {
+                throw new Error(
+                  "Expected path is required for passed screenshots",
+                );
+              }
+
+              const matches = await imagesMatchMock(
+                path.resolve(root, screenshot.actualPath),
+                path.resolve(root, screenshot.expectedPath),
+                diff.type === "gmsd"
+                  ? { threshold: diff.threshold }
+                  : (diff as DiffConfig),
+              );
+
+              if (!matches) {
+                await approveFromActualPath(
+                  path.resolve(root, screenshot.actualPath),
+                );
+              }
+            }
+          }
+        },
+      );
+      screenshotFileSystemInstances.push(this);
+    }
+  }
+
+  // `collectScreenshots` calls `groupScreenshots` through a relative import
+  // inside `@cappa/core`, so mocking the package export alone would not reach
+  // it. Re-implement the (tiny) glob-and-delegate here so both entry points
+  // route through the same spy.
+  const collectViaMocks = async (outputDir: string) => {
+    const listPngs = async (dir: string) =>
+      Array.fromAsync(await globMock(path.resolve(outputDir, dir, "**/*.png")));
+
+    const [actualScreenshots, expectedScreenshots, diffScreenshots] =
+      await Promise.all([
+        listPngs("actual"),
+        listPngs("expected"),
+        listPngs("diff"),
+      ]);
+
+    return groupScreenshotsMock(
+      actualScreenshots,
+      expectedScreenshots,
+      diffScreenshots,
+      outputDir,
+    );
+  };
+
   return {
     ...actual,
     groupScreenshots: (...args: unknown[]) => groupScreenshotsMock(...args),
-    // `collectScreenshots` calls `groupScreenshots` through a relative import
-    // inside `@cappa/core`, so mocking the package export alone would not reach
-    // it. Re-implement the (tiny) glob-and-delegate here so both entry points
-    // route through the same spy.
-    collectScreenshots: async (outputDir: string) => {
-      const listPngs = async (dir: string) =>
-        Array.fromAsync(
-          await globMock(path.resolve(outputDir, dir, "**/*.png")),
-        );
-
-      const [actualScreenshots, expectedScreenshots, diffScreenshots] =
-        await Promise.all([
-          listPngs("actual"),
-          listPngs("expected"),
-          listPngs("diff"),
-        ]);
-
-      return groupScreenshotsMock(
-        actualScreenshots,
-        expectedScreenshots,
-        diffScreenshots,
-        outputDir,
-      );
-    },
+    collectScreenshots: collectViaMocks,
+    // A functional stand-in rather than an inert double: it drives the *real*
+    // `CaptureRunner` over the mocked browser layer below, so the capture tests
+    // still exercise discovery, execution and deleted-baseline detection
+    // through the same code path the command now takes. The real `LocalEngine`
+    // cannot be used directly here because it reaches for `ScreenshotTool` and
+    // `ScreenshotFileSystem` through relative imports that this package-level
+    // mock does not intercept.
+    //
+    // The run is awaited inside `startRun` and its events buffered, so
+    // `subscribeRun` can replay them synchronously. The real engine buffers and
+    // replays too; doing it eagerly just makes the tests deterministic.
     LocalEngine: class {
-      options: unknown;
+      options: EngineOptions;
+      tool: MockScreenshotTool;
+      fileSystem: MockScreenshotFileSystem;
+      events: RunEvent[] = [];
+      detail: RunDetail | undefined;
       close: ReturnType<typeof vi.fn>;
 
-      constructor(options: unknown) {
+      constructor(options: EngineOptions) {
         this.options = options;
-        this.close = vi.fn();
+        this.tool = new MockScreenshotTool(options);
+        this.fileSystem = new MockScreenshotFileSystem(options.outputDir);
+        this.close = vi.fn(async () => {
+          await this.tool.close();
+        });
         localEngineInstances.push(this);
       }
-    },
-    ScreenshotTool: class {
-      options: unknown;
-      close: ReturnType<typeof vi.fn>;
-      init: ReturnType<typeof vi.fn>;
-      concurrency: number;
-      getPageFromPool: ReturnType<typeof vi.fn>;
 
-      constructor(options: unknown) {
-        this.options = options;
-        this.close = vi.fn();
-        this.init = vi.fn();
-        this.concurrency = 1;
-        this.getPageFromPool = vi.fn();
-        screenshotToolInstances.push(this);
-      }
-    },
-    ScreenshotFileSystem: class {
-      outputDir: string;
-      clearActual: ReturnType<typeof vi.fn>;
-      clearDiff: ReturnType<typeof vi.fn>;
-      approveFromActualPath: ReturnType<typeof vi.fn>;
-      approveScreenshots: ReturnType<typeof vi.fn>;
-      getActualScreenshots: ReturnType<typeof vi.fn>;
-      getDiffScreenshots: ReturnType<typeof vi.fn>;
-      getExpectedScreenshots: ReturnType<typeof vi.fn>;
-
-      constructor(outputDir: string) {
-        this.outputDir = outputDir;
-        this.clearActual = vi.fn();
-        this.clearDiff = vi.fn();
-        const approveFromActualPath = vi.fn().mockResolvedValue({
-          actualPath: "",
-          expectedPath: "",
-          diffPath: "",
+      async startRun(request: Record<string, unknown>) {
+        const runner = new actual.CaptureRunner({
+          screenshotTool: this.tool as never,
+          plugins: this.options.plugins as never,
+          outputDir: this.options.outputDir,
+          fileSystem: this.fileSystem as never,
         });
-        this.approveFromActualPath = approveFromActualPath;
-        this.getActualScreenshots = vi.fn();
-        this.getDiffScreenshots = vi.fn();
-        this.getExpectedScreenshots = vi.fn();
-        this.approveScreenshots = vi.fn(
-          async (screenshots: Screenshot[], diff: DiffOptions) => {
-            const root = path.dirname(path.join(outputDir, "actual"));
-            for (const screenshot of screenshots) {
-              if (screenshot.category === "new") {
-                await approveFromActualPath(
-                  path.resolve(root, screenshot.actualPath),
-                );
-              } else if (screenshot.category === "deleted") {
-                fsMock.unlinkSync(path.resolve(root, screenshot.expectedPath));
-              } else if (screenshot.category === "changed") {
-                fsMock.unlinkSync(path.resolve(root, screenshot.diffPath));
-                await approveFromActualPath(
-                  path.resolve(root, screenshot.actualPath),
-                );
-              } else if (screenshot.category === "passed") {
-                if (!screenshot.expectedPath) {
-                  throw new Error(
-                    "Expected path is required for passed screenshots",
-                  );
-                }
 
-                const matches = await imagesMatchMock(
-                  path.resolve(root, screenshot.actualPath),
-                  path.resolve(root, screenshot.expectedPath),
-                  diff.type === "gmsd"
-                    ? { threshold: diff.threshold }
-                    : (diff as DiffConfig),
-                );
+        runner.on((entry) => {
+          this.events.push(entry);
+        });
 
-                if (!matches) {
-                  await approveFromActualPath(
-                    path.resolve(root, screenshot.actualPath),
-                  );
-                }
-              }
-            }
-          },
-        );
-        screenshotFileSystemInstances.push(this);
+        await this.tool.init();
+
+        try {
+          this.detail = await runner.run(request);
+        } catch {
+          // Mirrors the real engine: the failure is on the event stream and in
+          // the detail, so it is not re-thrown out of `startRun`.
+          this.detail = runner.getDetail();
+        }
+
+        return runner.getSummary();
+      }
+
+      subscribeRun(_id: string, onEvent: (entry: RunEvent) => void) {
+        for (const entry of this.events) {
+          onEvent(entry);
+        }
+        return () => {};
+      }
+
+      async getRun() {
+        return this.detail;
+      }
+
+      async listScreenshots() {
+        return collectViaMocks(this.options.outputDir);
       }
     },
+    ScreenshotTool: MockScreenshotTool,
+    ScreenshotFileSystem: MockScreenshotFileSystem,
   };
 });
 
 const createLoggerInstance = () => ({
   level: 4,
   debug: vi.fn(),
+  log: vi.fn(),
   info: vi.fn(),
   success: vi.fn(),
   error: vi.fn(),
@@ -270,6 +347,7 @@ beforeEach(() => {
   screenshotFileSystemInstances.length = 0;
   serverInstances.length = 0;
   localEngineInstances.length = 0;
+  createServerMock.mockClear();
   globMock.mockReset();
   globMock.mockImplementation(() => Promise.resolve([]));
   loadConfigMock.mockReset();
@@ -290,6 +368,7 @@ afterEach(() => {
   process.argv = [...originalArgv];
   process.exitCode = undefined;
   delete process.env.CI;
+  delete process.env.CAPPA_TOKEN;
 });
 
 describe("cappa CLI", () => {
@@ -826,6 +905,7 @@ describe("cappa CLI", () => {
     expect(createServerMock).toHaveBeenCalledWith({
       engine: localEngineInstances[0],
       isProd: true,
+      ui: true,
       outputDir: path.resolve("/tmp/screens"),
       logger: true,
       theme: "light",
@@ -945,6 +1025,134 @@ describe("cappa CLI", () => {
         .map(([message]) => String(message))
         .filter((message) => message.includes("Review UI available at")),
     ).toHaveLength(0);
+  });
+
+  const serveConfig = () => {
+    loadConfigMock.mockResolvedValue({
+      filepath: "cappa.config.ts",
+      config: {},
+    });
+    getConfigMock.mockResolvedValue({
+      outputDir: "/tmp/screens",
+      plugins: [],
+      diff: {},
+      screenshot: {},
+      review: { theme: "light", port: 4000 },
+    });
+  };
+
+  test("serve starts a server with the UI on by default", async () => {
+    serveConfig();
+
+    process.argv = ["node", "cappa", "serve"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ ui: true, readOnly: false, token: undefined }),
+    );
+    expect(serverInstances[0]?.listen).toHaveBeenCalledWith({
+      port: 4000,
+      host: "127.0.0.1",
+    });
+    expect(loggerInstance.log).toHaveBeenCalledWith(
+      expect.stringContaining("cappa serve listening"),
+    );
+  });
+
+  test("serve --no-ui serves the API without registering the UI", async () => {
+    serveConfig();
+
+    process.argv = ["node", "cappa", "serve", "--no-ui"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ ui: false }),
+    );
+    // Nothing points a human at a URL when there is no UI to open.
+    expect(
+      loggerInstance.info.mock.calls
+        .map(([message]) => String(message))
+        .filter((message) => message.includes("Review UI available at")),
+    ).toHaveLength(0);
+  });
+
+  test("serve requires a token off loopback and never generates one", async () => {
+    serveConfig();
+    process.exit = vi.fn() as unknown as typeof process.exit;
+
+    process.argv = ["node", "cappa", "serve", "--host", "0.0.0.0"];
+    await run();
+
+    expect(process.exit).toHaveBeenCalledWith(1);
+    expect(createServerMock).not.toHaveBeenCalled();
+
+    const message = String(loggerInstance.error.mock.calls[0]?.[0]);
+    expect(message).toContain("--token");
+    expect(message).toContain("CAPPA_TOKEN");
+  });
+
+  test("serve accepts an explicit token off loopback", async () => {
+    serveConfig();
+
+    process.argv = [
+      "node",
+      "cappa",
+      "serve",
+      "--host",
+      "0.0.0.0",
+      "--token",
+      "secret",
+    ];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "secret" }),
+    );
+  });
+
+  test("serve reads the token from CAPPA_TOKEN", async () => {
+    serveConfig();
+    process.env.CAPPA_TOKEN = "from-env";
+
+    process.argv = ["node", "cappa", "serve", "--host", "0.0.0.0"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "from-env" }),
+    );
+  });
+
+  test("serve off loopback is allowed without a token when read-only", async () => {
+    serveConfig();
+
+    process.argv = [
+      "node",
+      "cappa",
+      "serve",
+      "--host",
+      "0.0.0.0",
+      "--read-only",
+    ];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ readOnly: true, token: undefined }),
+    );
+  });
+
+  test("review reads the token from CAPPA_TOKEN instead of generating one", async () => {
+    serveConfig();
+    process.env.CAPPA_TOKEN = "from-env";
+
+    process.argv = ["node", "cappa", "review", "--host", "0.0.0.0"];
+    await run();
+
+    expect(createServerMock).toHaveBeenCalledWith(
+      expect.objectContaining({ token: "from-env" }),
+    );
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "Review UI available at http://0.0.0.0:4000?token=from-env",
+    );
   });
 
   test("approve command copies filtered screenshots and cleans diffs", async () => {

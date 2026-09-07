@@ -1,0 +1,40 @@
+$ cappa capture
+
+i Found 4 tasks for FixturePlugin
+√ Screenshot saved: <repo>/scripts/capture-parity/projects/fixture/.screenshots/actual/alpha.png
+i [1/4] captured fixture-alpha
+√ Screenshot saved: <repo>/scripts/capture-parity/projects/fixture/.screenshots/actual/beta.png
+i [2/4] captured fixture-beta
+√ Screenshot saved: <repo>/scripts/capture-parity/projects/fixture/.screenshots/actual/gamma.png
+i [3/4] captured fixture-gamma
+√ Screenshot saved: <repo>/scripts/capture-parity/projects/fixture/.screenshots/actual/delta.png
+i [4/4] captured fixture-delta
+
+ ERROR  Plugin FixturePlugin completed with failures: 4 results
+
+
+ ╭───────────────────────────Failed Screenshots─────────────────────────────╮
+ │                                                                          │
+ │  Total failures: 4                                                       │
+ │                                                                          │
+ │                                                                          │
+ │  Plugin: FixturePlugin                                                   │
+ │                                                                          │
+ │    Task ID: fixture-alpha                                                │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: fixture-beta                                                 │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: fixture-gamma                                                │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ │    Task ID: fixture-delta                                                │
+ │    Status: New screenshot (no baseline — run 'cappa approve' to accept)  │
+ │                                                                          │
+ ╰──────────────────────────────────────────────────────────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

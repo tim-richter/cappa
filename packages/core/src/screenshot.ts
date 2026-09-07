@@ -19,6 +19,7 @@ import {
   type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
 import { ScreenshotFileSystem } from "./filesystem";
+import type { RunLogLevel } from "./runner/types";
 import type {
   DiffConfig,
   DiffConfigGMSD,
@@ -102,6 +103,37 @@ export interface ScreenshotCaptureExtras {
   captureStart?: number;
 }
 
+/** The logger surface `ScreenshotTool` actually uses. */
+export type ScreenshotLogger = Pick<
+  Logger,
+  "debug" | "info" | "warn" | "error" | "success"
+>;
+
+/** Receives this tool's log output instead of the global logger. */
+export type ScreenshotLogSink = (
+  level: RunLogLevel,
+  message: string,
+  ...args: unknown[]
+) => void;
+
+const LOG_SINK_LEVELS = [
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "success",
+] as const satisfies readonly RunLogLevel[];
+
+/** A logger-shaped object that forwards every call to `sink`. */
+const toSinkLogger = (sink: ScreenshotLogSink): ScreenshotLogger =>
+  Object.fromEntries(
+    LOG_SINK_LEVELS.map((level) => [
+      level,
+      (message: unknown, ...args: unknown[]) =>
+        sink(level, String(message), ...args),
+    ]),
+  ) as ScreenshotLogger;
+
 class ScreenshotTool {
   browserType: "chromium" | "firefox" | "webkit";
   headless: boolean;
@@ -115,12 +147,21 @@ class ScreenshotTool {
   contexts: BrowserContext[] = [];
   pages: Page[] = [];
   diff: DiffOptions;
-  logger: Logger;
+  /**
+   * Where this tool's own output goes.
+   *
+   * Normally the global logger. While a `CaptureRunner` owns the tool it is
+   * swapped for a shim that forwards into the run's event stream instead — see
+   * `setLogSink`.
+   */
+  logger: ScreenshotLogger;
   retries: number;
   filesystem: ScreenshotFileSystem;
   logConsoleEvents: boolean;
   connectionTimeout: number;
   private defaultUserAgent = "";
+  /** The real logger, kept so `setLogSink(null)` restores the same instance. */
+  private readonly baseLogger: ScreenshotLogger;
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -144,9 +185,26 @@ class ScreenshotTool {
     this.logConsoleEvents = options.logConsoleEvents ?? true;
     this.connectionTimeout = options.connectionTimeout ?? 20000;
 
-    this.logger = getLogger();
+    this.baseLogger = getLogger();
+    this.logger = this.baseLogger;
     this.retries = options.retries || 2;
     this.filesystem = new ScreenshotFileSystem(this.outputDir);
+  }
+
+  /**
+   * Send this tool's own log output to `sink` instead of the global logger.
+   *
+   * `ScreenshotTool` writes lines a user expects to see — "Screenshot saved",
+   * "Screenshot passed visual comparison", the retry warnings — straight to the
+   * logger. That is fine in-process and useless over a network: with the
+   * browser on another machine those lines would stay in the *host's* terminal
+   * while the client showed a run with no commentary. A `CaptureRunner` installs
+   * a sink for the duration of a run so they travel as `log` events instead.
+   *
+   * Pass `null` to restore the real logger.
+   */
+  setLogSink(sink: ScreenshotLogSink | null): void {
+    this.logger = sink ? toSinkLogger(sink) : this.baseLogger;
   }
 
   private resolveDiffOptions(diff?: DiffOptions): DiffOptions {

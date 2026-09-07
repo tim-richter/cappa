@@ -1,0 +1,14 @@
+$ cappa capture --filter fixture-nothing-*
+
+i Found 4 tasks for FixturePlugin
+
+ ╭──────────────────Filter Active─────────────────────╮
+ │                                                    │
+ │  Only capturing tasks matching: fixture-nothing-*  │
+ │                                                    │
+ ╰────────────────────────────────────────────────────╯
+
+i FixturePlugin: 0/4 tasks match filter
+√ All plugins completed successfully in <duration>
+
+--- exit code: 0

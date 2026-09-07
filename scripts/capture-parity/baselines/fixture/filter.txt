@@ -1,0 +1,31 @@
+$ cappa capture --filter fixture-b*
+
+i Found 4 tasks for FixturePlugin
+
+ ╭───────────────Filter Active─────────────────╮
+ │                                             │
+ │  Only capturing tasks matching: fixture-b*  │
+ │                                             │
+ ╰─────────────────────────────────────────────╯
+
+i FixturePlugin: 1/4 tasks match filter
+√ Screenshot passed visual comparison
+i [1/1] captured fixture-beta
+√ Plugin FixturePlugin completed: 1 results
+
+ ╭─Failed Screenshots───╮
+ │                      │
+ │  Total failures: 3   │
+ │                      │
+ │                      │
+ │  Deleted baselines:  │
+ │    Name: alpha       │
+ │    Name: delta       │
+ │    Name: gamma       │
+ │                      │
+ ╰──────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

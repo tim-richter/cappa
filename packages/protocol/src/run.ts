@@ -117,7 +117,13 @@ export const runDetailSchema = runSummarySchema.extend({
 
 export type RunDetail = z.infer<typeof runDetailSchema>;
 
-export const runLogLevelSchema = z.enum(["debug", "info", "warn", "error"]);
+export const runLogLevelSchema = z.enum([
+  "debug",
+  "info",
+  "warn",
+  "error",
+  "success",
+]);
 
 export type RunLogLevel = z.infer<typeof runLogLevelSchema>;
 

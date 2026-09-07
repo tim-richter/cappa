@@ -1,0 +1,15 @@
+$ cappa capture --filter example-nothing--*
+
+o Found 8 stories to screenshot...
+i Found 8 tasks for StorybookPlugin
+
+ ╭───────────────────Filter Active─────────────────────╮
+ │                                                     │
+ │  Only capturing tasks matching: example-nothing--*  │
+ │                                                     │
+ ╰─────────────────────────────────────────────────────╯
+
+i StorybookPlugin: 0/8 tasks match filter
+√ All plugins completed successfully in <duration>
+
+--- exit code: 0

@@ -124,3 +124,48 @@ describe("token auth", () => {
     expect((await app.inject({ url: "/api/health" })).statusCode).toBe(200);
   });
 });
+
+describe("the review UI", () => {
+  // `uiRoot` points at a directory that exists so `@fastify/static` can
+  // register; what matters here is whether it is registered at all.
+  const uiRoot = "tests";
+
+  it("is not served when ui is false", async () => {
+    const app = await build({ ui: false, uiRoot });
+
+    const response = await app.inject({ method: "GET", url: "/" });
+
+    // No static root and no SPA fallback: `/` is just an unknown route.
+    expect(response.statusCode).toBe(404);
+  });
+
+  it("still answers /api/* when ui is false", async () => {
+    const app = await build({ ui: false, uiRoot });
+
+    const response = await app.inject({ method: "GET", url: "/api/health" });
+
+    expect(response.statusCode).toBe(200);
+    expect(response.json().ok).toBe(true);
+  });
+
+  it("is served when ui is true even outside prod", async () => {
+    const app = await build({ ui: true, isProd: false, uiRoot });
+
+    const response = await app.inject({ method: "GET", url: "/api/health" });
+
+    expect(response.statusCode).toBe(200);
+    // The SPA fallback is registered, so an unknown API route is a JSON 404
+    // rather than the index page.
+    const missing = await app.inject({ method: "GET", url: "/api/nope" });
+    expect(missing.statusCode).toBe(404);
+    expect(missing.json()).toEqual({ error: "not found" });
+  });
+
+  it("follows isProd when ui is not set", async () => {
+    const app = await build({ isProd: false, uiRoot });
+
+    const response = await app.inject({ method: "GET", url: "/" });
+
+    expect(response.statusCode).toBe(404);
+  });
+});

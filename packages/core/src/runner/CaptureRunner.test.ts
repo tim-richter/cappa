@@ -440,3 +440,97 @@ describe("CaptureRunner page pool", () => {
     ).toBe(true);
   });
 });
+
+describe("screenshot tool log forwarding", () => {
+  /** A fake tool that records sink installs and can log through the current one. */
+  const createLoggingTool = () => {
+    const installs: Array<((...args: never[]) => void) | null> = [];
+    let sink:
+      | ((level: string, message: string, ...args: unknown[]) => void)
+      | null = null;
+
+    const tool = {
+      outputDir: "/out",
+      concurrency: 1,
+      getPageFromPool: vi.fn((index: number) => ({ page: index })),
+      setLogSink: vi.fn((next: typeof sink) => {
+        sink = next;
+        installs.push(next as never);
+      }),
+      /** Stands in for `this.logger.success(...)` inside the real tool. */
+      emit: (level: string, message: string, ...args: unknown[]) =>
+        sink?.(level, message, ...args),
+      get sink() {
+        return sink;
+      },
+      installs,
+    };
+
+    return tool;
+  };
+
+  it("turns the tool's own output into log events during a run", async () => {
+    const tool = createLoggingTool();
+    const plugin = createPlugin({
+      tasks: [task("a")],
+      execute: vi.fn(async () => {
+        // What `ScreenshotTool` does while capturing.
+        tool.emit("success", "Screenshot saved: /out/actual/a.png");
+        tool.emit("warn", "Comparison did not match. Retrying in 1000ms...");
+        return { filepath: "a.png", success: true };
+      }),
+    });
+
+    const { runner, events } = createRunner([plugin], {
+      screenshotTool: tool as unknown as ScreenshotTool,
+    });
+
+    await runner.run();
+
+    const logs = events
+      .filter((event) => event.type === "log")
+      .map((event) => ({ level: event.level, message: event.message }));
+
+    expect(logs).toEqual(
+      expect.arrayContaining([
+        {
+          level: "success",
+          message: "Screenshot saved: /out/actual/a.png",
+        },
+        {
+          level: "warn",
+          message: "Comparison did not match. Retrying in 1000ms...",
+        },
+      ]),
+    );
+  });
+
+  it("detaches the sink when the run finishes", async () => {
+    const tool = createLoggingTool();
+    const { runner } = createRunner([createPlugin({ tasks: [task("a")] })], {
+      screenshotTool: tool as unknown as ScreenshotTool,
+    });
+
+    await runner.run();
+
+    expect(tool.sink).toBeNull();
+    expect(tool.installs.at(0)).toBeTypeOf("function");
+    expect(tool.installs.at(-1)).toBeNull();
+  });
+
+  it("detaches the sink when the run throws", async () => {
+    const tool = createLoggingTool();
+    const plugin = createPlugin({ tasks: [task("a")] });
+    vi.mocked(plugin.discover).mockRejectedValue(new Error("boom"));
+
+    const { runner } = createRunner([plugin], {
+      screenshotTool: tool as unknown as ScreenshotTool,
+    });
+
+    await expect(runner.run()).rejects.toThrow("boom");
+
+    // A tool left pointing at a finished run's event stream would silently
+    // swallow everything it logged afterwards.
+    expect(tool.sink).toBeNull();
+  });
+});

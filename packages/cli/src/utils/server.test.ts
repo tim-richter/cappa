@@ -17,7 +17,7 @@ vi.mock("@cappa/logger", () => ({
   initLogger: () => loggerInstance,
 }));
 
-import { registerShutdownHandlers } from "./review";
+import { registerShutdownHandlers } from "./server";
 
 describe("registerShutdownHandlers", () => {
   let unregister: (() => void) | undefined;

@@ -1,0 +1,60 @@
+$ cappa capture
+
+o Found 8 stories to screenshot...
+i Found 8 tasks for StorybookPlugin
+√ Screenshot passed visual comparison
+√ Screenshot passed visual comparison
+i [1/8] captured example-button--primary
+√ Screenshot passed visual comparison
+i [2/8] captured example-button--secondary
+√ Screenshot passed visual comparison
+i [3/8] captured example-button--large
+
+ WARN  Skipping story Example/Button - Small
+
+i [4/8] captured example-button--small
+
+ WARN  Comparison did not match. Retrying in <duration>... 
+Comparison result: 3021 pixels different (0.15%)
+
+
+ ERROR  Failed to match screenshot after 2 retries
+
+
+ ERROR  Screenshot failed visual comparison
+
+i [5/8] captured example-header--logged-in
+√ Screenshot passed visual comparison
+i [6/8] captured example-header--logged-out
+√ Screenshot passed visual comparison
+i [7/8] captured example-page--logged-out
+√ Screenshot passed visual comparison
+i [8/8] captured example-page--logged-in
+
+ ERROR  Plugin StorybookPlugin completed with failures: 8 results
+
+
+ ╭──────────Failed Screenshots────────────╮
+ │                                        │
+ │  Total failures: 1                     │
+ │                                        │
+ │                                        │
+ │  Plugin: StorybookPlugin               │
+ │                                        │
+ │    Task ID: example-header--logged-in  │
+ │    Story: Example/Header - Logged In   │
+ │    Status: Failed (comparison failed)  │
+ │                                        │
+ ╰────────────────────────────────────────╯
+
+
+ ╭───Changed Screenshots─────╮
+ │                           │
+ │  example/header/loggedin  │
+ │                           │
+ ╰───────────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

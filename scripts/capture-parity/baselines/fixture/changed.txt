@@ -1,0 +1,47 @@
+$ cappa capture
+
+i Found 4 tasks for FixturePlugin
+√ Screenshot passed visual comparison
+i [1/4] captured fixture-alpha
+
+ WARN  Comparison did not match. Retrying in <duration>... 
+Comparison result: 11594 pixels different (0.56%)
+
+
+ ERROR  Failed to match screenshot after 2 retries
+
+
+ ERROR  Screenshot failed visual comparison
+
+i [2/4] captured fixture-beta
+√ Screenshot passed visual comparison
+i [3/4] captured fixture-gamma
+√ Screenshot passed visual comparison
+i [4/4] captured fixture-delta
+
+ ERROR  Plugin FixturePlugin completed with failures: 4 results
+
+
+ ╭──────────Failed Screenshots────────────╮
+ │                                        │
+ │  Total failures: 1                     │
+ │                                        │
+ │                                        │
+ │  Plugin: FixturePlugin                 │
+ │                                        │
+ │    Task ID: fixture-beta               │
+ │    Status: Failed (comparison failed)  │
+ │                                        │
+ ╰────────────────────────────────────────╯
+
+
+ ╭─Changed Screenshots───╮
+ │                       │
+ │  beta                 │
+ │                       │
+ ╰───────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1

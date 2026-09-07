@@ -4,8 +4,19 @@ import { getPlugins, isPromise } from "./getPlugins";
 import type { ConfigResult } from "./loadConfig";
 import { loadConfig } from "./loadConfig";
 
-export type ResolvedUserConfig = Required<Omit<UserConfig, "onFail">> &
-  Pick<UserConfig, "onFail">;
+/**
+ * A config with every default applied.
+ *
+ * `review` is spelled out rather than left to the shallow `Required` above:
+ * `getConfig` fills all three of its fields, so callers should not have to
+ * re-apply defaults that have already been applied.
+ */
+export type ResolvedUserConfig = Required<
+  Omit<UserConfig, "onFail" | "review">
+> &
+  Pick<UserConfig, "onFail"> & {
+    review: Required<NonNullable<UserConfig["review"]>>;
+  };
 
 export type GetConfigOptions = {
   /**

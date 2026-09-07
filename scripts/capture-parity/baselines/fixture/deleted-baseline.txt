@@ -1,0 +1,27 @@
+$ cappa capture
+
+i Found 4 tasks for FixturePlugin
+√ Screenshot passed visual comparison
+i [1/4] captured fixture-alpha
+√ Screenshot passed visual comparison
+i [2/4] captured fixture-beta
+√ Screenshot passed visual comparison
+i [3/4] captured fixture-gamma
+√ Screenshot passed visual comparison
+i [4/4] captured fixture-delta
+√ Plugin FixturePlugin completed: 4 results
+
+ ╭──Failed Screenshots────╮
+ │                        │
+ │  Total failures: 1     │
+ │                        │
+ │                        │
+ │  Deleted baselines:    │
+ │    Name: removed-page  │
+ │                        │
+ ╰────────────────────────╯
+
+
+ ERROR  One or more screenshots failed in <duration>. See report above for details.
+
+--- exit code: 1
