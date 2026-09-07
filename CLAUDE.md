@@ -21,8 +21,11 @@ cappa/
 │   ├── server/        # Fastify server that serves the review UI (@cappa/server)
 │   └── web/           # React + Vite review UI (private, not published)
 ├── packages/
-│   ├── core/          # @cappa/core — ScreenshotTool, filesystem, diff algorithms, types
+│   ├── core/          # @cappa/core — ScreenshotTool, capture engine/runner, filesystem, diff algorithms, types
 │   ├── cli/           # @cappa/cli — CLI entry point (commander), config loading, commands
+│   ├── protocol/      # @cappa/protocol — the wire contract (zod schemas + types) shared by server, client and web
+│   ├── client/        # @cappa/client — typed fetch/SSE client implementing CaptureEngine over HTTP
+│   ├── config/        # @cappa/config — cappa.config.ts loading (jiti), shared by the CLI and the server
 │   ├── logger/        # @cappa/logger — shared logging via consola
 │   ├── ui/            # @workspace/ui — shared React component library (Radix + Tailwind)
 │   ├── config-ts/     # @cappa/config-ts — shared TypeScript configs
@@ -133,12 +136,21 @@ export default defineConfig({
 
 ```
 <outputDir>/
-├── actual/     # freshly captured screenshots (cleared before each run)
-├── expected/   # approved baseline screenshots
-└── diff/       # diff images for changed screenshots (cleared before each run)
+├── actual/                # freshly captured screenshots (cleared before each run)
+├── expected/              # approved baseline screenshots
+├── diff/                  # diff images for changed screenshots (cleared before each run)
+└── .cappa-manifest.json   # screenshot name → the capture task that produced it
 ```
 
 Screenshot categories: `new`, `deleted`, `changed`, `passed`.
+
+The manifest exists because a screenshot's name is a filename a plugin chose and a task id
+is that plugin's own address for it — `@cappa/plugin-storybook` writes
+`example/button/primary.png` for task `example-button--primary`. `CaptureRunner` records
+the link as it captures, and `collectScreenshots` folds it back in as `taskId`, which is
+what makes re-capturing a single screenshot from the review UI possible. It is optional
+everywhere: a screenshot with no entry simply has no `taskId`, and nothing may fall back
+to `name`.
 
 ## Development Workflows
 
@@ -222,8 +234,8 @@ pnpm release      # builds all + changeset publish
 
 ## Package Publishing
 
-Published packages: `@cappa/core`, `@cappa/cli`, `@cappa/logger`, `@cappa/server`, `@cappa/plugin-storybook`, `@cappa/plugin-pages`
+Published packages: `@cappa/core`, `@cappa/cli`, `@cappa/logger`, `@cappa/server`, `@cappa/protocol`, `@cappa/client`, `@cappa/config`, `@cappa/plugin-storybook`, `@cappa/plugin-pages`
 
-All packages use dual ESM/CJS output and are validated with `attw --profile node16`.
+All library packages use dual ESM/CJS output and are validated with `attw --profile node16`. `@cappa/server` is the exception: it ships ESM only, so it has no `attw` script.
 
 Build artifacts go to `dist/`. The `bin/cappa.cjs` file in `@cappa/cli` is the pre-built CLI entry point.

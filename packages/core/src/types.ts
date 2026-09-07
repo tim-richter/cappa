@@ -280,6 +280,21 @@ export type Screenshot = {
   id: string;
   name: string;
   approved?: boolean;
+  /**
+   * The capture task that produced this screenshot, read back from the capture
+   * manifest.
+   *
+   * A screenshot's name is a filename a plugin chose; a task id is that
+   * plugin's own address for the thing it captured, and the two are unrelated
+   * (Storybook writes `example/button/primary` for task
+   * `example-button--primary`). Only a run can record the link, so this is
+   * absent for anything captured before the manifest existed — a consumer that
+   * needs a task id, such as re-capturing a single screenshot, must handle it
+   * being missing rather than falling back to `name`.
+   */
+  taskId?: string;
+  /** Plugin that owns `taskId`. Absent whenever `taskId` is. */
+  plugin?: string;
 } & (NewScreenshot | DeletedScreenshot | ChangedScreenshot | PassedScreenshot);
 
 export type FailedScreenshot = Screenshot & {

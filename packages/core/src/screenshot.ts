@@ -116,6 +116,15 @@ export type ScreenshotLogSink = (
   ...args: unknown[]
 ) => void;
 
+/**
+ * Notified whenever this tool writes a screenshot.
+ *
+ * `page` identifies the caller: a run captures several tasks in parallel, one
+ * per pooled page, so the page is the only thing that ties a filename back to
+ * the task that asked for it.
+ */
+export type ScreenshotCaptureSink = (page: Page, filename: string) => void;
+
 const LOG_SINK_LEVELS = [
   "debug",
   "info",
@@ -162,6 +171,8 @@ class ScreenshotTool {
   private defaultUserAgent = "";
   /** The real logger, kept so `setLogSink(null)` restores the same instance. */
   private readonly baseLogger: ScreenshotLogger;
+  /** Set while a `CaptureRunner` owns this tool — see `setCaptureSink`. */
+  private captureSink: ScreenshotCaptureSink | null = null;
 
   constructor(options: {
     browserType?: "chromium" | "firefox" | "webkit";
@@ -205,6 +216,21 @@ class ScreenshotTool {
    */
   setLogSink(sink: ScreenshotLogSink | null): void {
     this.logger = sink ? toSinkLogger(sink) : this.baseLogger;
+  }
+
+  /**
+   * Report every screenshot this tool writes to `sink`.
+   *
+   * A `CaptureRunner` installs one for the duration of a run so it can record
+   * which task produced which file. Nothing else can know: a plugin picks the
+   * filename inside `execute` and is free to derive it from the task however
+   * it likes, so the only reliable observation point is the write itself —
+   * which also catches variants, whose filenames the plugin never states.
+   *
+   * Pass `null` to stop reporting.
+   */
+  setCaptureSink(sink: ScreenshotCaptureSink | null): void {
+    this.captureSink = sink;
   }
 
   private resolveDiffOptions(diff?: DiffOptions): DiffOptions {
@@ -774,6 +800,15 @@ class ScreenshotTool {
 
     const duration = Math.round(performance.now() - start);
     this.logger.debug(`${filename} captured in ${duration}ms`);
+
+    // Reported after the capture, so a task that threw on the way here does not
+    // claim a file it never wrote. A failing sink is the observer's problem and
+    // must not fail the capture.
+    try {
+      this.captureSink?.(page, filename);
+    } catch {
+      // ignored
+    }
 
     return result;
   }

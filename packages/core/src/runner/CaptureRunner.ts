@@ -1,8 +1,14 @@
 import { randomUUID } from "node:crypto";
+import { relative } from "node:path";
 import { ScreenshotFileSystem } from "../filesystem";
 import { mapWithConcurrency } from "../mapWithConcurrency";
 import type { PluginTask } from "../plugin";
 import type ScreenshotTool from "../screenshot";
+import {
+  recordCaptureOrigins,
+  type ScreenshotOrigin,
+  toManifestKey,
+} from "../screenshots/manifest";
 import {
   didScreenshotFail,
   filterTasks,
@@ -81,6 +87,16 @@ export class CaptureRunner {
   private readonly taskRecords = new Map<string, TaskRecord>();
   private readonly failures: TaskFailure[] = [];
   private started = false;
+
+  /**
+   * Which task currently owns each pooled page.
+   *
+   * Tasks run concurrently, one per page, so the page is what disambiguates
+   * the capture sink's reports. Populated only while a task is executing.
+   */
+  private readonly taskByPage = new Map<unknown, ScreenshotOrigin>();
+  /** Screenshot name → the task that captured it, for the capture manifest. */
+  private readonly capturedOrigins = new Map<string, ScreenshotOrigin>();
 
   constructor(options: CaptureRunnerOptions) {
     this.screenshotTool = options.screenshotTool;
@@ -200,6 +216,7 @@ export class CaptureRunner {
     // happens to have. That is what lets a client watching a remote run see
     // "Screenshot saved" and the retry warnings at all.
     this.attachToolLogSink();
+    this.attachToolCaptureSink();
 
     try {
       try {
@@ -224,6 +241,12 @@ export class CaptureRunner {
 
       await this.collectDeleted();
 
+      // Before the terminal event, not after: consumers refresh their
+      // screenshot index the moment they see `run:complete`, and a manifest
+      // written after that would leave the re-capture button dark until the
+      // next refresh.
+      await this.persistCaptureOrigins();
+
       this.finishedAt = this.now();
       this.state = this.controller.signal.aborted ? "cancelled" : "completed";
 
@@ -237,6 +260,11 @@ export class CaptureRunner {
       return this.getDetail();
     } finally {
       this.detachToolLogSink();
+      this.detachToolCaptureSink();
+      // Runs after the terminal event on purpose: a cancelled or failed run
+      // still captured something, and the origins it did record are what make
+      // those screenshots re-capturable.
+      await this.persistCaptureOrigins();
     }
   }
 
@@ -254,6 +282,76 @@ export class CaptureRunner {
 
   private detachToolLogSink(): void {
     this.screenshotTool.setLogSink?.(null);
+  }
+
+  /**
+   * Record which task produces which screenshot file.
+   *
+   * Guarded like the log sink: tests inject minimal tool stand-ins, and one
+   * without the method must not fail a run — it only loses the manifest.
+   */
+  private attachToolCaptureSink(): void {
+    this.screenshotTool.setCaptureSink?.((page, filename) => {
+      const origin = this.taskByPage.get(page);
+      if (origin) {
+        this.capturedOrigins.set(toManifestKey(filename), origin);
+      }
+    });
+  }
+
+  private detachToolCaptureSink(): void {
+    this.screenshotTool.setCaptureSink?.(null);
+    this.taskByPage.clear();
+  }
+
+  /**
+   * Write what this run learned about screenshot origins.
+   *
+   * Idempotent, because it is called once on the happy path and again from
+   * `run`'s `finally` for the paths that never reach it. Existing entries are
+   * preserved and only names that no longer exist on disk are dropped, so a
+   * run of one task does not erase every other screenshot's origin.
+   */
+  private async persistCaptureOrigins(): Promise<void> {
+    if (this.capturedOrigins.size === 0) {
+      return;
+    }
+
+    const origins = Object.fromEntries(this.capturedOrigins);
+    this.capturedOrigins.clear();
+
+    let knownNames: string[] | undefined;
+    try {
+      const [actual, expected] = await Promise.all([
+        this.fileSystem.getActualScreenshots(),
+        this.fileSystem.getExpectedScreenshots(),
+      ]);
+      knownNames = [
+        ...actual.map((file) =>
+          toManifestKey(relative(this.fileSystem.getActualDir(), file)),
+        ),
+        ...expected.map((file) =>
+          toManifestKey(relative(this.fileSystem.getExpectedDir(), file)),
+        ),
+      ];
+    } catch {
+      // Could not enumerate what exists, so prune nothing rather than
+      // discarding entries that are probably still valid.
+      knownNames = undefined;
+    }
+
+    const written = await recordCaptureOrigins(
+      this.outputDir,
+      origins,
+      knownNames,
+    );
+
+    if (!written) {
+      this.log(
+        "debug",
+        "Could not write the capture manifest; re-capturing a single screenshot may be unavailable.",
+      );
+    }
   }
 
   private async discover(
@@ -400,12 +498,21 @@ export class CaptureRunner {
           });
 
           const taskStart = this.now();
-          const result = await plugin.execute(
-            task,
-            page,
-            this.screenshotTool,
-            context,
-          );
+          // Claim the page for this task so the capture sink can attribute the
+          // files written during `execute` — including variants, whose
+          // filenames only the tool ever sees.
+          this.taskByPage.set(page, { taskId: task.id, plugin: plugin.name });
+          let result: unknown;
+          try {
+            result = await plugin.execute(
+              task,
+              page,
+              this.screenshotTool,
+              context,
+            );
+          } finally {
+            this.taskByPage.delete(page);
+          }
           const durationMs = this.now() - taskStart;
 
           completedTasks++;

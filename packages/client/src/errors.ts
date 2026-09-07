@@ -35,6 +35,20 @@ export class RunInProgressError extends CappaHttpError {
   }
 }
 
+/**
+ * The server requires an access token and did not get a usable one.
+ *
+ * Its own class because it is the one error a caller must not retry: the token
+ * is not going to appear on its own, and retrying turns "you need the token
+ * from the printed URL" into ten seconds of a blank, still-loading page.
+ */
+export class UnauthorizedError extends CappaHttpError {
+  constructor(message: string, body?: ErrorResponse) {
+    super(message, 401, body);
+    this.name = "UnauthorizedError";
+  }
+}
+
 /** The request named task ids the server never discovered. */
 export class UnknownTargetsError extends CappaHttpError {
   readonly taskIds: string[];
@@ -89,6 +103,11 @@ export const toClientError = (
   }
   if (body?.code === ERROR_CODES.unknownTargets) {
     return new UnknownTargetsError(message, body);
+  }
+  // By status rather than by code: the auth hook rejects before any route runs,
+  // so there is no cappa error code on the response to key off.
+  if (status === 401) {
+    return new UnauthorizedError(message, body);
   }
 
   return new CappaHttpError(message, status, body);

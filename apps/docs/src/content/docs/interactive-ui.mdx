@@ -38,6 +38,21 @@ Every screenshot's detail page has a **Re-capture** button. It runs that one tas
 leaves every other result untouched, which makes the tighten-a-diff loop short: change
 your component, re-capture, look at the diff, approve.
 
+The button needs to know which capture task produced the screenshot, and that is not
+something a filename can tell it — `@cappa/plugin-storybook` writes
+`example/button/primary.png` for the task `example-button--primary`. Cappa records the
+link as it captures, in a `.cappa-manifest.json` beside `actual/` and `expected/`. So the
+button appears once a screenshot has been captured at least once by this version of
+cappa, and is hidden for anything older until the next run. The file is small, safe to
+commit and safe to delete — deleting it only hides the button until the next capture.
+
+## Picking up a run you did not start
+
+The capture page reads the run in flight from the server rather than remembering its own,
+so reloading mid-capture reattaches to the same run — progress, task table and log intact
+— and a `cappa capture` running in another terminal shows up here too, with the capture
+controls disabled until it finishes.
+
 ## One run at a time
 
 The server captures one run at a time — the browser pool is the real constraint, and a
@@ -80,11 +95,16 @@ Cappa generates one and prints it as part of the URL. Pass your own with `--toke
 if you would rather choose it. Every `/api/*` request needs it — the whole UI, not just the
 capture page.
 
+The URL is printed with `localhost` as its host even when you bound to `0.0.0.0`, because
+a wildcard is an address to listen on and not one a browser can open. Replace it with the
+machine's own hostname when opening the UI from somewhere else.
+
 Open the URL the server printed and the UI takes care of the token from there. It keeps it
 for the tab, so reloading or navigating still works once the token has left the address
 bar — and it removes it from the address bar as soon as it has been read, to keep it out of
 bookmarks, screenshots and the referer header. A new tab needs the printed URL again: the
-token is not stored beyond the tab it was opened in.
+token is not stored beyond the tab it was opened in — open one without the token and the
+UI says so rather than sitting on an empty screen.
 
 A request can only capture tasks that discovery produced — the UI selects from that list
 and never supplies a URL of its own — so a client cannot point the browser somewhere

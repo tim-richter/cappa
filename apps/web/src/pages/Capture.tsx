@@ -1,8 +1,9 @@
 import type { StartRunRequest } from "@cappa/protocol";
 import { toast } from "@ui/lib/utils";
-import { type FC, useState } from "react";
+import { type FC, useEffect, useState } from "react";
 import {
   describeStartRunError,
+  useActiveRun,
   useCancelRun,
   usePlugins,
   useRunEvents,
@@ -28,9 +29,28 @@ export const Capture: FC = () => {
 
   const startRun = useStartRun();
   const cancelRun = useCancelRun();
+
+  // The engine runs one capture at a time and the run id lives on the server,
+  // so "is a run in flight" is a question to ask it rather than something to
+  // remember. Without this a reload — or a `cappa capture` in another terminal
+  // — leaves the page showing an idle panel whose only possible outcome is a
+  // 409.
+  const activeRun = useActiveRun();
+  const activeRunId = activeRun?.id;
+
+  useEffect(() => {
+    if (activeRunId !== undefined && activeRunId !== runId) {
+      setRunId(activeRunId);
+    }
+  }, [activeRunId, runId]);
+
   const run = useRunEvents(runId);
 
-  const isRunActive = runId !== undefined && !isRunFinished(run.state);
+  // Kept once adopted, so the finished run's tasks and log stay on screen after
+  // it drops out of the active list.
+  const isRunActive =
+    activeRun !== undefined ||
+    (runId !== undefined && !isRunFinished(run.state));
 
   if (config?.readOnly) {
     return (

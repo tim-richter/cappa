@@ -23,6 +23,9 @@ const screenshots: Screenshot[] = [
     actualPath: "actual/Screenshot 3.png",
     expectedPath: "expected/Screenshot 3.png",
     diffPath: "diff/Screenshot 3.png",
+    // Unlike the name, as every real plugin's task ids are.
+    taskId: "screenshot-3--changed",
+    plugin: "StorybookPlugin",
   },
   {
     name: "Screenshot 4",
@@ -80,6 +83,8 @@ describe("GET /api/screenshots", () => {
         actualPath: "/assets/screenshots/actual/Screenshot 3.png",
         expectedPath: "/assets/screenshots/expected/Screenshot 3.png",
         diffPath: "/assets/screenshots/diff/Screenshot 3.png",
+        taskId: "screenshot-3--changed",
+        plugin: "StorybookPlugin",
         next: "4",
         prev: "2",
       },
@@ -167,6 +172,28 @@ describe("GET /api/screenshots/:id", () => {
     expect((await app.inject({ url: "/api/screenshots/99" })).statusCode).toBe(
       404,
     );
+  });
+
+  it("carries the originating task through to the client", async () => {
+    // `transform` spreads the engine's screenshot, so this is really a guard
+    // against the field being dropped: the review UI's re-capture button needs
+    // a task id, and a screenshot name is not one.
+    const { app } = await build();
+
+    const response = await app.inject({ url: "/api/screenshots/3" });
+
+    expect(response.json()).toMatchObject({
+      taskId: "screenshot-3--changed",
+      plugin: "StorybookPlugin",
+    });
+  });
+
+  it("leaves the task off a screenshot that has none", async () => {
+    const { app } = await build();
+
+    expect(
+      (await app.inject({ url: "/api/screenshots/1" })).json(),
+    ).not.toHaveProperty("taskId");
   });
 });
 

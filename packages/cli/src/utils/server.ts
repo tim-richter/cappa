@@ -87,6 +87,21 @@ export type RunningServer = {
   unregisterShutdownHandlers: () => void;
 };
 
+/** Wildcard binds: addresses to listen on, never addresses to open. */
+const WILDCARD_HOSTS = new Set(["0.0.0.0", "::", "[::]"]);
+
+/**
+ * The host to put in the URL a person is expected to click.
+ *
+ * A wildcard bind is the common way to expose the UI, and printing it verbatim
+ * produced `http://0.0.0.0:4801?token=…` — an address no browser will open,
+ * handed to a user who then cannot reach their own review UI. `localhost` is
+ * reachable on every interface the wildcard covers, so it is the right thing to
+ * show; a specific host is printed as given, because that one is meaningful.
+ */
+export const toDisplayHost = (host: string): string =>
+  isLoopbackHost(host) || WILDCARD_HOSTS.has(host) ? "localhost" : host;
+
 /**
  * Build an engine, wrap it in a server, and start listening.
  *
@@ -127,7 +142,7 @@ export async function startServer(
 
   await server.listen({ port, host });
 
-  const displayHost = isLoopbackHost(host) ? "localhost" : host;
+  const displayHost = toDisplayHost(host);
   const query = token ? `?token=${token}` : "";
 
   return {

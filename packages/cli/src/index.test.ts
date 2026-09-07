@@ -1150,8 +1150,10 @@ describe("cappa CLI", () => {
     expect(createServerMock).toHaveBeenCalledWith(
       expect.objectContaining({ token: "from-env" }),
     );
+    // `localhost`, not the bind address: `0.0.0.0` is somewhere to listen, not
+    // somewhere a browser can go, and this URL exists to be opened.
     expect(loggerInstance.success).toHaveBeenCalledWith(
-      "Review UI available at http://0.0.0.0:4000?token=from-env",
+      "Review UI available at http://localhost:4000?token=from-env",
     );
   });
 

@@ -59,7 +59,12 @@ export function ScreenshotComparison({
   const { data: config } = useServerConfig();
   // A read-only server refuses approval with a 403, so the control and its
   // shortcut are both withheld rather than offered and failed.
-  const canApprove = !config?.readOnly;
+  //
+  // Withheld until the server has actually answered, too: defaulting to
+  // "allowed" while `/api/config` is in flight put a live approve button and a
+  // live `a` shortcut on screen for as long as that request took, on exactly
+  // the servers that refuse them.
+  const canApprove = config !== undefined && !config.readOnly;
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
@@ -190,7 +195,7 @@ export function ScreenshotComparison({
 
         {/* Right side */}
         <div className="flex items-center gap-4 justify-end">
-          <RecaptureButton taskId={screenshot.name} />
+          <RecaptureButton taskId={screenshot.taskId} />
 
           {!screenshot.approved && canApprove && (
             <Tooltip>

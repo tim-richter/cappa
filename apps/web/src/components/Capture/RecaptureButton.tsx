@@ -9,6 +9,7 @@ import { Camera, Loader2 } from "lucide-react";
 import { type FC, useEffect, useState } from "react";
 import {
   describeStartRunError,
+  useActiveRun,
   useRecapture,
   useRunEvents,
   useServerConfig,
@@ -17,10 +18,15 @@ import { isRunFinished } from "@/api/runState";
 
 export interface RecaptureButtonProps {
   /**
-   * The task id to re-capture. This is the *task* id from discovery, which for
-   * every shipped plugin is the screenshot name.
+   * The task id to re-capture, as `discover` produced it.
+   *
+   * Explicitly *not* the screenshot name: the two are unrelated for most
+   * plugins (Storybook writes `example/button/primary` for the task
+   * `example-button--primary`), and passing a name here is how this button
+   * used to fail with `CAPPA_UNKNOWN_TARGETS` on every Storybook screenshot.
+   * `undefined` for a screenshot the engine has no recorded task for.
    */
-  taskId: string;
+  taskId: string | undefined;
   label?: string;
   size?: "sm" | "md";
 }
@@ -29,7 +35,10 @@ export interface RecaptureButtonProps {
  * Re-capture a single screenshot: a run of one.
  *
  * Hidden on a read-only server, where capture routes are refused anyway —
- * better to not offer the button than to offer one that 403s.
+ * better to not offer the button than to offer one that 403s. Hidden for the
+ * same reason when the screenshot has no known task: a screenshot captured
+ * before this version, or by a plugin that did not go through a run, cannot be
+ * addressed and the request would be rejected.
  */
 export const RecaptureButton: FC<RecaptureButtonProps> = ({
   taskId,
@@ -41,8 +50,14 @@ export const RecaptureButton: FC<RecaptureButtonProps> = ({
   const [runId, setRunId] = useState<string>();
   const run = useRunEvents(runId);
 
+  // Any run holds the engine, not just one this button started, so a run
+  // begun elsewhere has to disable it too — otherwise the only feedback is a
+  // 409 toast.
+  const activeRun = useActiveRun();
+
   const finished = runId !== undefined && isRunFinished(run.state);
-  const busy = isPending || (runId !== undefined && !finished);
+  const busy =
+    isPending || (runId !== undefined && !finished) || activeRun !== undefined;
 
   useEffect(() => {
     if (!runId || !finished) {
@@ -58,7 +73,10 @@ export const RecaptureButton: FC<RecaptureButtonProps> = ({
     setRunId(undefined);
   }, [runId, finished, run.state, run.error, taskId]);
 
-  if (config?.readOnly) {
+  // `config === undefined` means the server has not answered yet, and a
+  // read-only server refuses capture with a 403 — so the button waits to be
+  // told it is allowed rather than assuming it.
+  if (config === undefined || config.readOnly || taskId === undefined) {
     return null;
   }
 

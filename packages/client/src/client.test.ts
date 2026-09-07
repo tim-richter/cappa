@@ -11,6 +11,7 @@ import {
   CappaHttpError,
   ProtocolMismatchError,
   RunInProgressError,
+  UnauthorizedError,
   UnknownTargetsError,
 } from "./errors";
 
@@ -353,9 +354,73 @@ describe("RemoteEngine protocol handshake", () => {
 
     expect(calls).toHaveLength(1);
   });
+
+  it("does not cache a failed handshake", async () => {
+    // A 401 handshake used to be cached like a successful one, so the first
+    // unauthenticated call poisoned every later call for the lifetime of the
+    // client — including ones made after the token arrived.
+    const { doFetch } = fakeFetch({
+      "/api/health": [
+        { status: 401, body: { error: "Unauthorized" } },
+        {
+          body: {
+            ok: true,
+            protocolVersion: PROTOCOL_VERSION,
+            capabilities: { capture: true, approve: true, events: true },
+          },
+        },
+      ],
+      "/api/plugins": { body: [] },
+    });
+    const client = createClient({ baseUrl: "http://server", fetch: doFetch });
+
+    await expect(client.listPlugins()).rejects.toBeInstanceOf(
+      UnauthorizedError,
+    );
+    await expect(client.listPlugins()).resolves.toEqual([]);
+  });
+
+  it("still caches a version mismatch, which cannot resolve itself", async () => {
+    const { doFetch, calls } = fakeFetch({
+      "/api/health": {
+        body: {
+          ok: true,
+          protocolVersion: PROTOCOL_VERSION + 1,
+          capabilities: { capture: true, approve: true, events: true },
+        },
+      },
+      "/api/plugins": { body: [] },
+    });
+    const client = createClient({ baseUrl: "http://server", fetch: doFetch });
+
+    await expect(client.listPlugins()).rejects.toBeInstanceOf(
+      ProtocolMismatchError,
+    );
+    await expect(client.listPlugins()).rejects.toBeInstanceOf(
+      ProtocolMismatchError,
+    );
+
+    expect(
+      calls.filter((call) => call.url.endsWith("/api/health")),
+    ).toHaveLength(1);
+  });
 });
 
 describe("RemoteEngine errors", () => {
+  it("maps a 401 onto UnauthorizedError", async () => {
+    // By status, not by an error code: the server's auth hook rejects before
+    // any route runs, so the body carries no cappa code to key off.
+    const { doFetch } = fakeFetch({
+      "/api/health": { status: 401, body: { error: "Unauthorized" } },
+    });
+    const client = createClient({ baseUrl: "http://server", fetch: doFetch });
+
+    const error = await client.health().catch((caught) => caught);
+
+    expect(error).toBeInstanceOf(UnauthorizedError);
+    expect(error.status).toBe(401);
+  });
+
   it("maps a 409 onto RunInProgressError", async () => {
     const { client } = build({
       "/api/runs": {

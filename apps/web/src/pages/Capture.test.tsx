@@ -1,5 +1,6 @@
 import { HttpResponse, http } from "msw";
 import { describe, expect, it } from "vitest";
+import { mockRunSummary, runsHandler } from "../mocks/capture";
 import { server } from "../test/setup";
 import { renderPage } from "../test/utils";
 import { Capture } from "./Capture";
@@ -121,5 +122,41 @@ describe("Capture page", () => {
     await screen.getByRole("button", { name: "Start capture" }).click();
 
     await expect.element(screen.getByText("discovery blew up")).toBeVisible();
+  });
+
+  /**
+   * The engine runs one capture at a time and the run id lives on the server,
+   * so the page has to ask rather than remember. Before this, a reload during a
+   * capture — or a `cappa capture` in another terminal — showed an idle panel
+   * whose Start button could only ever produce a 409.
+   */
+  describe("a run this page did not start", () => {
+    it("re-attaches to a capture already in flight", async () => {
+      server.use(runsHandler([mockRunSummary]));
+
+      const screen = await renderPage(<Capture />, { route: "/capture" });
+
+      // No click: the page adopts the active run and replays its stream.
+      await expect.element(screen.getByText("Completed")).toBeVisible();
+      await expect.element(screen.getByText("3 of 3 captured")).toBeVisible();
+    });
+
+    it("does not offer a start button that could only 409", async () => {
+      server.use(runsHandler([mockRunSummary]));
+
+      const screen = await renderPage(<Capture />, { route: "/capture" });
+
+      await expect
+        .element(screen.getByRole("button", { name: "Run in progress" }))
+        .toBeDisabled();
+    });
+
+    it("leaves the panel usable when nothing is running", async () => {
+      const screen = await renderPage(<Capture />, { route: "/capture" });
+
+      await expect
+        .element(screen.getByRole("button", { name: "Start capture" }))
+        .toBeEnabled();
+    });
   });
 });
