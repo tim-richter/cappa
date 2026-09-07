@@ -24,7 +24,14 @@ import {
   toDiffMetaPath,
 } from "./filesystem";
 import { mapWithConcurrency } from "./mapWithConcurrency";
-import type { Plugin, PluginDef, PluginFunction, PluginTask } from "./plugin";
+import type {
+  Plugin,
+  PluginDef,
+  PluginFunction,
+  PluginTask,
+  PluginWatch,
+  PluginWatchResolve,
+} from "./plugin";
 import {
   CaptureRunner,
   type CaptureRunnerOptions,
@@ -147,6 +154,8 @@ export {
   type PluginFunction,
   type PluginInfo,
   type PluginTask,
+  type PluginWatch,
+  type PluginWatchResolve,
   type RunDetail,
   type RunEvent,
   type RunEventListener,

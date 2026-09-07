@@ -1,4 +1,4 @@
-import type { PluginTask } from "../plugin";
+import type { PluginTask, PluginWatch } from "../plugin";
 
 /**
  * Lifecycle of a single capture run.
@@ -248,4 +248,6 @@ export type RunnablePlugin = {
     context: any,
   ) => Promise<unknown>;
   initPage?: (page: any, screenshotTool: any) => Promise<unknown>;
+  /** How this plugin maps a changed file onto tasks. Absent means "cannot". */
+  watch?: PluginWatch;
 };

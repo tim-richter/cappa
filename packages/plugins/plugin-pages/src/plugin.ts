@@ -38,6 +38,12 @@ export const cappaPluginPages: Plugin<PagesPluginOptions> = (options) => {
     name: "PagesPlugin",
     description: "Takes screenshots of a list of URLs",
 
+    // No `watch`: a task here is a URL, and the source behind it lives in a dev
+    // server this plugin knows nothing about — there is no file-to-task mapping
+    // to give. Watch mode therefore re-captures every page whenever anything in
+    // the watched set changes, which is honest rather than precise. A plugin
+    // that guessed would quietly miss the regression it was asked to catch.
+
     discover: async () => {
       if (!options) {
         throw new Error("Pages plugin options are required");
