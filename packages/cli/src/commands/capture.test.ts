@@ -3,6 +3,7 @@ import type {
   RunEvent,
   Screenshot,
   ScreenshotTool,
+  WatchEvent,
 } from "@cappa/core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
@@ -27,7 +28,14 @@ vi.mock("chalk", () => {
   const identity = (value: string) => value;
   return {
     __esModule: true,
-    default: { cyan: identity, red: identity, bold: identity, dim: identity },
+    default: {
+      cyan: identity,
+      red: identity,
+      bold: identity,
+      dim: identity,
+      green: identity,
+      yellow: identity,
+    },
   };
 });
 
@@ -51,11 +59,15 @@ vi.mock("@cappa/core", () => ({
 }));
 
 import {
+  describeWatchChange,
   formatDuration,
   formatProgress,
   registerSignalHandlers,
+  registerWatchSignalHandlers,
   renderRunEvent,
+  renderWatchRunEvent,
   runCapture,
+  summarizeRunDetail,
 } from "./capture";
 
 const event = <T extends RunEvent["type"]>(
@@ -476,5 +488,375 @@ describe("runCapture", () => {
     expect(onFail).toHaveBeenCalledWith([
       expect.objectContaining({ name: "home" }),
     ]);
+  });
+});
+
+const watchEvent = (
+  type: WatchEvent["type"],
+  rest: Record<string, unknown> = {},
+): WatchEvent => ({ type, seq: 1, at: 0, ...rest }) as unknown as WatchEvent;
+
+/** A fake engine that can also watch, and lets a test push watch events. */
+const makeWatchingEngine = (
+  options: Parameters<typeof makeFakeEngine>[0] = {},
+) => {
+  const engine = makeFakeEngine(options);
+  const listeners: ((event: WatchEvent) => void)[] = [];
+
+  return {
+    ...engine,
+    startWatch: vi.fn().mockResolvedValue({
+      active: true,
+      paths: ["."],
+      debounceMs: 300,
+    }),
+    stopWatch: vi.fn().mockResolvedValue(undefined),
+    subscribeWatch: vi.fn((onEvent: (event: WatchEvent) => void) => {
+      listeners.push(onEvent);
+      return vi.fn();
+    }),
+    emitWatch: (event: WatchEvent) => {
+      for (const listener of listeners) {
+        listener(event);
+      }
+    },
+  };
+};
+
+describe("describeWatchChange", () => {
+  it("names the number of tasks and the file that changed", () => {
+    expect(
+      describeWatchChange(
+        watchEvent("watch:change", {
+          files: ["src/Button.stories.tsx"],
+          scope: "tasks",
+          taskIds: ["a", "b", "c"],
+        }) as never,
+      ),
+    ).toBe("↻ 3 tasks · src/Button.stories.tsx changed");
+  });
+
+  it("says when a plugin could not attribute the change", () => {
+    expect(
+      describeWatchChange(
+        watchEvent("watch:change", {
+          files: ["src/Button.tsx"],
+          scope: "plugins",
+        }) as never,
+      ),
+    ).toContain("every task of the affected plugin(s)");
+  });
+
+  it("summarises a burst of files rather than listing them", () => {
+    expect(
+      describeWatchChange(
+        watchEvent("watch:change", {
+          files: ["a.ts", "b.ts", "c.ts"],
+          scope: "all",
+        }) as never,
+      ),
+    ).toBe("↻ everything · 3 files changed");
+  });
+});
+
+describe("summarizeRunDetail", () => {
+  it("reports a clean iteration", () => {
+    expect(
+      summarizeRunDetail(
+        {
+          totalTasks: 3,
+          completedTasks: 3,
+          failures: [],
+          deletedScreenshots: [],
+        } as unknown as RunDetail,
+        "1.20s",
+      ),
+    ).toBe("3/3 captured, all passing — 1.20s");
+  });
+
+  it("counts failures and deleted baselines as things to review", () => {
+    expect(
+      summarizeRunDetail(
+        {
+          totalTasks: 3,
+          completedTasks: 3,
+          failures: [{}, {}],
+          deletedScreenshots: ["gone.png"],
+        } as unknown as RunDetail,
+        "1.20s",
+      ),
+    ).toBe("3/3 captured, 3 to review — 1.20s");
+  });
+});
+
+describe("renderWatchRunEvent", () => {
+  beforeEach(() => {
+    for (const fn of Object.values(loggerInstance)) {
+      if (typeof fn === "function") {
+        (fn as ReturnType<typeof vi.fn>).mockReset();
+      }
+    }
+  });
+
+  it("says nothing about a task that passed", () => {
+    renderWatchRunEvent(
+      event("task:complete", {
+        plugin: "pages",
+        taskId: "home",
+        url: "http://localhost/",
+        status: "passed",
+        completed: 1,
+        total: 1,
+        durationMs: 5,
+      }),
+    );
+
+    expect(loggerInstance.info).not.toHaveBeenCalled();
+  });
+
+  it("reports a task that changed", () => {
+    renderWatchRunEvent(
+      event("task:complete", {
+        plugin: "pages",
+        taskId: "home",
+        url: "http://localhost/",
+        status: "changed",
+        completed: 1,
+        total: 1,
+        durationMs: 5,
+      }),
+    );
+
+    expect(loggerInstance.info).toHaveBeenCalledWith("  changed home");
+  });
+
+  it("keeps warnings and errors, and drops debug chatter", () => {
+    renderWatchRunEvent(
+      event("log", { level: "debug", message: "noise", args: [] }),
+    );
+    renderWatchRunEvent(
+      event("log", { level: "warn", message: "retrying", args: [] }),
+    );
+
+    expect(loggerInstance.debug).not.toHaveBeenCalled();
+    expect(loggerInstance.warn).toHaveBeenCalledWith("retrying");
+  });
+});
+
+describe("registerWatchSignalHandlers", () => {
+  let unregister: (() => void) | undefined;
+
+  afterEach(() => {
+    unregister?.();
+    unregister = undefined;
+  });
+
+  const settle = () => new Promise((resolve) => setImmediate(resolve));
+
+  it("stops the session and exits 0 — quitting a watch is not a failure", async () => {
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const exit = vi.fn();
+    unregister = registerWatchSignalHandlers(stop, exit);
+
+    process.emit("SIGINT");
+    await settle();
+
+    expect(stop).toHaveBeenCalledOnce();
+    expect(exit).toHaveBeenCalledWith(0);
+  });
+
+  it("leaves immediately on a second signal", async () => {
+    const stop = vi.fn(() => new Promise<void>(() => {}));
+    const exit = vi.fn();
+    unregister = registerWatchSignalHandlers(stop, exit);
+
+    process.emit("SIGINT");
+    await settle();
+    expect(exit).not.toHaveBeenCalled();
+
+    process.emit("SIGINT");
+    await settle();
+    expect(exit).toHaveBeenCalledWith(0);
+    expect(stop).toHaveBeenCalledOnce();
+  });
+
+  it("does nothing after unregister", () => {
+    const stop = vi.fn().mockResolvedValue(undefined);
+    const exit = vi.fn();
+    registerWatchSignalHandlers(stop, exit)();
+
+    process.emit("SIGINT");
+
+    expect(stop).not.toHaveBeenCalled();
+    expect(exit).not.toHaveBeenCalled();
+  });
+});
+
+describe("runCapture --watch", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+
+  beforeEach(() => {
+    for (const fn of Object.values(loggerInstance)) {
+      if (typeof fn === "function") {
+        (fn as ReturnType<typeof vi.fn>).mockReset();
+      }
+    }
+
+    getConfigMock.mockClear();
+    getConfigMock.mockResolvedValue({ outputDir: "screenshots" });
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
+    delete process.env.CI;
+  });
+
+  const settle = (times = 4) =>
+    Array.from({ length: times }).reduce<Promise<void>>(
+      (promise) =>
+        promise.then(() => new Promise((resolve) => setImmediate(resolve))),
+      Promise.resolve(),
+    );
+
+  it("refuses --watch with --server, because a host cannot see local files", async () => {
+    await runCapture({ watch: true, server: "http://host:3000" });
+
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      expect.stringContaining("--watch cannot be combined with --server"),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    // Not even the config is read for an invocation that cannot work.
+    expect(getConfigMock).not.toHaveBeenCalled();
+  });
+
+  it("refuses --watch with --ci", async () => {
+    await runCapture({ watch: true, ci: true });
+
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      expect.stringContaining("--watch cannot be combined with --ci"),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("captures once, then watches with the same filter", async () => {
+    const engine = makeWatchingEngine({});
+    engineRef.current = engine;
+
+    const capture = runCapture({ watch: true, filter: "Button/*" });
+    await settle();
+
+    expect(engine.startRun).toHaveBeenCalledWith({
+      filter: "Button/*",
+      clearActual: true,
+    });
+    expect(engine.startWatch).toHaveBeenCalledWith({ filter: "Button/*" });
+    // The engine — and its warm browser — has to outlive the first run.
+    expect(engine.close).not.toHaveBeenCalled();
+
+    process.emit("SIGINT");
+    await capture;
+
+    expect(engine.stopWatch).toHaveBeenCalledOnce();
+    expect(engine.close).toHaveBeenCalledOnce();
+    expect(exitSpy).toHaveBeenCalledWith(0);
+  });
+
+  it("renders each iteration and its summary", async () => {
+    const engine = makeWatchingEngine({
+      detail: { totalTasks: 1, completedTasks: 1 } as Partial<RunDetail>,
+    });
+    engineRef.current = engine;
+
+    const capture = runCapture({ watch: true });
+    await settle();
+
+    engine.emitWatch(
+      watchEvent("watch:change", {
+        files: ["src/Button.stories.tsx"],
+        scope: "tasks",
+        taskIds: ["button--primary"],
+        runId: "run-2",
+      }),
+    );
+    await settle();
+
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      "↻ 1 task · src/Button.stories.tsx changed",
+    );
+    expect(loggerInstance.info).toHaveBeenCalledWith(
+      expect.stringContaining("1/1 captured, all passing"),
+    );
+
+    process.emit("SIGINT");
+    await capture;
+  });
+
+  it("reports a run it could not start, and keeps watching", async () => {
+    const engine = makeWatchingEngine({});
+    engineRef.current = engine;
+
+    const capture = runCapture({ watch: true });
+    await settle();
+
+    engine.emitWatch(
+      watchEvent("watch:change", {
+        files: ["a.tsx"],
+        scope: "all",
+        error: "A capture run is already in progress (run-9)",
+      }),
+    );
+    await settle();
+
+    expect(loggerInstance.warn).toHaveBeenCalledWith(
+      expect.stringContaining("Could not start a run"),
+    );
+    expect(exitSpy).not.toHaveBeenCalledWith(1);
+
+    process.emit("SIGINT");
+    await capture;
+  });
+
+  it("does not exit 1 on a failing screenshot while watching", async () => {
+    const engine = makeWatchingEngine({
+      detail: {
+        failures: [
+          {
+            pluginName: "pages",
+            taskId: "home",
+            result: { success: false, filepath: "home.png" },
+          },
+        ] as never,
+      },
+    });
+    engineRef.current = engine;
+
+    const capture = runCapture({ watch: true });
+    await settle();
+
+    // The failure is the thing being worked on, not a reason to quit.
+    expect(loggerInstance.warn).toHaveBeenCalledWith(
+      expect.stringContaining("One or more screenshots failed"),
+    );
+    expect(exitSpy).not.toHaveBeenCalledWith(1);
+    expect(engine.startWatch).toHaveBeenCalled();
+
+    process.emit("SIGINT");
+    await capture;
+  });
+
+  it("says so when the engine cannot watch at all", async () => {
+    const engine = makeFakeEngine({});
+    engineRef.current = engine;
+
+    await runCapture({ watch: true });
+
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      "This engine cannot watch files.",
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
+    expect(engine.close).toHaveBeenCalled();
   });
 });
