@@ -9,7 +9,7 @@ Cappa is a Playwright-based screenshot capture and visual regression testing too
 - **Biome** handles linting and formatting (replaces ESLint + Prettier): `pnpm lint` / `pnpm lint:fix`
 - **tsdown** is the build tool for every library package (ESM + CJS output); each has its own `tsdown.config.ts`
 - **Vitest** is used for all tests across all packages
-- **TypeScript** `6.x` (catalog-pinned) with strict settings throughout
+- **TypeScript** `7.x` (catalog-pinned) with strict settings throughout
 - Shared dependency versions are pinned in `pnpm-workspace.yaml` under the `catalog:` key — always prefer catalog versions over custom version specs
 
 ## Monorepo Structure
