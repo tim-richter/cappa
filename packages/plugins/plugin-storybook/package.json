@@ -85,7 +85,7 @@
   "dependencies": {
     "@cappa/core": "workspace:*",
     "@cappa/logger": "workspace:*",
-    "@swc/core": "^1.15.43",
+    "@swc/core": "^1.16.2",
     "chalk": "^5.6.2"
   },
   "devDependencies": {
@@ -93,8 +93,8 @@
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "playwright-core": "^1.61.1",
-    "storybook": "^10.5.0",
+    "playwright-core": "^1.63.0",
+    "storybook": "^10.6.0",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

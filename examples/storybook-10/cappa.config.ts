@@ -10,5 +10,5 @@ export default defineConfig({
     maxDiffPixels: 0,
     maxDiffPercentage: 0,
   },
-  plugins: [cappaPluginStorybook({ storybookUrl: "http://localhost:8080" })],
+  plugins: [cappaPluginStorybook({ storybookUrl: "http://localhost:6006" })],
 });

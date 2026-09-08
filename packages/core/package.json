@@ -45,14 +45,14 @@
     "@blazediff/gmsd": "^1.7.1",
     "@cappa/logger": "workspace:*",
     "chokidar": "catalog:",
-    "sharp": "^0.35.3"
+    "sharp": "^0.35.4"
   },
   "devDependencies": {
     "@arethetypeswrong/cli": "catalog:",
     "@types/node": "catalog:",
     "@vitest/coverage-v8": "catalog:",
     "@vitest/ui": "catalog:",
-    "playwright-core": "^1.61.1",
+    "playwright-core": "^1.63.0",
     "tsdown": "catalog:",
     "typescript": "catalog:",
     "vitest": "catalog:"

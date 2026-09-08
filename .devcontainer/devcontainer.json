@@ -6,7 +6,7 @@
     "pnpm": "sudo corepack enable && corepack prepare pnpm@latest --activate"
   },
   "postCreateCommand": {
-    "playwright": "pnpm dlx playwright@1.61.0 install chromium --with-deps"
+    "playwright": "pnpm dlx playwright@1.63.0 install chromium --with-deps"
   },
 
   "features": {
