@@ -1,5 +1,39 @@
 # @cappa/plugin-storybook
 
+## 0.9.0
+
+### Minor Changes
+
+- 98c862e: Carry each story's `importPath` onto its capture task and implement plugin watch
+  support with it.
+  
+  Saving a story file now re-captures only the stories that file declares — the
+  story index already knows the mapping. Saving anything else resolves to `null`,
+  which re-runs the plugin rather than guessing. `watchPaths` overrides the story
+  globs added to the watched set.
+
+### Patch Changes
+
+- 4485e88: Build and type-check with TypeScript 7. The catalog-pinned `typescript` devDependency moves from
+  `6.0.3` to `7.0.2`, so declaration files are now emitted by the native compiler. No source or public
+  API changes.
+- ce7466b: Improve Storybook integration catalog listing: add the `test` category keyword so the addon is
+  filterable on the catalog, add a `storybook.icon`, replace the empty `unsupportedFrameworks` with an
+  explicit `supportedFrameworks` list, and expand the package README (which the catalog renders as the
+  addon page) with installation, setup and configuration docs.
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [98c862e]
+- Updated dependencies [b92b9c4]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [4485e88]
+- Updated dependencies [180c4a6]
+- Updated dependencies [98c862e]
+- Updated dependencies [98c862e]
+- Updated dependencies [aeaaf3d]
+  - @cappa/core@0.13.0
+  - @cappa/logger@0.0.12
+
 ## 0.8.12
 
 ### Patch Changes
