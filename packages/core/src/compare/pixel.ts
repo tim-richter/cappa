@@ -6,9 +6,8 @@ import {
   type BlazeDiffOptions,
   type BlazeDiffResult,
   compare as blazediffCompare,
-  interpret as blazediffInterpret,
-  type InterpretResult,
 } from "@blazediff/core-native";
+import { type InterpretResult, interpret } from "@blazediff/interpret-native";
 import { getLogger } from "@cappa/logger";
 import { PNG } from "../features/png/png";
 import {
@@ -185,7 +184,8 @@ export async function compareImages(
     let interpretation: InterpretResult | undefined;
     if (wantInterpret && !nativeResult.match) {
       try {
-        interpretation = await blazediffInterpret(p1, p2, {
+        interpretation = await interpret(p1, p2, undefined, {
+          source: "pixel",
           threshold: options.threshold,
           antialiasing: options.includeAA ?? false,
         });

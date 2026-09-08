@@ -41,8 +41,9 @@
     "playwright-core": "^1.55.0"
   },
   "dependencies": {
-    "@blazediff/core-native": "^5.2.0",
+    "@blazediff/core-native": "^6.0.1",
     "@blazediff/gmsd": "^1.7.1",
+    "@blazediff/interpret-native": "^6.4.0",
     "@cappa/logger": "workspace:*",
     "chokidar": "catalog:",
     "sharp": "^0.35.4"

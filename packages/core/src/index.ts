@@ -1,4 +1,7 @@
-import type { ChangeRegion, InterpretResult } from "@blazediff/core-native";
+import type {
+  ChangeRegion,
+  InterpretResult,
+} from "@blazediff/interpret-native";
 import { compareImagesGMSD, imagesMatchGMSD } from "./compare/gmsd";
 import { compareImages, imagesMatch } from "./compare/pixel";
 import { defineConfig } from "./config";

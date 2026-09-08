@@ -516,8 +516,8 @@ importers:
         specifier: workspace:*
         version: link:../../apps/server
       chalk:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^6.0.0
+        version: 6.0.0
       commander:
         specifier: 15.0.0
         version: 15.0.0
@@ -548,7 +548,7 @@ importers:
         version: 6.0.3
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@25.9.3)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))
+        version: 4.1.10(@types/node@25.9.3)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/client:
     dependencies:
@@ -618,11 +618,14 @@ importers:
   packages/core:
     dependencies:
       '@blazediff/core-native':
-        specifier: ^5.2.0
-        version: 5.2.0
+        specifier: ^6.0.1
+        version: 6.0.1
       '@blazediff/gmsd':
         specifier: ^1.7.1
         version: 1.7.1
+      '@blazediff/interpret-native':
+        specifier: ^6.4.0
+        version: 6.4.0
       '@cappa/logger':
         specifier: workspace:*
         version: link:../logger
@@ -672,7 +675,7 @@ importers:
         version: 0.23.0(@arethetypeswrong/core@0.18.5)(oxc-resolver@11.24.2)(tsx@4.23.1)(typescript@6.0.3)
       vitest:
         specifier: 'catalog:'
-        version: 4.1.10(@types/node@25.9.3)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))
+        version: 4.1.10(@types/node@25.9.3)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0))
 
   packages/plugins/plugin-pages:
     dependencies:
@@ -720,8 +723,8 @@ importers:
         specifier: ^1.16.2
         version: 1.16.2
       chalk:
-        specifier: ^5.6.2
-        version: 5.6.2
+        specifier: ^6.0.0
+        version: 6.0.0
     devDependencies:
       '@arethetypeswrong/cli':
         specifier: 'catalog:'
@@ -1107,50 +1110,83 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@blazediff/core-native-darwin-arm64@5.2.0':
-    resolution: {integrity: sha512-mDuepoAZU9nrJNVfEFexxcv88dMkyia0v++ssztWp7nSQ2mY3g3XVw5aUlAfhRTIu01p9U56IszUxS9CJ0RTHg==}
+  '@blazediff/core-native-darwin-arm64@6.0.1':
+    resolution: {integrity: sha512-anL4vbkb5p4EcDX1TDWI6tDZ7RJVvZkA679363ggvc2UVcqh1uzXYfprLojGygmxWX91JV1vT9NKqGJRt0H1Fg==}
     cpu: [arm64]
     os: [darwin]
     hasBin: true
 
-  '@blazediff/core-native-darwin-x64@5.2.0':
-    resolution: {integrity: sha512-Jfv6pYsCb15bwPhuAD9C8ypiCymv6VM5ehTKuWoPcTJu0VN56NpBW9iK9ZdEU6wcSk1hlFzk6QcEuKGiX2v+Bw==}
+  '@blazediff/core-native-darwin-x64@6.0.1':
+    resolution: {integrity: sha512-rOlNrUUnFNShqX4lUXQkxmhSVgEqRRUTngTJqJAyLpYbldAKClikfJIFGJbnaM/Ewj8VOEk3YuK7lTYsKXPnaw==}
     cpu: [x64]
     os: [darwin]
     hasBin: true
 
-  '@blazediff/core-native-linux-arm64@5.2.0':
-    resolution: {integrity: sha512-yfs6g7cRaZdlEc+BoRFAvcMpPDi79bKEtpLzlo3IrFyrEfZWIj/StA3iIwz9FLQfcw5ryYksfzqWDxu+xIiApw==}
+  '@blazediff/core-native-linux-arm64@6.0.1':
+    resolution: {integrity: sha512-cig7e2i8NDfkXgOlZ160JnigIlc5QdwqAtl75cYv1nEX/cSVBpvuO+pZrX6FGkx91SaRN8Gaz6Ki/h0CeQLyqw==}
     cpu: [arm64]
     os: [linux]
     hasBin: true
 
-  '@blazediff/core-native-linux-x64@5.2.0':
-    resolution: {integrity: sha512-KVTHI8hihOG69LUAl9wViMRt7XRLM77UDnxC1qIBxKFlqCX7mrx1Ehz4ecKyPo39f8vmUuUYYGkuHHPOOWMP1g==}
+  '@blazediff/core-native-linux-x64@6.0.1':
+    resolution: {integrity: sha512-HS7iefjfNzPNIeFtYbLsGAviqqrK8DT0TIFQbzqLjPXSphPGqVkCfq8yo50TdbazeFoiDlxLwkY+kq2eA/Xb1Q==}
     cpu: [x64]
     os: [linux]
     hasBin: true
 
-  '@blazediff/core-native-win32-arm64@5.2.0':
-    resolution: {integrity: sha512-m7hCBVSe0TKIZJY9rGOQHvzXhUn8TZDOPLTjFz0ukEfuJdsYSj13fM42wvdG/VdoGStNqZ22iK3yI5UOk8LXRQ==}
+  '@blazediff/core-native-win32-arm64@6.0.1':
+    resolution: {integrity: sha512-oU4RDQtCMHKCvikCxFjtLIiRu+7s8PXX3KD62WJQssg7eTW/zzps4l6c0RaVT3julnXeUDBOdZ29xomKgnOQAA==}
     cpu: [arm64]
     os: [win32]
     hasBin: true
 
-  '@blazediff/core-native-win32-x64@5.2.0':
-    resolution: {integrity: sha512-097ZkCD0zd6MEePeGOMfH4Vcu1jtGkGEBN3R3maw/eZUj7EBI0pngcv0YXGpWFREAJM4Fu5IY56HFAA6Tfj+sQ==}
+  '@blazediff/core-native-win32-x64@6.0.1':
+    resolution: {integrity: sha512-L8eJqwcClr2SUoYkC60E1x51zypRzr+0/SXo/nsAbZONSR5pOFCjPG04ZKUAeZAhpWd1F2x0N0PvO2d76f0HnQ==}
     cpu: [x64]
     os: [win32]
     hasBin: true
 
-  '@blazediff/core-native@5.2.0':
-    resolution: {integrity: sha512-Dt3VgyvelIVv66W5oUfOTNw3mKq3R3avqgx40Vh/aLevcPwsCjCIIPaMu8OfG1OP0xvkQ2Q0k3hpYrsAeBIgEA==}
+  '@blazediff/core-native@6.0.1':
+    resolution: {integrity: sha512-1e2/pvRn4XNdo9qMUaGfun4xWZF1NlkXu+hBDh0M6NTDoQ/8yFhwdPGXPVc7Ps7C9wbQpRRP6bp+6cuD6ZjWtA==}
 
   '@blazediff/core@1.9.1':
     resolution: {integrity: sha512-ehg3jIkYKulZh+8om/O25vkvSsXXwC+skXmyA87FFx6A/45eqOkZsBltMw/TVteb0mloiGT8oGRTcjRAz66zaA==}
 
   '@blazediff/gmsd@1.7.1':
     resolution: {integrity: sha512-ypgVDWo8tn+mSoClBBVw3+7spNBO34ebHKPdPkdZEwFEYjzOK+OYqTCF6cqnlnMBYqGxESlyh3wqEzb5Zd/u6A==}
+
+  '@blazediff/interpret-native-darwin-arm64@6.4.0':
+    resolution: {integrity: sha512-q/sJqsLUI6zafG6d+JIFMfN6YP8WaGWFnimDzX4DQxWqOC6GM+GyQplfMEgt5g790nZ6ASveofmuSjDkRbnFtw==}
+    cpu: [arm64]
+    os: [darwin]
+
+  '@blazediff/interpret-native-darwin-x64@6.4.0':
+    resolution: {integrity: sha512-XNn2Vet9EccrrHdArBT1pabjDDKNdl4hNAKyhVrrqtSuvQRphgJPZlvMGo3zgFuzp2XHKevWTn6sOWb5G4Pnng==}
+    cpu: [x64]
+    os: [darwin]
+
+  '@blazediff/interpret-native-linux-arm64@6.4.0':
+    resolution: {integrity: sha512-KVOght++qXaEjLjtYKX9e/ag/Z9nHvEn1PG11NSMGOoCrKto632Vcsbn1OnaJBcCorzpnKQljMb9TyAX6T86uQ==}
+    cpu: [arm64]
+    os: [linux]
+
+  '@blazediff/interpret-native-linux-x64@6.4.0':
+    resolution: {integrity: sha512-Q7J29aak/zRjC9c+/CEV2ZcRyp6ggBR1TVAd5nwIJELSzimgzSjzzb7AzbTiZFDgBfsvNNHGvCB+ra2Ilo6knQ==}
+    cpu: [x64]
+    os: [linux]
+
+  '@blazediff/interpret-native-win32-arm64@6.4.0':
+    resolution: {integrity: sha512-ZCgiBTwGVzgCEGhIHOCqAzfY2jv3UfTPOEN2quD11s6WcWCctXTjUVHo+LSAs+fwIHRjDSy2nSEGQT4ssse56Q==}
+    cpu: [arm64]
+    os: [win32]
+
+  '@blazediff/interpret-native-win32-x64@6.4.0':
+    resolution: {integrity: sha512-lh7ZYhnYu2eUFEzVcnNSMyVWbq6uSw74CbqTYziGF4gkgvXWrk6wBmt3ozdyEcqeKeJR7rdVH5sKPxIzRMtsQg==}
+    cpu: [x64]
+    os: [win32]
+
+  '@blazediff/interpret-native@6.4.0':
+    resolution: {integrity: sha512-Tg0ayj3UF+aS3x7AOI3z2ZZgVHbM8ag9+YjID0NfY9eeg/nQ8ZOjQS1agCgOmKXf/9LCMzrMSDgJZLj/yjKIBQ==}
 
   '@braidai/lang@1.1.2':
     resolution: {integrity: sha512-qBcknbBufNHlui137Hft8xauQMTZDKdophmLFv05r2eNmdIv/MlPuP4TdUknHG68UdWLgVZwgxVe735HzJNIwA==}
@@ -4557,6 +4593,10 @@ packages:
     resolution: {integrity: sha512-7NzBL0rN6fMUW+f7A6Io4h40qQlG+xGmtMxfbnH/K7TAtt8JQWVQK+6g0UXKMeVJoyV5EkkNsErQ8pVD3bLHbA==}
     engines: {node: ^12.17.0 || ^14.13 || >=16.0.0}
 
+  chalk@6.0.0:
+    resolution: {integrity: sha512-2uNTXIuTTxk7ciZgAU1BQcgnchcG0xXnrs6jzkQfj9SsRa9M2s5zE8WT96hS6KmG4MzWHSrvH43DF1m4XRkrFg==}
+    engines: {node: '>=22'}
+
   char-regex@1.0.2:
     resolution: {integrity: sha512-kWWXztvZ5SBQV+eRgKFeh8q5sLuZY2+8WUIzlxWVTg+oGwY14qylx1KbKzHd8P6ZYkAg0xyIDU9JMHhyJMZ1jw==}
     engines: {node: '>=10'}
@@ -7542,36 +7582,63 @@ snapshots:
   '@biomejs/cli-win32-x64@2.5.12':
     optional: true
 
-  '@blazediff/core-native-darwin-arm64@5.2.0':
+  '@blazediff/core-native-darwin-arm64@6.0.1':
     optional: true
 
-  '@blazediff/core-native-darwin-x64@5.2.0':
+  '@blazediff/core-native-darwin-x64@6.0.1':
     optional: true
 
-  '@blazediff/core-native-linux-arm64@5.2.0':
+  '@blazediff/core-native-linux-arm64@6.0.1':
     optional: true
 
-  '@blazediff/core-native-linux-x64@5.2.0':
+  '@blazediff/core-native-linux-x64@6.0.1':
     optional: true
 
-  '@blazediff/core-native-win32-arm64@5.2.0':
+  '@blazediff/core-native-win32-arm64@6.0.1':
     optional: true
 
-  '@blazediff/core-native-win32-x64@5.2.0':
+  '@blazediff/core-native-win32-x64@6.0.1':
     optional: true
 
-  '@blazediff/core-native@5.2.0':
+  '@blazediff/core-native@6.0.1':
     optionalDependencies:
-      '@blazediff/core-native-darwin-arm64': 5.2.0
-      '@blazediff/core-native-darwin-x64': 5.2.0
-      '@blazediff/core-native-linux-arm64': 5.2.0
-      '@blazediff/core-native-linux-x64': 5.2.0
-      '@blazediff/core-native-win32-arm64': 5.2.0
-      '@blazediff/core-native-win32-x64': 5.2.0
+      '@blazediff/core-native-darwin-arm64': 6.0.1
+      '@blazediff/core-native-darwin-x64': 6.0.1
+      '@blazediff/core-native-linux-arm64': 6.0.1
+      '@blazediff/core-native-linux-x64': 6.0.1
+      '@blazediff/core-native-win32-arm64': 6.0.1
+      '@blazediff/core-native-win32-x64': 6.0.1
 
   '@blazediff/core@1.9.1': {}
 
   '@blazediff/gmsd@1.7.1': {}
+
+  '@blazediff/interpret-native-darwin-arm64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native-darwin-x64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native-linux-arm64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native-linux-x64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native-win32-arm64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native-win32-x64@6.4.0':
+    optional: true
+
+  '@blazediff/interpret-native@6.4.0':
+    optionalDependencies:
+      '@blazediff/interpret-native-darwin-arm64': 6.4.0
+      '@blazediff/interpret-native-darwin-x64': 6.4.0
+      '@blazediff/interpret-native-linux-arm64': 6.4.0
+      '@blazediff/interpret-native-linux-x64': 6.4.0
+      '@blazediff/interpret-native-win32-arm64': 6.4.0
+      '@blazediff/interpret-native-win32-x64': 6.4.0
 
   '@braidai/lang@1.1.2': {}
 
@@ -10326,19 +10393,6 @@ snapshots:
       - utf-8-validate
       - vite
 
-  '@vitest/browser-playwright@4.1.10(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(playwright@1.63.0)(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))(vitest@4.1.10)':
-    dependencies:
-      '@vitest/browser': 4.1.10(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))(vitest@4.1.10)
-      '@vitest/mocker': 4.1.10(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))
-      playwright: 1.63.0
-      tinyrainbow: 3.1.0
-      vitest: 4.1.10(@types/node@25.9.3)(@vitest/browser-playwright@4.1.10)(@vitest/coverage-v8@4.1.10)(@vitest/ui@4.1.10)(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1))
-    transitivePeerDependencies:
-      - bufferutil
-      - msw
-      - utf-8-validate
-      - vite
-
   '@vitest/browser-playwright@4.1.10(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(playwright@1.63.0)(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.10)':
     dependencies:
       '@vitest/browser': 4.1.10(msw@2.15.0(@types/node@25.9.3)(typescript@6.0.3))(vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0))(vitest@4.1.10)
@@ -10893,6 +10947,8 @@ snapshots:
       supports-color: 7.2.0
 
   chalk@5.6.2: {}
+
+  chalk@6.0.0: {}
 
   char-regex@1.0.2: {}
 
@@ -13534,7 +13590,7 @@ snapshots:
   vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1):
     dependencies:
       lightningcss: 1.33.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       postcss: 8.5.28
       rolldown: 1.2.7
       tinyglobby: 0.2.17
@@ -13548,7 +13604,7 @@ snapshots:
   vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.1)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.33.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       postcss: 8.5.28
       rolldown: 1.2.7
       tinyglobby: 0.2.17
@@ -13563,7 +13619,7 @@ snapshots:
   vite@8.2.2(@types/node@25.9.3)(esbuild@0.28.1)(jiti@2.7.0)(tsx@4.23.13)(yaml@2.9.0):
     dependencies:
       lightningcss: 1.33.0
-      picomatch: 4.0.5
+      picomatch: 4.0.7
       postcss: 8.5.28
       rolldown: 1.2.7
       tinyglobby: 0.2.17

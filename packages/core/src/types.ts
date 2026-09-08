@@ -1,4 +1,4 @@
-import type { InterpretResult } from "@blazediff/core-native";
+import type { InterpretResult } from "@blazediff/interpret-native";
 import type { Locator } from "playwright-core";
 import type { Plugin, PluginDef } from "./plugin";
 
