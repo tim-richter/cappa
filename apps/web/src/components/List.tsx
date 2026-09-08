@@ -1,13 +1,9 @@
 import type { Screenshot } from "@cappa/protocol";
-import type {
-  ColumnDef,
-  RowSelectionState,
-  Updater,
-} from "@tanstack/react-table";
+import type { RowSelectionState, Updater } from "@tanstack/react-table";
 import { cva } from "class-variance-authority";
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
-import { DataTable } from "./DataTable";
+import { DataTable, type DataTableColumnDef } from "./DataTable";
 
 export interface ScreenshotListSelectionProps {
   selectedIds: Set<string>;
@@ -34,7 +30,7 @@ export const List = ({
       )
     : {};
 
-  const columns: ColumnDef<Screenshot>[] = [
+  const columns: DataTableColumnDef<Screenshot>[] = [
     {
       accessorKey: "name",
       header: "Name",

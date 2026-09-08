@@ -1,11 +1,16 @@
 import {
+  type CellData,
   type ColumnDef,
-  flexRender,
-  getCoreRowModel,
-  getFilteredRowModel,
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  createFilteredRowModel,
+  filterFn_includesString,
   type OnChangeFn,
+  type RowData,
   type RowSelectionState,
-  useReactTable,
+  rowSelectionFeature,
+  tableFeatures,
+  useTable,
 } from "@tanstack/react-table";
 
 import {
@@ -17,26 +22,45 @@ import {
   TableRow,
 } from "@ui/components/table";
 
-interface DataTableProps<TData, TValue> {
-  columns: ColumnDef<TData, TValue>[];
+/**
+ * The features this table opts into. Declared statically outside the component
+ * so the feature set — and everything inferred from it — stays stable.
+ */
+export const dataTableFeatures = tableFeatures({
+  columnFilteringFeature,
+  columnVisibilityFeature,
+  rowSelectionFeature,
+  filteredRowModel: createFilteredRowModel(),
+  filterFns: { includesString: filterFn_includesString },
+});
+
+export type DataTableFeatures = typeof dataTableFeatures;
+
+/** `ColumnDef` bound to the feature set {@link DataTable} registers. */
+export type DataTableColumnDef<
+  TData extends RowData,
+  TValue extends CellData = CellData,
+> = ColumnDef<DataTableFeatures, TData, TValue>;
+
+interface DataTableProps<TData extends RowData, TValue extends CellData> {
+  columns: DataTableColumnDef<TData, TValue>[];
   data: TData[];
   getRowId?: (row: TData) => string;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
 }
 
-export function DataTable<TData, TValue>({
+export function DataTable<TData extends RowData, TValue extends CellData>({
   columns,
   data,
   getRowId,
   rowSelection,
   onRowSelectionChange,
 }: DataTableProps<TData, TValue>) {
-  const table = useReactTable({
+  const table = useTable({
+    features: dataTableFeatures,
     data,
     columns,
-    getCoreRowModel: getCoreRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     ...(getRowId && { getRowId }),
     ...(rowSelection !== undefined && {
       state: { rowSelection },
@@ -54,12 +78,9 @@ export function DataTable<TData, TValue>({
               {headerGroup.headers.map((header) => {
                 return (
                   <TableHead key={header.id}>
-                    {header.isPlaceholder
-                      ? null
-                      : flexRender(
-                          header.column.columnDef.header,
-                          header.getContext(),
-                        )}
+                    {header.isPlaceholder ? null : (
+                      <table.FlexRender header={header} />
+                    )}
                   </TableHead>
                 );
               })}
@@ -75,7 +96,7 @@ export function DataTable<TData, TValue>({
               >
                 {row.getVisibleCells().map((cell) => (
                   <TableCell key={cell.id}>
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                    <table.FlexRender cell={cell} />
                   </TableCell>
                 ))}
               </TableRow>
