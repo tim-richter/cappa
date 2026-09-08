@@ -13,10 +13,10 @@ catalog:
   '@types/node': 25.9.3
   '@types/react': 19.2.18
   '@types/react-dom': 19.2.7
-  '@vitest/browser': 4.1.10
-  '@vitest/browser-playwright': 4.1.10
-  '@vitest/coverage-v8': 4.1.10
-  '@vitest/ui': 4.1.10
+  '@vitest/browser': 5.0.0
+  '@vitest/browser-playwright': 5.0.0
+  '@vitest/coverage-v8': 5.0.0
+  '@vitest/ui': 5.0.0
   chokidar: 5.0.0
   next-themes: 0.4.6
   react: 19.2.8
@@ -24,7 +24,7 @@ catalog:
   tailwindcss: 4.3.3
   tsdown: 0.23.0
   typescript: 7.0.2
-  vitest: 4.1.10
+  vitest: 5.0.0
   zod: 4.5.4
   'vitest-browser-react': 2.3.0
 
