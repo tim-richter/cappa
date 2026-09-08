@@ -1,5 +1,264 @@
 # @cappa/cli
 
+## 0.13.0
+
+### Minor Changes
+
+- 180c4a6: Add `cappa capture --server <url>`, capturing against a `cappa serve` host.
+  
+  The browser runs on one machine and the CI job on another. Everything downstream
+  is unchanged: the same live output, the same failure report, the same exit code.
+  Pair it with `--token <token>`, which also reads `CAPPA_TOKEN`.
+  
+  A pre-flight `GET /api/health` turns four failures into four distinct messages
+  before any capture starts — an unreachable host, a rejected token, a protocol
+  mismatch, and a `--read-only` host that cannot capture — rather than letting
+  them arrive mid-run. A host that is already busy reports that it is, instead of
+  raising a stack trace.
+  
+  Two documented differences from a local capture:
+  
+  - **`onFail` receives relative paths only.** The screenshot files are on the
+    host, so the `absolute*Path` fields would be fiction. They are left undefined
+    and the reason is logged once. The callback still runs.
+  - **Diff regions are best effort.** The protocol carries
+    `diffMeta.interpretation` opaquely so a diff-engine upgrade is not a breaking
+    wire change, so the changed-screenshot report now narrows it and omits the
+    region breakdown when it does not match. Diff statistics are typed in the
+    protocol and always render. Local capture is unaffected — it narrows a value
+    that already matched.
+  
+  Ctrl-C cancels the run on the host and waits, briefly, for it to confirm before
+  exiting 130; a second Ctrl-C leaves at once and says the remote run may still be
+  going.
+- 98c862e: Add `cappa capture --watch`: capture once, then re-capture affected tasks on
+  every file change, holding one browser open across iterations.
+  
+  Each iteration prints what changed, the tasks that did not pass, and a one-line
+  summary. A failing screenshot does not stop the session or set a non-zero exit
+  code — it is what you are there to fix. Ctrl-C stops the watcher, closes the
+  browser and exits `0`.
+  
+  `--watch` refuses to combine with `--ci` or `--server`, with a message rather
+  than a silent no-op.
+- 180c4a6: Add `cappa serve`, a capture host without the review UI's framing.
+  
+  `cappa review` assumes a person is about to open a browser: it names itself after
+  the UI, prints a URL, and generates an access token off loopback so that URL is
+  usable. `cappa serve` is the same server for a machine — `--port`, `--host`,
+  `--token`, `--read-only`, `--no-ui` — that logs one structured line and then goes
+  quiet. It is what a remote `cappa capture --server` will connect to.
+  
+  The one deliberate divergence is the token. `review` generates one off loopback
+  because a human is reading the URL it prints; `serve` has no such reader, so
+  generating one there would produce a daemon nobody can authenticate against.
+  Off loopback `serve` requires a token and refuses to start without one, naming
+  `--token` and `CAPPA_TOKEN` in the error.
+  
+  `--token` now falls back to `CAPPA_TOKEN` on both commands, so a CI job need not
+  put the token in its process list.
+  
+  `@cappa/server`'s `createServer` gains a `ui` option, separating "serve the
+  review UI" from "run in production mode" — `--no-ui` skips the UI's static files
+  and its SPA fallback while leaving `/api/*` untouched.
+- aeaaf3d: Add `review.browserIdleTimeout` and shut `cappa review` down cleanly.
+  
+  `review.browserIdleTimeout` (default `300000`) controls how long the browser stays alive
+  between captures started from the interactive UI. Keeping it warm makes an interactive
+  capture feel immediate instead of paying browser startup on every click; evicting it once
+  idle stops a forgotten review session holding a browser process indefinitely. Set it to `0`
+  to shut the browser down after every run. It has no effect on `cappa capture`, which starts
+  and stops a browser per invocation either way.
+  
+  `cappa review` now handles SIGINT and SIGTERM: it closes the HTTP server first so no new run
+  can start mid-teardown, then closes the engine, which aborts any active run and shuts the
+  browser down — previously a killed review server could leave an orphaned Chromium behind.
+  The two closes are independent, so a server that fails to close still cannot prevent the
+  browser from being cleaned up, and a second Ctrl-C exits immediately rather than making you
+  reach for `kill -9`.
+  
+  When `cappa review` generates an access token, the URL carrying it is now also logged at
+  warning level. It was only printed via `success`, which is suppressed below `-l 3`, so a
+  quieter log level produced a token the user could never see — locking them out of their own
+  review UI.
+- aeaaf3d: Make the server stateful and expose the capture routes.
+  
+  `createServer` no longer takes a pre-computed `screenshots` array — it takes a `CaptureEngine`
+  instead, and reads the screenshot index through it on every request. The open review UI now
+  reflects a capture run, or a `cappa` invocation in another terminal, instead of showing the
+  snapshot taken when the server booted. The `diff` option is gone; approval belongs to the
+  engine.
+  
+  New routes: `GET /api/plugins`, `GET /api/targets` (`?refresh=1`), `POST /api/runs`,
+  `GET /api/runs`, `GET /api/runs/:id`, `POST /api/runs/:id/cancel`, and
+  `GET /api/runs/:id/events` — a server-sent event stream that tags each frame with the
+  event's sequence number, so a reconnecting client resumes exactly where it left off via
+  `Last-Event-ID` (or `?sinceSeq=`). `GET /api/health` now reports the protocol version and
+  the server's capabilities.
+  
+  Two new safety controls, because this server drives a real browser and writes to disk:
+  `readOnly` refuses capture, approval and every other mutation, and `token` requires a shared
+  secret on every `/api/*` request.
+  
+  `cappa review` builds a `LocalEngine` from the loaded config and injects it, and gains
+  `--port`, `--host`, `--read-only` and `--token`. Binding to a non-loopback host without a
+  token now generates one rather than exposing capture control unauthenticated.
+  
+  `@cappa/core` adds `isRunInProgressError` and `isUnknownTargetsError`. Prefer these over
+  `instanceof`: the package ships dual ESM/CJS builds, so an error thrown by a CJS consumer is
+  not an `instanceof` the ESM copy's class, and the check fails silently.
+
+### Patch Changes
+
+- aeaaf3d: Extract the capture orchestrator out of the CLI into a new `CaptureRunner` in `@cappa/core`.
+  
+  `CaptureRunner` owns the discover → filter → execute pipeline that previously lived inside the
+  `capture` command. It emits a typed, sequence-numbered `RunEvent` stream, supports cancellation via
+  `abort()`, and can capture a subset of the discovered tasks (`plugins`, `filter`, `taskIds`). It
+  takes an already-initialised `ScreenshotTool`, so a long-lived process can keep one browser warm
+  across runs.
+  
+  `@cappa/core` now also exports `groupScreenshots` and `collectScreenshots` (moved from `@cappa/cli`,
+  which was not a published entry point for them), along with the runner types: `RunEvent`,
+  `RunSummary`, `RunDetail`, `StartRunRequest`, `TaskStatus`, `Target`, plus `didScreenshotFail`,
+  `toTaskStatus`, `filterTasks`, `selectTasks` and `getDeletedScreenshots`.
+  
+  `cappa capture` is now a consumer of that event stream and renders it to the terminal. Its output,
+  exit codes and `onFail` behaviour are unchanged.
+- b92b9c4: Fix re-capturing a single screenshot from the review UI
+  
+  The **Re-capture** button sent the screenshot's *name* as a task id. That is only
+  a task id for `@cappa/plugin-pages`: `@cappa/plugin-storybook` writes
+  `example/button/primary.png` for the task `example-button--primary`, so every
+  click came back `400 CAPPA_UNKNOWN_TARGETS`. Variants never worked either, for
+  any plugin.
+  
+  Nothing on disk recorded the link, so there was nothing to look it up in.
+  `CaptureRunner` now records which task produced which screenshot as it captures
+  — including variants, whose filenames only `ScreenshotTool` ever sees — into a
+  `.cappa-manifest.json` beside `actual/` and `expected/`. `Screenshot` gains an
+  optional `taskId` (and `plugin`) read back from it, and the button uses that,
+  hiding itself when a screenshot has no recorded task rather than guessing.
+  
+  The manifest is best-effort throughout: a missing, unreadable or unwritable one
+  costs the button and nothing else. A screenshot captured before this release has
+  no entry until its next capture.
+- aeaaf3d: Add the capture engine seam, the wire protocol, and a shared config loader.
+  
+  **New `@cappa/protocol`** — the wire contract (zod schemas plus inferred types) for
+  runs, run events, targets, screenshots and every request/response body, together with the
+  route table and a `PROTOCOL_VERSION`. Depends only on `zod`: no `node:*`, no
+  `playwright-core`, so a browser client can install it without pulling in native diff
+  bindings. Compile-time assertions in the package fail the build if its shapes drift from
+  `@cappa/core`.
+  
+  **New `@cappa/config`** — `loadConfig` / `getConfig` moved out of `@cappa/cli` so anything
+  that needs to evaluate `cappa.config.ts` can, without depending on the CLI. Both now accept
+  an explicit `cwd` (and `getConfig` a `command`) instead of always reading `process.cwd()`
+  and `process.argv`.
+  
+  **`@cappa/core`** gains the engine layer:
+  
+  - `CaptureEngine` — the interface a UI drives captures through, deliberately
+    serializable in both directions so a remote implementation is possible later.
+  - `LocalEngine` — in-process implementation. Runs one capture at a time, caches
+    discovered targets, validates requested task ids against them, and reads the screenshot
+    index from disk on every call rather than caching a snapshot.
+  - `WarmBrowser` — keeps the browser alive between runs behind an idle timeout (default 5
+    minutes) so an interactive capture does not pay Chromium startup every time.
+  - `RunStore` — run registry with a bounded per-run event log and replay from a given
+    sequence number, so a dropped event stream can resume without gaps.
+  - `ScreenshotStore` / `FsScreenshotStore` — storage interface over screenshot bytes, with
+    the local-filesystem implementation.
+  - `ScreenshotTool.recycleContexts()` and `closeContexts()` — replace the context pool
+    without restarting the browser. A reused browser's pages carry cookies, storage and
+    scroll position from the previous run, so a warm engine recycles contexts before each
+    run to keep captures identical to a cold CLI run. `close()` now also clears `browser`.
+  
+  `@cappa/cli` keeps its behaviour; it consumes `@cappa/config` and no longer bundles `jiti`.
+- 180c4a6: Drive `cappa capture` through a `CaptureEngine`.
+  
+  `capture` built a `ScreenshotTool` and a `CaptureRunner` by hand while `review` built a
+  `LocalEngine` that builds the same two internally — two ways to start a run, and the CLI's
+  was the one that skipped the engine's concurrency guard, target cache and typed errors.
+  `capture` now starts a run on the engine, renders its event stream, and takes failures from
+  `getRun`, so both commands reach a run the same way. Screenshot results for the `onFail`
+  payload and the changed-screenshot report are read through `engine.listScreenshots()`
+  rather than the filesystem directly.
+  
+  `@cappa/config` gains `configToEngineOptions(config)`, the config-to-engine mapping the two
+  commands were each keeping their own copy of. How long a browser stays warm is left to the
+  caller, since it is a per-command policy: `review` uses the configured timeout, and a
+  one-shot `capture` keeps no browser warm at all.
+  
+  No user-visible change — terminal output and exit codes are unchanged.
+- b92b9c4: Make the review UI honest about a run it did not start, and about being locked out
+  
+  Three things the UI could not say before:
+  
+  - **A capture already in flight.** The run id lived in component state, so a
+    reload mid-capture — or a `cappa capture` in another terminal — left the page
+    showing an idle panel whose Start button could only produce a `409`. It now
+    reads the active run from the server and reattaches to it, replaying the
+    stream, with the capture controls disabled while somebody else holds the
+    browser.
+  
+  - **A rejected access token.** A `401` was retried like any other failure and
+    then reported as "Error fetching screenshots" ten seconds later, with a blank
+    sidebar and a capture page offering to start a run over "0 tasks available".
+    `@cappa/client` now raises `UnauthorizedError` for a `401`, the UI does not
+    retry it, and it explains that the server needs the token from its printed URL.
+    A version mismatch gets the same treatment.
+  
+  - **`cappa review --host 0.0.0.0`** printed `http://0.0.0.0:PORT?token=…`, which
+    no browser will open — and that URL is the only place a generated token ever
+    appears. It now prints `localhost`.
+  
+  Also fixes `@cappa/client` caching a *failed* protocol handshake: the first
+  unauthenticated call poisoned every later one for the lifetime of the client,
+  including calls made after a token became available. A genuine version mismatch
+  is still cached, since that one cannot resolve itself.
+- 4485e88: Build and type-check with TypeScript 7. The catalog-pinned `typescript` devDependency moves from
+  `6.0.3` to `7.0.2`, so declaration files are now emitted by the native compiler. No source or public
+  API changes.
+- 98c862e: Shut down cleanly when the browser is already gone.
+  
+  A Ctrl-C in a terminal is delivered to the whole foreground process group,
+  Chromium included, so by the time cappa's signal handler closes the browser
+  every context can already be dead — and the resulting protocol error turned a
+  clean quit into an uncaught exception. `ScreenshotTool.close` and the CLI's
+  signal handlers now treat that as the ordinary case.
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [ba73521]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [ba73521]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [180c4a6]
+- Updated dependencies [98c862e]
+- Updated dependencies [b92b9c4]
+- Updated dependencies [98c862e]
+- Updated dependencies [ba73521]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [aeaaf3d]
+- Updated dependencies [180c4a6]
+- Updated dependencies [ba73521]
+- Updated dependencies [ba73521]
+- Updated dependencies [b92b9c4]
+- Updated dependencies [4485e88]
+- Updated dependencies [98c862e]
+- Updated dependencies [180c4a6]
+- Updated dependencies [ba73521]
+- Updated dependencies [98c862e]
+- Updated dependencies [98c862e]
+- Updated dependencies [ba73521]
+- Updated dependencies [98c862e]
+- Updated dependencies [aeaaf3d]
+  - @cappa/server@0.9.0
+  - @cappa/core@0.13.0
+  - @cappa/client@0.9.0
+  - @cappa/config@0.1.0
+  - @cappa/logger@0.0.12
+
 ## 0.12.0
 
 ### Minor Changes

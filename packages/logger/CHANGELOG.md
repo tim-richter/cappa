@@ -1,5 +1,13 @@
 # @cappa/logger
 
+## 0.0.12
+
+### Patch Changes
+
+- 4485e88: Build and type-check with TypeScript 7. The catalog-pinned `typescript` devDependency moves from
+  `6.0.3` to `7.0.2`, so declaration files are now emitted by the native compiler. No source or public
+  API changes.
+
 ## 0.0.11
 
 ### Patch Changes

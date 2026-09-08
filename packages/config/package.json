@@ -1,6 +1,6 @@
 {
   "name": "@cappa/config",
-  "version": "0.0.0",
+  "version": "0.1.0",
   "description": "Loads and resolves cappa.config.ts",
   "type": "module",
   "license": "MIT",
