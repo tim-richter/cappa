@@ -126,6 +126,11 @@ export interface StorybookPluginOptions {
   watchPaths?: string[];
 }
 
+/** Whether an options object was given and actually carries something. */
+function hasEntries(value?: Record<string, unknown>) {
+  return !!value && Object.keys(value).length > 0;
+}
+
 /**
  * Create a latch for a Promise. A latch is a Promise that can be resolved from outside.
  * @param T - The type of the Promise
@@ -320,6 +325,45 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         await page.setViewportSize(resolvedViewport);
 
+        // Story-level args and globals, layered over the plugin-level ones.
+        // Variants layer their own overrides on top of these.
+        const storyArgs = {
+          ...defaultStorybookOptions?.args,
+          ...storyParameters?.args,
+        };
+        const storyGlobals = {
+          ...defaultStorybookOptions?.globals,
+          ...storyParameters?.globals,
+        };
+
+        // The story's own screenshot is taken at the URL discovery built,
+        // before the story had told cappa anything, so args and globals it
+        // asked for only reach it by rebuilding that URL and loading it again.
+        // The reload is paid only by stories that actually set them, and it
+        // happens before the freeze/idle/play sequence below so that those all
+        // wait on the render that is about to be captured.
+        const baseUrl =
+          hasEntries(storyParameters?.args) ||
+          hasEntries(storyParameters?.globals)
+            ? buildStorybookIframeUrl({
+                baseUrl: options?.storybookUrl || "",
+                storyId: story.id,
+                viewMode: defaultStorybookOptions?.viewMode,
+                args: storyArgs,
+                globals: storyGlobals,
+                query: defaultStorybookOptions?.query,
+                fullscreen: defaultStorybookOptions?.fullscreen,
+                singleStory: defaultStorybookOptions?.singleStory,
+              })
+            : url;
+
+        if (baseUrl !== url) {
+          logger.debug(`Reloading story with story-level render options`);
+          await page.goto(baseUrl, {
+            timeout: screenshotTool.connectionTimeout,
+          });
+        }
+
         await freezeUI(page);
         await waitForVisualIdle(page);
 
@@ -354,10 +398,14 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               filename: variant.filename,
             });
 
-          // Merge variant args with default storybook options
-          const mergedArgs = {
-            ...defaultStorybookOptions?.args,
-            ...variant.options?.args,
+          // Variant args and globals layer over the story-level ones, which
+          // already layer over the plugin-level defaults. Globals are what a
+          // themed variant rides on: Storybook decodes them from the iframe
+          // URL, so each variant renders under its own theme.
+          const mergedArgs = { ...storyArgs, ...variant.options?.args };
+          const mergedGlobals = {
+            ...storyGlobals,
+            ...variant.options?.globals,
           };
 
           variantsWithUrls.push({
@@ -369,7 +417,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
               storyId: story.id,
               viewMode: defaultStorybookOptions?.viewMode,
               args: mergedArgs,
-              globals: defaultStorybookOptions?.globals,
+              globals: mergedGlobals,
               query: defaultStorybookOptions?.query,
               fullscreen: defaultStorybookOptions?.fullscreen,
               singleStory: defaultStorybookOptions?.singleStory,
@@ -424,7 +472,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         const captureResult = await screenshotTool.captureWithVariants(
           page,
           filename,
-          url,
+          baseUrl,
           baseOptions,
           variantsWithUrls,
           captureExtras,

@@ -39,6 +39,9 @@ You can add additional plugin options to filter the stories that are captured:
 - **`excludeStories`** – Optional predicate `(story) => boolean`. If provided, stories for which it returns `true` are excluded (applied after `includeStories`).
 - **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
   own settings.
+- **`storybook`** – Render options applied to every story URL: `viewMode`, `args`, `globals`,
+  `query`, `fullscreen`, and `singleStory`. Set `globals` here to pick the baseline that variants
+  override — see [Globals](#globals).
 
 You can use `minimatch` or regex inside your predicates for glob-like behavior:
 
@@ -171,6 +174,8 @@ under `parameters.cappa`.
 | `mask` | Array of selectors to blur or hide in the screenshot. | `[]` |
 | `omitBackground` | Capture the page with a transparent background. | `false` |
 | `viewport` | Override the viewport size for the story. | Playwright default |
+| `args` | Storybook args to render the story with, merged over `storybook.args` from `cappa.config.ts`. | `{}` |
+| `globals` | Storybook globals to render the story with, merged over `storybook.globals` from `cappa.config.ts`. | `{}` |
 | `variants` | Additional screenshots to capture with overrides. | `[]` |
 | `diff` | Override the global diff configuration for this story. Supports both `{ type: "pixel", ... }` and `{ type: "gmsd", ... }`. | Inherits global `diff` from `cappa.config.ts` |
 
@@ -253,7 +258,9 @@ generated from the story name and the variant id.
 
 ### Args
 
-You can override the args for a variant by adding them to the `options.args` property.
+You can set the args a story renders with under `parameters.cappa.args`, and override them per
+variant through `options.args`. Both merge over the plugin-level `storybook.args` from
+`cappa.config.ts`, so each level only needs to name the args it changes.
 
 ```ts title="Button.stories.tsx"
 export const Primary = {
@@ -276,6 +283,99 @@ export const Primary = {
 ```
 
 Args only work if your component also is supporting these props AND spreads the args to the component.
+
+### Globals
+
+Storybook [globals](https://storybook.js.org/docs/essentials/toolbars-and-globals) work the same way
+as args: set them for a story under `parameters.cappa.globals`, or per variant through
+`options.globals`, layered over the plugin-level `storybook.globals`.
+
+```ts title="Button.stories.tsx"
+export const Primary = {
+  parameters: {
+    cappa: {
+      variants: [
+        {
+          id: 'dark',
+          label: 'Dark',
+          options: {
+            globals: { theme: 'dark' },
+          },
+        },
+      ],
+    },
+  },
+};
+```
+
+Args and globals are the only render inputs Storybook decodes from the iframe URL, which is what
+makes them settable per screenshot — unlike parameters, which are fixed when a story is prepared.
+
+Cappa builds each story URL during discovery, before the story has told it anything, so a story that
+sets its own `args` or `globals` is loaded a second time with the rebuilt URL. Only stories that set
+them pay for that reload, and it happens before cappa waits for animations to settle and for the play
+function, so the capture always waits on the render it is about to shoot.
+
+### Light and dark mode
+
+Capturing every story in two themes is the main thing variant globals are for. Drive the theme from
+a global — either with
+[`@storybook/addon-themes`](https://storybook.js.org/addons/@storybook/addon-themes), or by hand:
+
+```ts title=".storybook/preview.ts"
+const preview: Preview = {
+  initialGlobals: { theme: 'light' },
+  globalTypes: {
+    theme: {
+      toolbar: {
+        items: [
+          { value: 'light', title: 'Light' },
+          { value: 'dark', title: 'Dark' },
+        ],
+      },
+    },
+  },
+  decorators: [
+    (Story, context) => {
+      document.documentElement.dataset.theme = context.globals.theme;
+      return Story();
+    },
+  ],
+};
+```
+
+Two details matter for screenshots specifically. Put the attribute or class on
+`document.documentElement` (or `body`) rather than a wrapper element, so CSS variables defined on
+`:root` actually change. And give the body an explicit background per theme — Storybook's canvas is
+transparent by default, so a dark theme otherwise renders onto white.
+
+Then pin the baseline theme in your config and add one variant for the other:
+
+```ts title="cappa.config.ts"
+export default defineConfig({
+  plugins: [
+    cappaPluginStorybook({
+      storybookUrl: 'http://localhost:6006',
+      storybook: { globals: { theme: 'light' } },
+    }),
+  ],
+});
+```
+
+```ts title="Button.stories.tsx"
+export const Primary = {
+  parameters: {
+    cappa: {
+      variants: [
+        { id: 'dark', label: 'Dark', options: { globals: { theme: 'dark' } } },
+      ],
+    },
+  },
+};
+```
+
+That produces two screenshots per story: `example/button/primary.png` in light and
+`example/button/primary--dark.png` in dark.
 
 ## Play function
 

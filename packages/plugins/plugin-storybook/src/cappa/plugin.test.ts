@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { cappaPluginStorybook, type StorybookStory } from "./plugin";
+import { buildStorybookIframeUrl } from "./storybook-url";
 
 // Mock the logger
 vi.mock("@cappa/logger", () => ({
@@ -581,6 +582,144 @@ describe("console logging configuration", () => {
       type: "pixel",
       threshold: 0.3,
       maxDiffPixels: 10,
+    });
+  });
+
+  it("reloads the story so story-level args and globals reach the base shot", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+      storybook: { args: { size: "large" }, globals: { locale: "en" } },
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, {
+        args: { label: "Ready" },
+        globals: { theme: "dark" },
+      });
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    // The URL discovery built cannot carry options the story had not yet
+    // reported, so the story is loaded a second time.
+    expect(page.goto).toHaveBeenCalledTimes(2);
+
+    const urlCalls = vi.mocked(buildStorybookIframeUrl).mock.calls;
+    expect(urlCalls).toHaveLength(1);
+    expect(urlCalls[0]?.[0].args).toEqual({ size: "large", label: "Ready" });
+    expect(urlCalls[0]?.[0].globals).toEqual({ locale: "en", theme: "dark" });
+
+    // The reload happens before the freeze / idle / play sequence, so the
+    // rebuilt URL is the one that gets captured.
+    const [, , capturedUrl] = (screenshotTool.captureWithVariants as any).mock
+      .calls[0];
+    expect(capturedUrl).toBe(
+      vi.mocked(buildStorybookIframeUrl).mock.results[0]?.value,
+    );
+  });
+
+  it("does not reload a story that sets no args or globals", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, {
+        delay: 100,
+        args: {},
+      });
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    expect(page.goto).toHaveBeenCalledTimes(1);
+
+    const [, , capturedUrl] = (screenshotTool.captureWithVariants as any).mock
+      .calls[0];
+    expect(capturedUrl).toBe(createTask().url);
+  });
+
+  it("layers variant args and globals over the story-level ones", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+      storybook: { globals: { locale: "en" } },
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, {
+        args: { label: "Ready", size: "large" },
+        globals: { theme: "light" },
+        variants: [
+          {
+            id: "dark",
+            options: { args: { size: "small" }, globals: { theme: "dark" } },
+          },
+        ],
+      });
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    // First call is the rebuilt base URL, second is the variant's.
+    const [, variantCall] = vi.mocked(buildStorybookIframeUrl).mock.calls;
+
+    // The variant overrides `size` and `theme` and inherits everything else
+    // the story and the plugin config asked for.
+    expect(variantCall?.[0].args).toEqual({ label: "Ready", size: "small" });
+    expect(variantCall?.[0].globals).toEqual({ locale: "en", theme: "dark" });
+  });
+  it("merges variant globals over the plugin-level globals", async () => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+      storybook: { globals: { theme: "light", locale: "en" } },
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, {
+        variants: [
+          { id: "dark", options: { globals: { theme: "dark" } } },
+          { id: "high-contrast", options: { globals: { theme: "contrast" } } },
+        ],
+      });
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    const urlCalls = vi.mocked(buildStorybookIframeUrl).mock.calls;
+    expect(urlCalls).toHaveLength(2);
+    const [darkCall, contrastCall] = urlCalls;
+
+    // Each variant overrides `theme` only; `locale` still comes from the
+    // plugin config. Without the merge both variants reuse the plugin-level
+    // globals and silently capture the same render twice.
+    expect(darkCall?.[0].globals).toEqual({ theme: "dark", locale: "en" });
+    expect(contrastCall?.[0].globals).toEqual({
+      theme: "contrast",
+      locale: "en",
     });
   });
 });
