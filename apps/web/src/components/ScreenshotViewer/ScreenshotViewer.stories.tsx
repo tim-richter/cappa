@@ -23,9 +23,9 @@ const passedArgs = {
     expectedPath: "/1b.jpeg",
     actualPath: "/1a.jpeg",
     diffPath: "/1diff.png",
-    next: "/2a.jpeg",
-    prev: "/1a.jpeg",
   },
+  next: "2",
+  prev: "3",
   onBack: () => {},
 };
 
@@ -37,9 +37,9 @@ const changedArgs = {
     expectedPath: "/1b.jpeg",
     actualPath: "/1a.jpeg",
     diffPath: "/1diff.png",
-    next: "/5a.png",
-    prev: "/4a.png",
   },
+  next: "2",
+  prev: "3",
   onBack: () => {},
 };
 
@@ -51,9 +51,9 @@ const deletedArgs = {
     expectedPath: "/1b.jpeg",
     actualPath: "/1a.jpeg",
     diffPath: "/1diff.png",
-    next: "/5a.png",
-    prev: "/4a.png",
   },
+  next: "2",
+  prev: "3",
   onBack: () => {},
 };
 
@@ -65,9 +65,9 @@ const newArgs = {
     actualPath: "/1a.jpeg",
     expectedPath: undefined,
     diffPath: undefined,
-    next: "/5a.png",
-    prev: "/4a.png",
   },
+  next: "2",
+  prev: "3",
   onBack: () => {},
 };
 

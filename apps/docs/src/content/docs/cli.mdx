@@ -171,6 +171,14 @@ The review UI supports **batch approval**: in grid or list view you can select m
 in one action. On category pages (e.g. New or Changed), **Approve all in category** approves every
 screenshot in the current view at once.
 
+A screenshot's detail page has **Prev** and **Next** controls (and the ← / → keys) that walk the
+whole list in that same order. The order is fixed when you open the review and does not move under
+you: approving the screenshot you are looking at re-categorises it, but **Next** still goes to the
+one that came after it, so you can work straight through the changed screenshots by alternating
+**Approve** and **Next**. Approving a *deleted* screenshot accepts the deletion — the screenshot
+itself is gone at that point, so the UI moves on to the next one rather than staying on a page that
+no longer has anything to show.
+
 When [`diff.interpret`](/configuration#diffinterpret) is enabled, changed screenshots also show a
 severity badge, a summary banner and interactive, color-coded region overlays on the diff view so
 you can see at a glance what changed and where.

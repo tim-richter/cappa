@@ -243,3 +243,6 @@ $RECYCLE.BIN/
 # End of https://www.toptal.com/developers/gitignore/api/macos,windows,linux,node
 
 .pnpm-store
+
+# Vitest browser-mode run artifacts (failure screenshots, attachments)
+.vitest
