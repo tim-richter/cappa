@@ -13,6 +13,7 @@ import type {
   WatchChange,
 } from "@cappa/protocol";
 import {
+  type QueryClient,
   type UseQueryResult,
   useMutation,
   useQuery,
@@ -61,6 +62,18 @@ export const screenshotKeys = {
   /** The prefix every single-screenshot query sits under. */
   details: ["screenshot"] as const,
   detail: (id: string | undefined) => ["screenshot", id] as const,
+};
+
+/**
+ * Drop every cached answer about screenshots.
+ *
+ * Approving changes a screenshot's category, so the lists that group by
+ * category, the counts beside them and the detail view all go stale at once —
+ * and every review query key sits under one of these two prefixes.
+ */
+export const invalidateReviewQueries = (queryClient: QueryClient) => {
+  queryClient.invalidateQueries({ queryKey: screenshotKeys.all });
+  queryClient.invalidateQueries({ queryKey: screenshotKeys.details });
 };
 
 /** Every screenshot. Used for the sidebar's total. */

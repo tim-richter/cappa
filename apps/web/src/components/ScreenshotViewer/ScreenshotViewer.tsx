@@ -22,7 +22,7 @@ import {
 import { useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
 import { client } from "@/api/client";
-import { screenshotKeys, useServerConfig } from "@/api/hooks";
+import { invalidateReviewQueries, useServerConfig } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
@@ -35,7 +35,11 @@ import { Toggle } from "./components/Toggle";
 import { getInitialViewMode, persistViewMode, type ViewMode } from "./viewMode";
 
 interface ScreenshotComparisonProps {
-  screenshot: Screenshot & { next: string; prev: string };
+  screenshot: Screenshot;
+  /** The screenshot the Next control moves to, if there is one. */
+  next?: string;
+  /** The screenshot the Prev control moves to, if there is one. */
+  prev?: string;
   onBack: () => void;
 }
 
@@ -49,6 +53,8 @@ const viewModes = [
 
 export function ScreenshotComparison({
   screenshot,
+  next,
+  prev,
   onBack,
 }: ScreenshotComparisonProps) {
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
@@ -77,9 +83,22 @@ export function ScreenshotComparison({
   const { mutate: approveScreenshot } = useMutation({
     mutationFn: () => client.approve([screenshot.name]),
     onSuccess: () => {
-      queryClient.invalidateQueries({
-        queryKey: screenshotKeys.detail(screenshot.id),
-      });
+      // Approving a `deleted` screenshot accepts the deletion: its baseline is
+      // unlinked, and with nothing left in `actual/` or `expected/` the
+      // screenshot stops existing. Staying on its URL would leave the open
+      // page asking the server for an id it has just been told to forget, so
+      // move on first — and replace the entry, so Back does not return to a
+      // URL that can only 404.
+      if (screenshot.category === "deleted") {
+        const onwards = next ?? prev;
+        if (onwards) {
+          navigate(`/screenshots/${onwards}`, { replace: true });
+        } else {
+          onBack();
+        }
+      }
+
+      invalidateReviewQueries(queryClient);
     },
   });
 
@@ -88,10 +107,10 @@ export function ScreenshotComparison({
       const target = e.target as HTMLElement;
       if (target.closest("input, textarea, [contenteditable]")) return;
 
-      if (e.key === "ArrowLeft" && screenshot.prev) {
-        navigate(`/screenshots/${screenshot.prev}`);
-      } else if (e.key === "ArrowRight" && screenshot.next) {
-        navigate(`/screenshots/${screenshot.next}`);
+      if (e.key === "ArrowLeft" && prev) {
+        navigate(`/screenshots/${prev}`);
+      } else if (e.key === "ArrowRight" && next) {
+        navigate(`/screenshots/${next}`);
       } else if (e.key === "a" && !screenshot.approved && canApprove) {
         approveScreenshot();
       }
@@ -100,8 +119,8 @@ export function ScreenshotComparison({
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
   }, [
-    screenshot.prev,
-    screenshot.next,
+    prev,
+    next,
     screenshot.approved,
     navigate,
     approveScreenshot,
@@ -155,7 +174,7 @@ export function ScreenshotComparison({
         {/* Center - Next/Prev buttons */}
         <div className="flex items-center justify-center">
           <div className="flex items-center gap-2">
-            {screenshot.prev && (
+            {prev && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -164,7 +183,7 @@ export function ScreenshotComparison({
                     asChild
                     className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
                   >
-                    <Link to={`/screenshots/${screenshot.prev}`}>
+                    <Link to={`/screenshots/${prev}`}>
                       <ArrowLeft className="h-4 w-4" />
                       Prev
                     </Link>
@@ -173,7 +192,7 @@ export function ScreenshotComparison({
                 <TooltipContent>Previous (←)</TooltipContent>
               </Tooltip>
             )}
-            {screenshot.next && (
+            {next && (
               <Tooltip>
                 <TooltipTrigger asChild>
                   <Button
@@ -182,7 +201,7 @@ export function ScreenshotComparison({
                     asChild
                     className="text-card-foreground hover:bg-accent hover:text-accent-foreground"
                   >
-                    <Link to={`/screenshots/${screenshot.next}`}>
+                    <Link to={`/screenshots/${next}`}>
                       Next <ArrowRight className="h-4 w-4" />
                     </Link>
                   </Button>

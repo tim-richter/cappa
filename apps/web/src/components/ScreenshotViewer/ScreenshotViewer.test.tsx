@@ -116,3 +116,175 @@ describe("read-only mode withholds approval", () => {
     expect(calls).toBe(0);
   });
 });
+
+/**
+ * The server computes `next`/`prev` over the whole list in the order it
+ * returns it, and that order is by category — so approving the open screenshot
+ * moves it, and the links that come back with the next response point
+ * somewhere else entirely.
+ */
+describe("navigation order survives an approval", () => {
+  const changed = (id: string) => ({
+    id,
+    name: id,
+    category: "changed" as const,
+    actualPath: "/images/4a.png",
+    expectedPath: "/images/4b.png",
+    diffPath: "/images/4diff.png",
+  });
+
+  const passed = (id: string) => ({
+    id,
+    name: id,
+    category: "passed" as const,
+    actualPath: "/images/4a.png",
+    expectedPath: "/images/4b.png",
+  });
+
+  it("keeps pointing at the screenshot that was next before", async () => {
+    let approved = false;
+
+    server.use(
+      http.get("/api/screenshots", ({ request }) => {
+        if (new URL(request.url).searchParams.get("category")) {
+          return HttpResponse.json([]);
+        }
+
+        // Approving "3" makes it `passed`, which the server sorts last.
+        return HttpResponse.json(
+          approved
+            ? [changed("6"), passed("4"), passed("3")]
+            : [changed("3"), changed("6"), passed("4")],
+        );
+      }),
+      http.get("/api/screenshots/3", () =>
+        HttpResponse.json(
+          approved
+            ? { ...passed("3"), approved: true, next: undefined, prev: "4" }
+            : { ...changed("3"), next: "6", prev: undefined },
+        ),
+      ),
+      http.post("/api/screenshots/approve-batch", () => {
+        approved = true;
+        return HttpResponse.json({ approved: ["3"], errors: [] });
+      }),
+    );
+
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/3",
+      <Screenshot />,
+    );
+
+    const next = screen.getByRole("link", { name: /next/i });
+    await expect.element(next).toHaveAttribute("href", "/screenshots/6");
+
+    await userEvent.click(
+      await screen.getByRole("button", { name: /approve/i }),
+    );
+
+    // Wait for the re-categorised screenshot to actually be on screen: the
+    // approve control goes away once the refetch reports it approved.
+    await expect.poll(() => approved).toBe(true);
+    await expect
+      .poll(
+        async () =>
+          (await screen.getByRole("button", { name: /approve/i }).elements())
+            .length,
+      )
+      .toBe(0);
+
+    // Next still walks on to the screenshot that has not been reviewed yet.
+    await expect.element(next).toHaveAttribute("href", "/screenshots/6");
+  });
+});
+
+/**
+ * Approving a `deleted` screenshot accepts the deletion, so the screenshot
+ * itself stops existing. The open page went on asking for it and settled on
+ * "Error fetching screenshot" — after a successful approval, at the exact
+ * moment the user was told it worked.
+ */
+describe("approving a deleted screenshot", () => {
+  it("moves on to the next screenshot instead of 404ing on its own URL", async () => {
+    let approved = false;
+
+    server.use(
+      http.get("/api/screenshots", ({ request }) => {
+        if (new URL(request.url).searchParams.get("category")) {
+          return HttpResponse.json([]);
+        }
+
+        return HttpResponse.json(
+          approved
+            ? [
+                {
+                  id: "3",
+                  name: "3",
+                  category: "changed",
+                  actualPath: "/images/4a.png",
+                  expectedPath: "/images/4b.png",
+                  diffPath: "/images/4diff.png",
+                },
+              ]
+            : [
+                {
+                  id: "2",
+                  name: "2",
+                  category: "deleted",
+                  expectedPath: "/images/4b.png",
+                },
+                {
+                  id: "3",
+                  name: "3",
+                  category: "changed",
+                  actualPath: "/images/4a.png",
+                  expectedPath: "/images/4b.png",
+                  diffPath: "/images/4diff.png",
+                },
+              ],
+        );
+      }),
+      http.get("/api/screenshots/2", () =>
+        approved
+          ? HttpResponse.json(
+              { error: "Screenshot not found" },
+              { status: 404 },
+            )
+          : HttpResponse.json({
+              id: "2",
+              name: "2",
+              category: "deleted",
+              expectedPath: "/images/4b.png",
+              next: "3",
+              prev: undefined,
+            }),
+      ),
+      http.post("/api/screenshots/approve-batch", () => {
+        approved = true;
+        return HttpResponse.json({ approved: ["2"], errors: [] });
+      }),
+    );
+
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/2",
+      <Screenshot />,
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { level: 1 }))
+      .toHaveTextContent("2");
+
+    await userEvent.click(
+      await screen.getByRole("button", { name: /approve/i }),
+    );
+
+    await expect
+      .element(screen.getByRole("heading", { level: 1 }))
+      .toHaveTextContent("3");
+    expect(await screen.getByText(/error fetching/i).elements()).toHaveLength(
+      0,
+    );
+  });
+});
