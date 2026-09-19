@@ -1,9 +1,10 @@
-import type { Screenshot } from "@cappa/protocol";
+import type { Screenshot, ScreenshotCategory } from "@cappa/protocol";
 import type { RowSelectionState, Updater } from "@tanstack/react-table";
 import { cva } from "class-variance-authority";
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
 import { DataTable, type DataTableColumnDef } from "./DataTable";
+import { EmptyState } from "./EmptyState";
 
 export interface ScreenshotListSelectionProps {
   selectedIds: Set<string>;
@@ -12,12 +13,15 @@ export interface ScreenshotListSelectionProps {
 
 interface ListProps {
   screenshots: Screenshot[];
+  /** Only used to pick the empty-state copy; rows carry their own category. */
+  category?: ScreenshotCategory;
   selection?: ScreenshotListSelectionProps;
   showCheckboxes?: boolean;
 }
 
 export const List = ({
   screenshots,
+  category,
   selection,
   showCheckboxes = false,
 }: ListProps) => {
@@ -74,6 +78,7 @@ export const List = ({
       columns={columns}
       data={screenshots}
       getRowId={(row) => row.id}
+      empty={<EmptyState category={category} className="border-none" />}
       rowSelection={canSelect ? rowSelection : undefined}
       onRowSelectionChange={
         canSelect && selection

@@ -142,6 +142,16 @@ A request can only capture tasks that discovery produced — the UI selects from
 and never supplies a URL of its own — so a client cannot point the browser somewhere
 arbitrary.
 
+## When a page has nothing to show
+
+A request that fails says what failed — the server's own message and the HTTP status — and
+offers **Retry**, which refetches in place. Nothing needs a full page reload any more.
+
+An empty category is not a blank page either. Each one says which kind of nothing it is:
+**Changed** with no screenshots reports that everything matches the baseline, **New** that
+every capture already has an approved baseline, and so on. The home page skips the
+categories that are empty and says so once when there is nothing at all.
+
 ## Flags
 
 | Flag | Description |

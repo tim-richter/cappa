@@ -8,7 +8,8 @@ import { New } from "./New";
 describe("New page", () => {
   it("shows loading state initially", async () => {
     const screen = await renderPage(<New />, { route: "/new" });
-    await expect.element(screen.getByText("Loading...")).toBeVisible();
+    await expect.element(screen.getByRole("status")).toBeVisible();
+    await expect.element(screen.getByText("Loading screenshots")).toBeVisible();
   });
 
   it("renders new screenshots after data loads", async () => {
@@ -20,7 +21,11 @@ describe("New page", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
     const screen = await renderPage(<New />, { route: "/new" });
     await expect
-      .element(screen.getByText("Error fetching screenshots"))
+      .element(screen.getByText("Couldn't load screenshots"))
+      .toBeVisible();
+    await expect.element(screen.getByText("Network error")).toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Retry" }))
       .toBeVisible();
     vi.restoreAllMocks();
   });

@@ -106,16 +106,18 @@ export const useScreenshotSearch = (search: string | null) =>
   });
 
 /**
- * One screenshot.
+ * One screenshot, or `null` when the server has no such id.
  *
- * `client.getScreenshot` resolves to `undefined` for an id the server does not
- * have, so callers must treat a settled `undefined` as not-found rather than
- * as still loading.
+ * `client.getScreenshot` answers a 404 with `undefined`, which React Query
+ * rejects outright — "Query data cannot be undefined" — so a missing
+ * screenshot used to reach the page as a failed query and got reported as a
+ * broken one. `null` is a settled answer, which lets the page tell "no such
+ * screenshot" apart from "the request failed".
  */
 export const useScreenshot = (id: string | undefined) =>
   useQuery({
     queryKey: screenshotKeys.detail(id),
-    queryFn: () => client.getScreenshot(id as string),
+    queryFn: async () => (await client.getScreenshot(id as string)) ?? null,
     enabled: id !== undefined,
   });
 

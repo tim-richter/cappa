@@ -90,9 +90,18 @@ describe("Grid", () => {
     expect(onSelectionChange).toHaveBeenCalled();
   });
 
-  it("renders an empty grid for empty screenshots array", async () => {
-    const { container } = await renderGrid({ screenshots: [] });
-    const grid = container.querySelector(".grid");
-    expect(grid?.children.length).toBe(0);
+  it("explains the empty category instead of rendering a blank area", async () => {
+    const screen = await renderGrid({ screenshots: [], category: "changed" });
+    await expect
+      .element(screen.getByText("No changed screenshots"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Everything matches the baseline."))
+      .toBeVisible();
+  });
+
+  it("uses the category it was given for the empty copy", async () => {
+    const screen = await renderGrid({ screenshots: [], category: "new" });
+    await expect.element(screen.getByText("No new screenshots")).toBeVisible();
   });
 });

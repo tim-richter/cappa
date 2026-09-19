@@ -63,9 +63,19 @@ describe("List", () => {
     expect(onSelectionChange).toHaveBeenCalled();
   });
 
-  it("renders 'No results.' for empty screenshots array", async () => {
+  it("explains the empty category rather than saying 'No results.'", async () => {
+    const screen = await renderList({ screenshots: [], category: "changed" });
+    await expect
+      .element(screen.getByText("No changed screenshots"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByText("Everything matches the baseline."))
+      .toBeVisible();
+  });
+
+  it("falls back to uncategorised empty copy without a category", async () => {
     const screen = await renderList({ screenshots: [] });
-    await expect.element(screen.getByText("No results.")).toBeVisible();
+    await expect.element(screen.getByText("No screenshots")).toBeVisible();
   });
 
   it("table has expected number of rows for screenshots", async () => {
