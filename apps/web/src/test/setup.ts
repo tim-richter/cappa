@@ -1,3 +1,4 @@
+import { toast } from "@ui/lib/utils";
 import { setupWorker } from "msw/browser";
 import { afterAll, afterEach, beforeAll } from "vitest";
 import { handlers } from "../mocks/screenshots";
@@ -10,6 +11,9 @@ beforeAll(async () => {
 
 afterEach(() => {
   server.resetHandlers();
+  // Sonner keeps one global toast list, so a toast raised by one test is still
+  // on screen in the next one unless it is cleared here.
+  toast.dismiss();
 });
 
 afterAll(() => {

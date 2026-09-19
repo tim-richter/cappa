@@ -157,4 +157,58 @@ describe("Changed page", () => {
 
     await expect.poll(() => capturedNames).toEqual(["Screenshot 3"]);
   });
+
+  /**
+   * Regression: the batch mutation threw correctly and the page passed only
+   * `onSuccess`, so a 500 — or a dropped connection — produced no toast, no
+   * message and no change on screen. Re-clicking was the only feedback.
+   */
+  it("reports a failed batch approval and keeps the selection", async () => {
+    server.use(
+      http.post("/api/screenshots/approve-batch", () =>
+        HttpResponse.json(
+          { error: "Screenshot store is gone" },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    const screen = await renderPage(<Changed />, {
+      route: "/changed",
+      withToaster: true,
+    });
+
+    await userEvent.click(screen.getByText("Select"));
+    await userEvent.click(screen.getByText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Approve selected/ }),
+    );
+
+    await expect
+      .element(screen.getByText("Screenshot store is gone"))
+      .toBeVisible();
+    // The selection survives the failure, so the retry is one click.
+    await expect
+      .element(screen.getByRole("button", { name: "Approve selected (1)" }))
+      .toBeVisible();
+  });
+
+  it("confirms a successful batch approval", async () => {
+    const screen = await renderPage(<Changed />, {
+      route: "/changed",
+      withToaster: true,
+    });
+
+    await userEvent.click(screen.getByText("Select"));
+    await userEvent.click(screen.getByText("Select all"));
+    await userEvent.click(
+      screen.getByRole("button", { name: /Approve selected/ }),
+    );
+
+    await expect
+      .element(screen.getByText("Approved Screenshot 3"))
+      .toBeVisible();
+    // Select mode ends, because there is nothing left to retry.
+    await expect.element(screen.getByText("Select")).toBeVisible();
+  });
 });

@@ -217,11 +217,23 @@ export const useWatchStatus = (options: { enabled?: boolean } = {}) =>
       !isTerminalQueryError(error) && failureCount < 2,
   });
 
+/**
+ * Mutations that phrase their own failures.
+ *
+ * `describeStartRunError` turns `CAPPA_RUN_IN_PROGRESS` into "A capture run is
+ * already in progress", which is worth more than the raw message the query
+ * client's global handler would show — so these opt out of it rather than say
+ * it twice. Anything without this is reported by the global handler, which is
+ * the point: a new mutation is never silent by default.
+ */
+const OWN_ERROR_REPORTING = { errorToast: false } as const;
+
 export const useStartWatch = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
     mutationFn: (request: StartWatchRequest = {}) => client.startWatch(request),
+    meta: OWN_ERROR_REPORTING,
     onSuccess: (status) => {
       queryClient.setQueryData(captureKeys.watch, status);
     },
@@ -233,6 +245,7 @@ export const useStopWatch = () => {
 
   return useMutation({
     mutationFn: () => client.stopWatch(),
+    meta: OWN_ERROR_REPORTING,
     onSuccess: (status) => {
       queryClient.setQueryData(captureKeys.watch, status);
     },
@@ -297,6 +310,7 @@ export const useStartRun = () => {
 
   return useMutation({
     mutationFn: (request: StartRunRequest = {}) => client.startRun(request),
+    meta: OWN_ERROR_REPORTING,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: captureKeys.runs });
     },
@@ -306,6 +320,7 @@ export const useStartRun = () => {
 export const useCancelRun = () =>
   useMutation({
     mutationFn: (runId: string) => client.cancelRun(runId),
+    meta: OWN_ERROR_REPORTING,
   });
 
 /** Human-readable reason a run could not be started. */

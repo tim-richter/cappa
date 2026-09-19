@@ -22,6 +22,16 @@ describe("approving one screenshot", () => {
   const openDetail = () =>
     renderPageWithRoute("/screenshots/:id", "/screenshots/1", <Screenshot />);
 
+  /** The same page with the toast host `Layout` mounts in the app. */
+  const openDetailWithToaster = () =>
+    renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/1",
+      <Screenshot />,
+      undefined,
+      { withToaster: true },
+    );
+
   it("posts the screenshot's name to approve-batch", async () => {
     let body: unknown;
     server.use(
@@ -38,6 +48,65 @@ describe("approving one screenshot", () => {
 
     // The name, not the id: the engine approves by name.
     await expect.poll(() => body).toEqual({ names: ["1"] });
+  });
+
+  it("confirms the approval", async () => {
+    const screen = await openDetailWithToaster();
+    await userEvent.click(
+      await screen.getByRole("button", { name: /approve/i }),
+    );
+
+    await expect.element(screen.getByText("Approved 1")).toBeVisible();
+  });
+
+  /**
+   * Regression: the single-approve mutation returned without checking the
+   * response and had no `onError`, so a 403 from a read-only server or a 500
+   * from a broken store looked exactly like success — no badge, no toast, no
+   * hint that the click had done nothing.
+   */
+  it("reports a failed request and stays unapproved", async () => {
+    server.use(
+      http.post("/api/screenshots/approve-batch", () =>
+        HttpResponse.json(
+          { error: "Screenshot store is gone" },
+          { status: 500 },
+        ),
+      ),
+    );
+
+    const screen = await openDetailWithToaster();
+    await userEvent.click(
+      await screen.getByRole("button", { name: /approve/i }),
+    );
+
+    await expect
+      .element(screen.getByText("Screenshot store is gone"))
+      .toBeVisible();
+    // Still offering approval, because nothing was approved.
+    await expect
+      .element(screen.getByRole("button", { name: /approve/i }))
+      .toBeVisible();
+  });
+
+  it("reports a name the engine refused", async () => {
+    server.use(
+      http.post("/api/screenshots/approve-batch", () =>
+        HttpResponse.json({
+          approved: [],
+          errors: [{ name: "1", error: "no actual screenshot" }],
+        }),
+      ),
+    );
+
+    const screen = await openDetailWithToaster();
+    await userEvent.click(
+      await screen.getByRole("button", { name: /approve/i }),
+    );
+
+    await expect
+      .element(screen.getByText("Failed to approve 1: no actual screenshot"))
+      .toBeVisible();
   });
 
   it("approves on the A key too", async () => {

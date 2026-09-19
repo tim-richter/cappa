@@ -1,4 +1,5 @@
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider } from "@tanstack/react-query";
+import { Toaster } from "@ui/components/sonner";
 import { NuqsTestingAdapter } from "nuqs/adapters/testing";
 import type { ReactElement, ReactNode } from "react";
 import {
@@ -9,18 +10,25 @@ import {
   Routes,
 } from "react-router";
 import { render } from "vitest-browser-react";
+import { createQueryClient } from "@/api/queryClient";
 
+/**
+ * The app's own query client, with the retries turned off.
+ *
+ * Built by `createQueryClient` rather than by hand so tests exercise what the
+ * UI actually runs — the global mutation error handler included. A hand-rolled
+ * `new QueryClient()` here is how the silent approve failures stayed invisible
+ * to the suite as well as to the user.
+ */
 function createTestQueryClient() {
-  return new QueryClient({
-    defaultOptions: {
-      queries: {
-        retry: false,
-        refetchOnWindowFocus: false,
-        refetchOnReconnect: false,
-        refetchOnMount: true,
-      },
-      mutations: { retry: false },
+  return createQueryClient({
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+      refetchOnMount: true,
     },
+    mutations: { retry: false },
   });
 }
 
@@ -28,6 +36,13 @@ interface RenderOptions {
   route?: string;
   /** Initial nuqs URL search params (for pages using useQueryState) */
   searchParams?: Record<string, string>;
+  /**
+   * Mount the toaster, as `Layout` does in the app.
+   *
+   * Opt-in: a test that asserts on absences ("no buttons are rendered") should
+   * not have to account for a toast host it never asked for.
+   */
+  withToaster?: boolean;
 }
 
 /**
@@ -36,7 +51,7 @@ interface RenderOptions {
  */
 export function renderWithProviders(
   ui: ReactElement,
-  { route = "/" }: RenderOptions = {},
+  { route = "/", withToaster = false }: RenderOptions = {},
 ) {
   const queryClient = createTestQueryClient();
   return render(
@@ -44,6 +59,7 @@ export function renderWithProviders(
       <MemoryRouter initialEntries={[route]}>
         <NuqsTestingAdapter>{ui}</NuqsTestingAdapter>
       </MemoryRouter>
+      {withToaster && <Toaster />}
     </QueryClientProvider>,
   );
 }
@@ -54,7 +70,7 @@ export function renderWithProviders(
  */
 export function renderPage(
   ui: ReactElement,
-  { route = "/", searchParams }: RenderOptions = {},
+  { route = "/", searchParams, withToaster = false }: RenderOptions = {},
 ) {
   const queryClient = createTestQueryClient();
   const router = createMemoryRouter(
@@ -71,6 +87,7 @@ export function renderPage(
       <NuqsTestingAdapter searchParams={searchParams}>
         <RouterProvider router={router} />
       </NuqsTestingAdapter>
+      {withToaster && <Toaster />}
     </QueryClientProvider>,
   );
 }
@@ -84,6 +101,7 @@ export function renderPageWithRoute(
   path: string,
   ui: ReactElement,
   wrapper?: (children: ReactNode) => ReactElement,
+  { withToaster = false }: Pick<RenderOptions, "withToaster"> = {},
 ) {
   const queryClient = createTestQueryClient();
   const Wrapper = wrapper;
@@ -107,6 +125,7 @@ export function renderPageWithRoute(
   return render(
     <QueryClientProvider client={queryClient}>
       <NuqsTestingAdapter>{content}</NuqsTestingAdapter>
+      {withToaster && <Toaster />}
     </QueryClientProvider>,
   );
 }

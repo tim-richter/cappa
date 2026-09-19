@@ -152,6 +152,16 @@ An empty category is not a blank page either. Each one says which kind of nothin
 every capture already has an approved baseline, and so on. The home page skips the
 categories that are empty and says so once when there is nothing at all.
 
+## Approving says what happened
+
+Approving reports its outcome, whichever control you used. A screenshot that went through
+is confirmed by name, a batch by count. A request the server refused — a read-only server,
+a store it can no longer write to — says so with the server's own message, and a name the
+engine could not approve is named even though the request itself succeeded.
+
+Nothing is assumed to have worked: a failed approval leaves the screenshot unapproved and
+keeps your selection, so retrying is one click rather than a fresh round of selecting.
+
 ## Flags
 
 | Flag | Description |
