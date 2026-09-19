@@ -1,3 +1,4 @@
+import path from "node:path";
 import { initLogger } from "@cappa/logger";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import * as pixelCompare from "./compare/pixel";
@@ -42,6 +43,52 @@ describe("ScreenshotTool getVariantFilename", () => {
     });
 
     expect(filename).toBe("Badge/mobile-custom.png");
+  });
+
+  it("strips traversal from a provided filename", () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+
+    const filename = tool.getVariantFilename("Badge.png", {
+      id: "mobile",
+      filename: "../../../../home/user/.config/evil.png",
+    });
+
+    expect(filename).toBe("home/user/.config/evil.png");
+  });
+
+  it("makes an absolute provided filename relative", () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+
+    const filename = tool.getVariantFilename("Badge.png", {
+      id: "mobile",
+      filename: "/etc/cron.d/evil.png",
+    });
+
+    expect(filename).toBe("etc/cron.d/evil.png");
+  });
+
+  it("falls back to the derived name when nothing usable is left", () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+
+    const filename = tool.getVariantFilename("Badge.png", {
+      id: "mobile",
+      filename: "../..",
+    });
+
+    expect(filename).toBe("Badge--mobile.png");
+  });
+
+  it("confines a provided filename to the actual directory", () => {
+    const tool = new ScreenshotTool({ outputDir: "/tmp/cappa-variant" });
+
+    const filename = tool.getVariantFilename("Badge.png", {
+      id: "mobile",
+      filename: "../escape.png",
+    });
+
+    expect(tool.filesystem.getActualFilePath(filename)).toBe(
+      path.join("/tmp/cappa-variant", "actual", "escape.png"),
+    );
   });
 });
 

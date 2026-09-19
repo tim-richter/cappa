@@ -19,6 +19,7 @@ import {
   type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
 import { ScreenshotFileSystem } from "./filesystem";
+import { sanitizeScreenshotFilename } from "./paths";
 import type { RunLogLevel } from "./runner/types";
 import type {
   DiffConfig,
@@ -748,9 +749,28 @@ class ScreenshotTool {
     };
   }
 
+  /**
+   * Resolve the filename a variant is written under.
+   *
+   * An explicit `variant.filename` wins, but it is sanitized first: for
+   * `@cappa/plugin-storybook` it arrives from the browser as a story parameter,
+   * so it is story-author input and could otherwise carry `../` or an absolute
+   * path into the write sink. A name left empty by sanitization falls back to
+   * the derived one.
+   */
   getVariantFilename(filename: string, variant: ScreenshotVariant): string {
     if (variant.filename) {
-      return variant.filename;
+      const safeFilename = sanitizeScreenshotFilename(variant.filename);
+
+      if (safeFilename !== variant.filename) {
+        this.logger.warn(
+          `Variant filename "${variant.filename}" is not a valid screenshot path, using "${safeFilename || "the derived name"}" instead`,
+        );
+      }
+
+      if (safeFilename) {
+        return safeFilename;
+      }
     }
 
     const parsed = path.parse(filename);
@@ -1012,8 +1032,7 @@ class ScreenshotTool {
 
     // Capture variant screenshots
     for (const variant of variants) {
-      const variantFilename =
-        variant.filename || this.getVariantFilename(baseFilename, variant);
+      const variantFilename = this.getVariantFilename(baseFilename, variant);
       const variantOptions: ScreenshotSettings = {
         ...baseOptions,
         ...variant.options,

@@ -45,6 +45,7 @@ import {
   toDiffMetaPath,
 } from "./filesystem";
 import { mapWithConcurrency } from "./mapWithConcurrency";
+import { sanitizeScreenshotFilename } from "./paths";
 import type {
   Plugin,
   PluginDef,
@@ -220,6 +221,7 @@ export {
   type StartRunRequest,
   type StartWatchRequest,
   type SubscribeOptions,
+  sanitizeScreenshotFilename,
   selectTasks,
   type Target,
   type TaskFailure,

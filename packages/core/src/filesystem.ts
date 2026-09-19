@@ -5,6 +5,7 @@ import { getLogger } from "@cappa/logger";
 import { imagesMatch } from "./compare/pixel";
 import { extractTextMetadata, injectTextMetadata } from "./features/png/util";
 import { mapWithConcurrency } from "./mapWithConcurrency";
+import { isPathInside, resolveInside } from "./paths";
 import type {
   DiffConfig,
   DiffMetadata,
@@ -89,15 +90,14 @@ export class ScreenshotFileSystem {
    */
   async approveFromActualPath(actualFilePath: string) {
     const actualAbsolute = this.resolveActualPath(actualFilePath);
-    const relativePath = path.relative(this.actual, actualAbsolute);
 
-    if (relativePath.startsWith("..")) {
+    if (!isPathInside(this.actual, actualAbsolute)) {
       throw new Error(
         `Cannot approve screenshot outside of actual directory: ${actualFilePath}`,
       );
     }
 
-    return this.approveRelative(relativePath);
+    return this.approveRelative(path.relative(this.actual, actualAbsolute));
   }
 
   /**
@@ -306,24 +306,39 @@ export class ScreenshotFileSystem {
   }
 
   /**
+   * Resolve a screenshot filename inside one of the buckets.
+   *
+   * This is the single sink every read and write funnels through, so it is also
+   * where an untrusted filename is stopped: plugin-supplied names (Storybook
+   * variant filenames come straight from story code) must never escape the
+   * bucket they belong to.
+   */
+  private resolveBucketPath(
+    directory: "actual" | "expected" | "diff",
+    filename: string,
+  ): string {
+    return resolveInside(this[directory], filename, directory);
+  }
+
+  /**
    * Get the path to an actual screenshot file
    */
   getActualFilePath(filename: string): string {
-    return path.resolve(this.actual, filename);
+    return this.resolveBucketPath("actual", filename);
   }
 
   /**
    * Get the path to an expected screenshot file
    */
   getExpectedFilePath(filename: string): string {
-    return path.resolve(this.expected, filename);
+    return this.resolveBucketPath("expected", filename);
   }
 
   /**
    * Get the path to a diff screenshot file
    */
   getDiffFilePath(filename: string): string {
-    return path.resolve(this.diff, filename);
+    return this.resolveBucketPath("diff", filename);
   }
 
   /**
@@ -399,14 +414,12 @@ export class ScreenshotFileSystem {
   }
 
   getRelativePath(directory: "actual" | "expected" | "diff", filePath: string) {
-    const relativePath = path.relative(this[directory], filePath);
-
-    if (relativePath.startsWith("..")) {
+    if (!isPathInside(this[directory], filePath)) {
       throw new Error(
         `Cannot resolve relative path outside of ${directory} directory: ${filePath}`,
       );
     }
 
-    return relativePath;
+    return path.relative(this[directory], filePath);
   }
 }
