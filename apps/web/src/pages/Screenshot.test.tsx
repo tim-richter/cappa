@@ -1,4 +1,6 @@
+import { HttpResponse, http } from "msw";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { server } from "../test/setup";
 import { renderPageWithRoute } from "../test/utils";
 import { Screenshot } from "./Screenshot";
 
@@ -17,7 +19,8 @@ describe("Screenshot page", () => {
       "/screenshots/1",
       <Screenshot />,
     );
-    await expect.element(screen.getByText("Loading...")).toBeVisible();
+    await expect.element(screen.getByRole("status")).toBeVisible();
+    await expect.element(screen.getByText("Loading screenshot")).toBeVisible();
   });
 
   it("renders screenshot viewer after data loads for new screenshot", async () => {
@@ -41,7 +44,10 @@ describe("Screenshot page", () => {
       <Screenshot />,
     );
     await expect
-      .element(screen.getByText("Error fetching screenshot"))
+      .element(screen.getByText("Couldn't load this screenshot"))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Retry" }))
       .toBeVisible();
   });
 
@@ -96,6 +102,24 @@ describe("Screenshot page", () => {
 
     await expect
       .element(screen.getByRole("heading", { name: "Visual Differences" }))
+      .toBeVisible();
+  });
+
+  it("says a missing screenshot is missing rather than broken", async () => {
+    server.use(
+      http.get("/api/screenshots/:id", () =>
+        HttpResponse.json({ error: "Not found" }, { status: 404 }),
+      ),
+    );
+
+    const screen = await renderPageWithRoute(
+      "/screenshots/:id",
+      "/screenshots/999",
+      <Screenshot />,
+    );
+
+    await expect
+      .element(screen.getByText("Screenshot not found"))
       .toBeVisible();
   });
 });

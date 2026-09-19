@@ -8,7 +8,8 @@ import { Deleted } from "./Deleted";
 describe("Deleted page", () => {
   it("shows loading state initially", async () => {
     const screen = await renderPage(<Deleted />, { route: "/deleted" });
-    await expect.element(screen.getByText("Loading...")).toBeVisible();
+    await expect.element(screen.getByRole("status")).toBeVisible();
+    await expect.element(screen.getByText("Loading screenshots")).toBeVisible();
   });
 
   it("renders deleted screenshots after data loads", async () => {
@@ -20,7 +21,11 @@ describe("Deleted page", () => {
     vi.spyOn(globalThis, "fetch").mockRejectedValue(new Error("Network error"));
     const screen = await renderPage(<Deleted />, { route: "/deleted" });
     await expect
-      .element(screen.getByText("Error fetching screenshots"))
+      .element(screen.getByText("Couldn't load screenshots"))
+      .toBeVisible();
+    await expect.element(screen.getByText("Network error")).toBeVisible();
+    await expect
+      .element(screen.getByRole("button", { name: "Retry" }))
       .toBeVisible();
     vi.restoreAllMocks();
   });

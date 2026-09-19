@@ -1,14 +1,30 @@
+import type { Screenshot, ScreenshotCategory } from "@cappa/protocol";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
 import { useScreenshotSearch } from "@/api/hooks";
 import { BatchApproveBar } from "@/components/BatchApproveBar";
+import { EmptyState } from "@/components/EmptyState";
 import { Grid } from "@/components/Grid";
 import { List } from "@/components/List";
+import { QueryState } from "@/components/QueryState";
 import { useApproveBatch } from "@/hooks/useApproveBatch";
 import { Header } from "@/layout/Header";
 import { Main } from "@/layout/Main";
 import { View } from "@/types";
+
+const SECTIONS: { category: ScreenshotCategory; label: string }[] = [
+  { category: "new", label: "New" },
+  { category: "deleted", label: "Deleted" },
+  { category: "changed", label: "Changed" },
+  { category: "passed", label: "Passed" },
+];
+
+const APPROVABLE_CATEGORIES: ScreenshotCategory[] = [
+  "changed",
+  "new",
+  "deleted",
+];
 
 export const Home: FC = () => {
   const [search] = useQueryState("search");
@@ -22,7 +38,8 @@ export const Home: FC = () => {
 
   const ScreenshotComponent = activeView === View.Grid ? Grid : List;
 
-  const { data, isPending, isError } = useScreenshotSearch(search);
+  const query = useScreenshotSearch(search);
+  const screenshots = query.data ?? [];
 
   const { mutate: approveBatch, isPending: isApprovePending } =
     useApproveBatch();
@@ -37,28 +54,11 @@ export const Home: FC = () => {
   );
 
   const handleSelectAll = useCallback(() => {
-    if (!data) return;
-
-    const ids = data
-      .filter((s) =>
-        ["changed", "new", "deleted"].includes(s.category as string),
-      )
+    const ids = screenshots
+      .filter((s) => APPROVABLE_CATEGORIES.includes(s.category))
       .map((s) => s.id);
     setSelectedIds(new Set(ids));
-  }, [data]);
-
-  if (isPending) {
-    return <div>Loading...</div>;
-  }
-
-  if (isError) {
-    return <div>Error fetching screenshots</div>;
-  }
-
-  const changedScreenshots = data.filter((s) => s.category === "changed");
-  const newScreenshots = data.filter((s) => s.category === "new");
-  const deletedScreenshots = data.filter((s) => s.category === "deleted");
-  const passedScreenshots = data.filter((s) => s.category === "passed");
+  }, [screenshots]);
 
   const selection = {
     selectedIds,
@@ -73,7 +73,7 @@ export const Home: FC = () => {
         if (!active) setSelectedIds(new Set());
       }}
       selectedIds={selectedIds}
-      screenshots={data}
+      screenshots={screenshots}
       onSelectAll={handleSelectAll}
       onApproveSelected={handleApproveSelected}
       onApproveAll={() => {}}
@@ -81,47 +81,57 @@ export const Home: FC = () => {
       isPending={isApprovePending}
     />
   );
+
+  const renderSections = (data: Screenshot[]) => {
+    // One overview of four categories, so an empty category is a missing
+    // section rather than four stacked "nothing here" cards — but a page with
+    // nothing at all still has to say so.
+    if (data.length === 0) {
+      return (
+        <EmptyState
+          description={
+            search
+              ? `No screenshots match “${search}”.`
+              : "Run `cappa capture` to capture some."
+          }
+        />
+      );
+    }
+
+    return SECTIONS.map(({ category, label }) => {
+      const sectionScreenshots = data.filter((s) => s.category === category);
+      if (sectionScreenshots.length === 0) return null;
+
+      const selectable = isSelectMode && category !== "passed";
+
+      return (
+        <div key={category} className="space-y-3">
+          <h3 className="text-2xl font-bold">{label}</h3>
+          <ScreenshotComponent
+            screenshots={sectionScreenshots}
+            category={category}
+            selection={selectable ? selection : undefined}
+            showCheckboxes={selectable}
+          />
+        </div>
+      );
+    });
+  };
+
   return (
     <>
       <Header actions={approveBar} />
 
       <Main>
-        <div className="flex flex-col gap-4">
-          <div className="space-y-3">
-            <h3 className="text-2xl font-bold">New</h3>
-            <ScreenshotComponent
-              screenshots={newScreenshots}
-              category="new"
-              selection={isSelectMode ? selection : undefined}
-              showCheckboxes={isSelectMode}
-            />
-          </div>
-          <div className="space-y-3">
-            <h3 className="text-2xl font-bold">Deleted</h3>
-            <ScreenshotComponent
-              screenshots={deletedScreenshots}
-              category="deleted"
-              selection={isSelectMode ? selection : undefined}
-              showCheckboxes={isSelectMode}
-            />
-          </div>
-          <div className="space-y-3">
-            <h3 className="text-2xl font-bold">Changed</h3>
-            <ScreenshotComponent
-              screenshots={changedScreenshots}
-              category="changed"
-              selection={isSelectMode ? selection : undefined}
-              showCheckboxes={isSelectMode}
-            />
-          </div>
-          <div className="space-y-3">
-            <h3 className="text-2xl font-bold">Passed</h3>
-            <ScreenshotComponent
-              screenshots={passedScreenshots}
-              category="passed"
-            />
-          </div>
-        </div>
+        <QueryState
+          query={query}
+          errorTitle="Couldn't load screenshots"
+          loadingLabel="Loading screenshots"
+        >
+          {(data) => (
+            <div className="flex flex-col gap-4">{renderSections(data)}</div>
+          )}
+        </QueryState>
       </Main>
     </>
   );

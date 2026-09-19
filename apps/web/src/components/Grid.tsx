@@ -1,4 +1,4 @@
-import type { Screenshot } from "@cappa/protocol";
+import type { Screenshot, ScreenshotCategory } from "@cappa/protocol";
 import { Card } from "@ui/components/card";
 import { Checkbox } from "@ui/components/checkbox";
 import { cn } from "@ui/lib/utils";
@@ -6,6 +6,7 @@ import type { FC } from "react";
 import { Link } from "react-router";
 import { findPreviewScreenshot } from "@/util/screenshot";
 import { CategoryBadge } from "./CategoryBadge";
+import { EmptyState } from "./EmptyState";
 
 export interface ScreenshotGridSelectionProps {
   selectedIds: Set<string>;
@@ -14,7 +15,7 @@ export interface ScreenshotGridSelectionProps {
 
 interface ScreenshotGridProps {
   screenshots: Screenshot[];
-  category: "changed" | "new" | "deleted" | "passed";
+  category: ScreenshotCategory;
   selection?: ScreenshotGridSelectionProps;
   showCheckboxes?: boolean;
 }
@@ -34,6 +35,12 @@ export const Grid: FC<ScreenshotGridProps> = ({
     else next.add(id);
     selection.onSelectionChange(next);
   };
+
+  // Without this the grid rendered a blank area, which is indistinguishable
+  // from a page that never loaded.
+  if (screenshots.length === 0) {
+    return <EmptyState category={category} />;
+  }
 
   return (
     <div className="flex-1 overflow-auto">

@@ -12,7 +12,6 @@ import {
   tableFeatures,
   useTable,
 } from "@tanstack/react-table";
-
 import {
   Table,
   TableBody,
@@ -21,6 +20,7 @@ import {
   TableHeader,
   TableRow,
 } from "@ui/components/table";
+import type { ReactNode } from "react";
 
 /**
  * The features this table opts into. Declared statically outside the component
@@ -48,6 +48,8 @@ interface DataTableProps<TData extends RowData, TValue extends CellData> {
   getRowId?: (row: TData) => string;
   rowSelection?: RowSelectionState;
   onRowSelectionChange?: OnChangeFn<RowSelectionState>;
+  /** Shown in place of rows when there are none. */
+  empty?: ReactNode;
 }
 
 export function DataTable<TData extends RowData, TValue extends CellData>({
@@ -56,6 +58,7 @@ export function DataTable<TData extends RowData, TValue extends CellData>({
   getRowId,
   rowSelection,
   onRowSelectionChange,
+  empty = "No results.",
 }: DataTableProps<TData, TValue>) {
   const table = useTable({
     features: dataTableFeatures,
@@ -103,8 +106,8 @@ export function DataTable<TData extends RowData, TValue extends CellData>({
             ))
           ) : (
             <TableRow>
-              <TableCell colSpan={columns.length} className="h-24 text-center">
-                No results.
+              <TableCell colSpan={columns.length} className="text-center">
+                {empty}
               </TableCell>
             </TableRow>
           )}
