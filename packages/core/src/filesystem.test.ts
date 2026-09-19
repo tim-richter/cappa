@@ -140,6 +140,75 @@ describe("ScreenshotFileSystem", () => {
   });
 });
 
+describe("ScreenshotFileSystem path confinement", () => {
+  it("rejects traversing filenames for every bucket", () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+
+    expect(() => fileSystem.getActualFilePath("../escape.png")).toThrow(
+      /outside of the actual directory/,
+    );
+    expect(() => fileSystem.getExpectedFilePath("../escape.png")).toThrow(
+      /outside of the expected directory/,
+    );
+    expect(() => fileSystem.getDiffFilePath("../escape.png")).toThrow(
+      /outside of the diff directory/,
+    );
+  });
+
+  it("rejects absolute filenames", () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+    const outside = path.join(tempDir, "evil.png");
+
+    expect(() => fileSystem.getActualFilePath(outside)).toThrow(
+      /outside of the actual directory/,
+    );
+  });
+
+  it("does not write outside of actual when given a traversing filename", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+    const escaped = path.join(tempDir, "evil.png");
+
+    await expect(
+      fileSystem.writeActualFile("../evil.png", Buffer.from("evil")),
+    ).rejects.toThrow(/outside of the actual directory/);
+
+    expect(fs.existsSync(escaped)).toBe(false);
+  });
+
+  it("does not write outside of diff when given a traversing filename", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+    const escaped = path.join(tempDir, "evil.png");
+
+    await expect(
+      fileSystem.writeDiffFile("../evil.png", Buffer.from("evil")),
+    ).rejects.toThrow(/outside of the diff directory/);
+    await expect(
+      fileSystem.writeDiffMetaFile("../evil.png", {
+        numDiffPixels: 1,
+        percentDifference: 1,
+      }),
+    ).rejects.toThrow(/outside of the diff directory/);
+
+    expect(fs.existsSync(escaped)).toBe(false);
+  });
+
+  it("still accepts nested filenames", () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+
+    expect(fileSystem.getActualFilePath("a/b/c.png")).toBe(
+      path.join(tempDir, "actual", "a", "b", "c.png"),
+    );
+  });
+
+  it("accepts a filename that merely starts with dots", () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+
+    expect(fileSystem.getActualFilePath("..leading.png")).toBe(
+      path.join(tempDir, "actual", "..leading.png"),
+    );
+  });
+});
+
 describe("ScreenshotFileSystem.approveScreenshots", () => {
   it("promotes new screenshots to expected", async () => {
     const fileSystem = new ScreenshotFileSystem(tempDir);

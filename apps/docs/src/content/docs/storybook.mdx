@@ -256,6 +256,11 @@ The `options` are mostly the same as the options for the story, but they are app
 The `filename` is the name of the file that will be created for the variant. If not provided, it will be
 generated from the story name and the variant id.
 
+A `filename` is always relative to the screenshot directory: leading slashes, `.`, `..` and Windows
+drive prefixes are stripped before the screenshot is written, so a variant can never write outside of
+`<outputDir>/actual` and `<outputDir>/diff`. `filename: '../shared/button.png'` is captured as
+`shared/button.png`, and a name that is left empty by that cleanup falls back to the generated one.
+
 ### Args
 
 You can set the args a story renders with under `parameters.cappa.args`, and override them per

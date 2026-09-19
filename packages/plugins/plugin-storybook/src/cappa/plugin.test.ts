@@ -473,6 +473,48 @@ describe("console logging configuration", () => {
     data: { story },
   });
 
+  it("never uses a story-supplied variant filename verbatim", async () => {
+    // `parameters.cappa.variants[].filename` is story-author input shipped from
+    // the browser, so it has to go through `getVariantFilename` (which
+    // sanitizes it) rather than straight into the capture call.
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+    });
+
+    const page = createPage();
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(
+      page as any,
+      screenshotTool as any,
+    )) ?? { latchMap: new Map() };
+
+    page.goto = vi.fn(async () => {
+      const exposed = (page.exposeFunction as any).mock.calls.find(
+        ([name]: [string]) => name === "__cappa_parameters",
+      );
+      await exposed?.[1](story.id, {
+        variants: [{ id: "mobile", filename: "../../../evil.png" }],
+      });
+    });
+
+    await plugin.execute(
+      createTask(),
+      page as any,
+      screenshotTool as any,
+      context,
+    );
+
+    const [, , , , variantsWithUrls] = (
+      screenshotTool.captureWithVariants as any
+    ).mock.calls[0];
+
+    expect(screenshotTool.getVariantFilename).toHaveBeenCalledWith(
+      "button--primary.png",
+      expect.objectContaining({ filename: "../../../evil.png" }),
+    );
+    expect(variantsWithUrls[0].filename).toBe("button--primary.png-mobile.png");
+  });
+
   it("logs console events by default", async () => {
     const plugin = cappaPluginStorybook({
       storybookUrl: "http://localhost:6006",

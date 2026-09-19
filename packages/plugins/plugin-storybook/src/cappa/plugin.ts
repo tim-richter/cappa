@@ -390,13 +390,13 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         ][] = [];
 
         for (const variant of variantParameters) {
-          const variantFilename =
-            variant.filename ||
-            screenshotTool.getVariantFilename(filename, {
-              id: variant.id,
-              label: variant.label,
-              filename: variant.filename,
-            });
+          // `getVariantFilename` also sanitizes an explicit `variant.filename`,
+          // which is story-author input here, so it must not be used directly.
+          const variantFilename = screenshotTool.getVariantFilename(filename, {
+            id: variant.id,
+            label: variant.label,
+            filename: variant.filename,
+          });
 
           // Variant args and globals layer over the story-level ones, which
           // already layer over the plugin-level defaults. Globals are what a
