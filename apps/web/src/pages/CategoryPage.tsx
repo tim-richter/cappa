@@ -1,5 +1,4 @@
-import type { ScreenshotCategory } from "@cappa/protocol";
-import { toast } from "@ui/lib/utils";
+import type { ApproveResult, ScreenshotCategory } from "@cappa/protocol";
 import { parseAsStringEnum, useQueryState } from "nuqs";
 import type { FC } from "react";
 import { useCallback, useState } from "react";
@@ -8,7 +7,7 @@ import { BatchApproveBar } from "@/components/BatchApproveBar";
 import { Grid } from "@/components/Grid";
 import { List } from "@/components/List";
 import { QueryState } from "@/components/QueryState";
-import { useApproveBatch } from "@/hooks/useApproveBatch";
+import { isFullyApproved, useApproveBatch } from "@/hooks/useApproveBatch";
 import { Header } from "@/layout/Header";
 import { Main } from "@/layout/Main";
 import { View } from "@/types";
@@ -40,38 +39,31 @@ export const CategoryPage: FC<{ category: ScreenshotCategory }> = ({
   const { mutate: approveBatch, isPending: isApprovePending } =
     useApproveBatch();
 
+  // Both approve controls report the outcome through `useApproveBatch`, so all
+  // that is left here is leaving select mode — and only when every name went
+  // through. A partial failure, or a request that never reached the server,
+  // keeps the selection so the user can retry it rather than rebuild it.
+  const leaveSelectModeIfApproved = useCallback((result: ApproveResult) => {
+    if (!isFullyApproved(result)) return;
+
+    setSelectedIds(new Set());
+    setIsSelectMode(false);
+  }, []);
+
   const handleApproveSelected = useCallback(
     (names: string[]) => {
-      approveBatch(names, {
-        onSuccess: ({ approved, errors }) => {
-          if (errors.length > 0) {
-            toast.error(
-              `Failed to approve ${errors.length} screenshots: ${errors.join(", ")}`,
-            );
-            return;
-          }
-
-          setSelectedIds(new Set());
-          setIsSelectMode(false);
-          toast.success(`${approved.length} screenshots approved`);
-        },
-      });
+      approveBatch(names, { onSuccess: leaveSelectModeIfApproved });
     },
-    [approveBatch],
+    [approveBatch, leaveSelectModeIfApproved],
   );
 
   const handleApproveAll = useCallback(() => {
     if (screenshots.length === 0) return;
     approveBatch(
       screenshots.map((s) => s.name),
-      {
-        onSuccess: () => {
-          setSelectedIds(new Set());
-          setIsSelectMode(false);
-        },
-      },
+      { onSuccess: leaveSelectModeIfApproved },
     );
-  }, [screenshots, approveBatch]);
+  }, [screenshots, approveBatch, leaveSelectModeIfApproved]);
 
   const handleSelectAll = useCallback(() => {
     setSelectedIds(new Set(screenshots.map((s) => s.id)));

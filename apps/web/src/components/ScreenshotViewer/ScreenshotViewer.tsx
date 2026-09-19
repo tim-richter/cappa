@@ -1,5 +1,4 @@
 import type { Screenshot } from "@cappa/protocol";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Badge } from "@ui/components/badge";
 import { Button } from "@ui/components/button";
 import {
@@ -19,11 +18,11 @@ import {
   SplitSquareHorizontal,
   ToggleRight,
 } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { Link, useNavigate } from "react-router";
-import { client } from "@/api/client";
-import { invalidateReviewQueries, useServerConfig } from "@/api/hooks";
+import { useServerConfig } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
+import { isFullyApproved, useApproveBatch } from "@/hooks/useApproveBatch";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
 import { SeverityBadge } from "./components/Interpretation";
@@ -60,7 +59,6 @@ export function ScreenshotComparison({
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     getInitialViewMode(),
   );
-  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const { data: config } = useServerConfig();
   // A read-only server refuses approval with a 403, so the control and its
@@ -77,30 +75,47 @@ export function ScreenshotComparison({
     persistViewMode(nextMode);
   };
 
-  // Approving one screenshot is `approve` with a single name. It used to be a
-  // `PATCH` whose only non-no-op branch called the same engine method, so the
-  // route is gone and this goes through the client like everything else.
-  const { mutate: approveScreenshot } = useMutation({
-    mutationFn: () => client.approve([screenshot.name]),
-    onSuccess: () => {
-      // Approving a `deleted` screenshot accepts the deletion: its baseline is
-      // unlinked, and with nothing left in `actual/` or `expected/` the
-      // screenshot stops existing. Staying on its URL would leave the open
-      // page asking the server for an id it has just been told to forget, so
-      // move on first — and replace the entry, so Back does not return to a
-      // URL that can only 404.
-      if (screenshot.category === "deleted") {
-        const onwards = next ?? prev;
-        if (onwards) {
-          navigate(`/screenshots/${onwards}`, { replace: true });
-        } else {
-          onBack();
-        }
-      }
+  // Approving one screenshot is the batch mutation with a single name. That is
+  // what gives this button the success, partial-failure and request-failure
+  // toasts the batch bar has — it used to have an inline `useMutation` with no
+  // `onError` at all, so a 403 or a 500 left the button looking inert.
+  const { mutate: approveBatch } = useApproveBatch();
 
-      invalidateReviewQueries(queryClient);
-    },
-  });
+  const approveScreenshot = useCallback(() => {
+    approveBatch([screenshot.name], {
+      onSuccess: (result) => {
+        // A name the engine refused is reported by the hook and nothing else
+        // happens: navigating away from a screenshot that is still there would
+        // hide the failure the user has to act on.
+        if (!isFullyApproved(result)) {
+          return;
+        }
+
+        // Approving a `deleted` screenshot accepts the deletion: its baseline
+        // is unlinked, and with nothing left in `actual/` or `expected/` the
+        // screenshot stops existing. Staying on its URL would leave the open
+        // page asking the server for an id it has just been told to forget, so
+        // move on — and replace the entry, so Back does not return to a URL
+        // that can only 404.
+        if (screenshot.category === "deleted") {
+          const onwards = next ?? prev;
+          if (onwards) {
+            navigate(`/screenshots/${onwards}`, { replace: true });
+          } else {
+            onBack();
+          }
+        }
+      },
+    });
+  }, [
+    approveBatch,
+    screenshot.name,
+    screenshot.category,
+    next,
+    prev,
+    navigate,
+    onBack,
+  ]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
