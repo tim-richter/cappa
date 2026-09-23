@@ -2,6 +2,7 @@ import type { ChangedScreenshot } from "@cappa/protocol";
 import { Switch } from "@ui/components/switch";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
 import { cn } from "@ui/lib/utils";
+import { InspectableImage } from "./Inspect";
 
 export type ToggleSide = "before" | "after";
 
@@ -45,32 +46,30 @@ export function Toggle({
 
       <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
         {hasBoth && screenshot.expectedPath && screenshot.actualPath ? (
-          <div className="relative flex min-h-[400px] w-full flex-1 items-center justify-center">
-            <img
-              src={screenshot.expectedPath}
-              alt="Before"
-              draggable={false}
-              aria-hidden={activeSide !== "before"}
-              className={cn(
-                "pointer-events-none max-h-full w-auto max-w-full select-none",
-                activeSide === "before"
-                  ? "z-10 opacity-100"
-                  : "z-0 opacity-0 invisible",
-              )}
-            />
+          <InspectableImage
+            src={screenshot.expectedPath}
+            alt="Before"
+            ariaHidden={activeSide !== "before"}
+            className={cn(
+              "pointer-events-none block max-h-full w-auto max-w-full select-none",
+              activeSide === "before"
+                ? "z-10 opacity-100"
+                : "z-0 opacity-0 invisible",
+            )}
+          >
             <img
               src={screenshot.actualPath}
               alt="After"
               draggable={false}
               aria-hidden={activeSide !== "after"}
               className={cn(
-                "pointer-events-none absolute max-h-full w-auto max-w-full select-none",
+                "pointer-events-none absolute top-0 left-0 h-full w-full select-none",
                 activeSide === "after"
                   ? "z-10 opacity-100"
                   : "z-0 opacity-0 invisible",
               )}
             />
-          </div>
+          </InspectableImage>
         ) : (
           <div className="text-muted-foreground">
             {!screenshot.actualPath && !screenshot.expectedPath

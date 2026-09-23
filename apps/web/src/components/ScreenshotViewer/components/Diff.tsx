@@ -1,6 +1,7 @@
 import type { InterpretResult } from "@cappa/core";
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { useState } from "react";
+import { InspectableImage } from "./Inspect";
 import {
   DiffRegionsOverlay,
   InterpretationSummary,
@@ -35,13 +36,11 @@ export const Diff = ({ screenshot }: DiffProps) => {
       <div className="flex-1 flex gap-4 min-h-0">
         <div className="flex-1 bg-muted rounded-lg p-4 min-h-[400px] flex items-center justify-center overflow-hidden">
           {screenshot.diffPath ? (
-            <div className="relative inline-block max-w-full max-h-full">
-              <img
-                src={screenshot.diffPath}
-                alt="Differences"
-                className="block max-w-full max-h-full object-contain"
-                draggable={false}
-              />
+            <InspectableImage
+              src={screenshot.diffPath}
+              alt="Differences"
+              className="block max-w-full max-h-full object-contain"
+            >
               {interpretation && (
                 <DiffRegionsOverlay
                   interpretation={interpretation}
@@ -49,7 +48,7 @@ export const Diff = ({ screenshot }: DiffProps) => {
                   onHoverRegion={setActiveRegion}
                 />
               )}
-            </div>
+            </InspectableImage>
           ) : (
             <div className="text-muted-foreground">No diff image available</div>
           )}
