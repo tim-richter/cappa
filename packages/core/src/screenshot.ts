@@ -692,14 +692,14 @@ class ScreenshotTool {
         const comparisonResult =
           diffConfig.type === "gmsd"
             ? await compareImagesGMSD(
-                screenshotBuffer,
                 referenceImage,
+                screenshotBuffer,
                 true,
                 diffConfig as DiffConfigGMSD,
               )
             : await compareImages(
-                screenshotBuffer,
                 referenceImage,
+                screenshotBuffer,
                 true,
                 diffConfig as DiffConfig,
               );

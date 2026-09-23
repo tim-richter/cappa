@@ -156,8 +156,8 @@ export class ScreenshotFileSystem {
       }
 
       const matches = await imagesMatch(
-        path.resolve(outputDir, screenshot.actualPath),
         path.resolve(outputDir, screenshot.expectedPath),
+        path.resolve(outputDir, screenshot.actualPath),
         diff.type === "gmsd"
           ? { threshold: diff.threshold }
           : (diff as DiffConfig),

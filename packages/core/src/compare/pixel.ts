@@ -83,8 +83,9 @@ function toNativeOptions(config: DiffConfig): BlazeDiffOptions {
 
 /**
  * Compare two PNG images and return the difference
- * @param image1 - First image (file path or Buffer)
- * @param image2 - Second image (file path or Buffer)
+ * @param image1 - Baseline (expected) image (file path or Buffer)
+ * @param image2 - Current (actual) image (file path or Buffer). Order matters
+ *   for `interpret`: content only in `image2` is reported as an addition.
  * @param withDiff - Whether to create a diff image
  * @param options - Comparison options
  * @returns Comparison result
@@ -229,8 +230,9 @@ export function saveDiffImage(result: CompareResult, outputPath: string): void {
 
 /**
  * Quick comparison function that returns only pass/fail
- * @param image1 - First image (file path or Buffer)
- * @param image2 - Second image (file path or Buffer)
+ * @param image1 - Baseline (expected) image (file path or Buffer)
+ * @param image2 - Current (actual) image (file path or Buffer). Order matters
+ *   for `interpret`: content only in `image2` is reported as an addition.
  * @param options - Comparison options
  * @returns Whether the images match
  */
