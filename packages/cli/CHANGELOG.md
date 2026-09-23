@@ -1,5 +1,15 @@
 # @cappa/cli
 
+## 0.13.3
+
+### Patch Changes
+
+- Updated dependencies [b0c2cd5]
+  - @cappa/core@0.13.2
+  - @cappa/server@0.9.3
+  - @cappa/client@0.9.0
+  - @cappa/config@0.1.2
+
 ## 0.13.2
 
 ### Patch Changes
