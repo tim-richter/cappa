@@ -1,5 +1,6 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { InspectableImage } from "./Inspect";
 
 interface SplitProps {
   screenshot: ChangedScreenshot;
@@ -61,20 +62,13 @@ export const Split = ({ screenshot }: SplitProps) => {
         </h3>
         <div className="bg-muted rounded-lg p-4 min-h-[400px] flex items-center justify-center overflow-auto">
           {screenshot.expectedPath && screenshot.actualPath ? (
-            <div
-              ref={containerRef}
-              className="relative inline-block max-w-full max-h-full rounded border border-border"
+            <InspectableImage
+              src={screenshot.expectedPath}
+              alt="Before"
+              className="block max-w-full h-full"
+              wrapperRef={containerRef}
+              wrapperClassName="rounded border border-border"
             >
-              {/* Before image (left side) */}
-              <div className="relative">
-                <img
-                  src={screenshot.expectedPath}
-                  alt="Before"
-                  className="block max-w-full h-full"
-                  draggable={false}
-                />
-              </div>
-
               {/* After image (right side) */}
               <div
                 className="absolute top-0 left-0 overflow-hidden"
@@ -101,7 +95,7 @@ export const Split = ({ screenshot }: SplitProps) => {
                 {/* Drag handle */}
                 <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-3 h-3 bg-primary rounded-full border-2 border-white shadow-lg"></div>
               </button>
-            </div>
+            </InspectableImage>
           ) : (
             <div className="text-muted-foreground">
               {!screenshot.expectedPath && !screenshot.actualPath

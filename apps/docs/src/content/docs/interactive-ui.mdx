@@ -46,6 +46,31 @@ button appears once a screenshot has been captured at least once by this version
 cappa, and is hidden for anything older until the next run. The file is small, safe to
 commit and safe to delete — deleting it only hides the button until the next capture.
 
+## Inspecting a region
+
+A diff report tells you *where* something changed — a CI log, an interpreted region
+list, a colleague's bug report all quote a box as a position and a size. **Inspect** (the
+crosshair in the screenshot header, or the `I` key) is how you see that box on the image:
+type the position and the size, and it is drawn over the screenshot.
+
+The coordinates are image pixels, the same space a diff report quotes, with the origin at
+the top left. The box is drawn in every view mode — before and after side by side, the
+toggle, the overlay, the split and the diff — so you can flip between them with the region
+fixed on the same content, and it survives walking to the next screenshot, because the
+coordinates you are chasing usually came from somewhere other than the screenshot you
+happen to be looking at.
+
+Add as many regions as you need; each gets its own colour. A region that reaches past an
+edge of the image is drawn dashed and called out in the panel, with the image's own pixel
+size: coordinates that overflow usually mean the report was taken at a different viewport
+or device pixel ratio than the screenshot on screen, which is worth knowing before you go
+looking for the change.
+
+This is separate from the region boxes in the diff view. Those come from cappa's own
+[`diff.interpret`](/configuration#diffinterpret) pass and only exist when a local run
+produced them; an inspect region is one you typed, so it works on any screenshot — new,
+passed, or one cappa has never diffed.
+
 ## Picking up a run you did not start
 
 The capture page reads the run in flight from the server rather than remembering its own,

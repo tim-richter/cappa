@@ -1,6 +1,7 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { Slider } from "@ui/components/slider";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
+import { InspectableImage } from "./Inspect";
 
 interface OverlayProps {
   screenshot: ChangedScreenshot;
@@ -39,23 +40,20 @@ export function Overlay({
 
       <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
         {screenshot.actualPath && screenshot.expectedPath ? (
-          <div className="relative w-full h-full flex items-center justify-center">
-            {/* Base image */}
-            <img
-              src={screenshot.expectedPath || "/placeholder.svg"}
-              alt="Before"
-              className="h-full w-auto"
-              draggable={false}
-            />
+          <InspectableImage
+            src={screenshot.expectedPath}
+            alt="Before"
+            className="block h-full w-auto max-w-full"
+          >
             {/* Overlay image */}
             <img
-              src={screenshot.actualPath || "/placeholder.svg"}
+              src={screenshot.actualPath}
               alt="After"
-              className="h-full w-auto absolute"
+              className="absolute top-0 left-0 h-full w-full"
               style={{ opacity: overlayOpacity / 100 }}
               draggable={false}
             />
-          </div>
+          </InspectableImage>
         ) : (
           <div className="text-muted-foreground">
             {!screenshot.actualPath && !screenshot.expectedPath

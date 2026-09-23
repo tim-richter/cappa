@@ -12,6 +12,7 @@ import {
   ArrowRight,
   BadgeCheckIcon,
   Check,
+  Crosshair,
   Eye,
   GitCompare,
   Layers,
@@ -25,6 +26,11 @@ import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { isFullyApproved, useApproveBatch } from "@/hooks/useApproveBatch";
 import { CategoryBadge } from "../CategoryBadge";
 import { Diff } from "./components/Diff";
+import {
+  InspectPanel,
+  InspectProvider,
+  useInspectRegionState,
+} from "./components/Inspect";
 import { SeverityBadge } from "./components/Interpretation";
 import { Overlay } from "./components/Overlay";
 import { SideBySide } from "./components/SideBySide";
@@ -59,6 +65,16 @@ export function ScreenshotComparison({
   const [viewMode, setViewMode] = useState<ViewMode>(() =>
     getInitialViewMode(),
   );
+  const {
+    regions,
+    open: inspectOpen,
+    setOpen: setInspectOpen,
+    toggleOpen: toggleInspect,
+    addRegion,
+    updateRegion,
+    removeRegion,
+    clearRegions,
+  } = useInspectRegionState();
   const navigate = useNavigate();
   const { data: config } = useServerConfig();
   // A read-only server refuses approval with a 403, so the control and its
@@ -128,6 +144,8 @@ export function ScreenshotComparison({
         navigate(`/screenshots/${next}`);
       } else if (e.key === "a" && !screenshot.approved && canApprove) {
         approveScreenshot();
+      } else if (e.key === "i") {
+        toggleInspect();
       }
     };
 
@@ -140,6 +158,7 @@ export function ScreenshotComparison({
     navigate,
     approveScreenshot,
     canApprove,
+    toggleInspect,
   ]);
 
   return (
@@ -231,6 +250,26 @@ export function ScreenshotComparison({
         <div className="flex items-center gap-4 justify-end">
           <RecaptureButton taskId={screenshot.taskId} />
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                variant={inspectOpen ? "default" : "ghost"}
+                size="sm"
+                aria-label="Inspect"
+                aria-pressed={inspectOpen}
+                onClick={toggleInspect}
+                className={
+                  inspectOpen
+                    ? "gap-2"
+                    : "gap-2 text-card-foreground hover:bg-accent hover:text-accent-foreground"
+                }
+              >
+                <Crosshair className="h-4 w-4" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>Inspect a region (I)</TooltipContent>
+          </Tooltip>
+
           {!screenshot.approved && canApprove && (
             <Tooltip>
               <TooltipTrigger asChild>
@@ -285,33 +324,46 @@ export function ScreenshotComparison({
         </div>
       </div>
 
-      {/* Comparison Content */}
-      <div className="flex-1 overflow-hidden p-6">
-        {screenshot.category === "new" && (
-          <Single screenshotPath={screenshot.actualPath} />
-        )}
-        {screenshot.category === "deleted" && (
-          <Single screenshotPath={screenshot.expectedPath} />
-        )}
-        {screenshot.category === "passed" && (
-          <Single screenshotPath={screenshot.actualPath} />
-        )}
-        {screenshot.category === "changed" && (
-          <>
-            {viewMode === "side-by-side" && (
-              <SideBySide screenshot={screenshot} />
-            )}
+      <InspectProvider regions={regions}>
+        {/* Comparison Content */}
+        <div className="flex-1 overflow-hidden p-6">
+          {screenshot.category === "new" && (
+            <Single screenshotPath={screenshot.actualPath} />
+          )}
+          {screenshot.category === "deleted" && (
+            <Single screenshotPath={screenshot.expectedPath} />
+          )}
+          {screenshot.category === "passed" && (
+            <Single screenshotPath={screenshot.actualPath} />
+          )}
+          {screenshot.category === "changed" && (
+            <>
+              {viewMode === "side-by-side" && (
+                <SideBySide screenshot={screenshot} />
+              )}
 
-            {viewMode === "toggle-view" && <Toggle screenshot={screenshot} />}
+              {viewMode === "toggle-view" && <Toggle screenshot={screenshot} />}
 
-            {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
+              {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
 
-            {viewMode === "split" && <Split screenshot={screenshot} />}
+              {viewMode === "split" && <Split screenshot={screenshot} />}
 
-            {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
-          </>
+              {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
+            </>
+          )}
+        </div>
+
+        {inspectOpen && (
+          <InspectPanel
+            regions={regions}
+            onAdd={addRegion}
+            onUpdate={updateRegion}
+            onRemove={removeRegion}
+            onClear={clearRegions}
+            onClose={() => setInspectOpen(false)}
+          />
         )}
-      </div>
+      </InspectProvider>
     </div>
   );
 }

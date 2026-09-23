@@ -1,4 +1,5 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
+import { InspectableImage } from "./Inspect";
 
 interface SideBySideProps {
   screenshot: ChangedScreenshot;
@@ -23,11 +24,10 @@ const Side = ({ title, path }: { title: string; path?: string }) => {
 
       <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
         {path ? (
-          <img
+          <InspectableImage
             src={path}
             alt={title}
-            draggable={false}
-            className="max-w-full h-full"
+            className="block max-w-full max-h-full object-contain"
           />
         ) : (
           <div className="text-muted-foreground">No image available</div>

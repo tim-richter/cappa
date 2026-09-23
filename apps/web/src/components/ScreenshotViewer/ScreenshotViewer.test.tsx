@@ -1,5 +1,5 @@
 import { delay, HttpResponse, http } from "msw";
-import { describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it } from "vitest";
 import { userEvent } from "vitest/browser";
 import { Screenshot } from "@/pages/Screenshot";
 import { server } from "../../test/setup";
@@ -355,5 +355,61 @@ describe("approving a deleted screenshot", () => {
     expect(await screen.getByText(/error fetching/i).elements()).toHaveLength(
       0,
     );
+  });
+});
+
+describe("inspecting a region", () => {
+  beforeEach(() => {
+    // The panel and its regions are persisted, so one test opening it would
+    // otherwise decide how the next one starts.
+    localStorage.clear();
+  });
+
+  const openDetail = () =>
+    renderPageWithRoute("/screenshots/:id", "/screenshots/1", <Screenshot />);
+
+  it("opens the panel with a region ready to type into", async () => {
+    const screen = await openDetail();
+
+    await userEvent.click(screen.getByRole("button", { name: "Inspect" }));
+
+    await expect
+      .element(screen.getByRole("textbox", { name: "x" }))
+      .toBeVisible();
+    await expect
+      .element(screen.getByRole("textbox", { name: "w" }))
+      .toBeVisible();
+  });
+
+  it("toggles the panel with the I key", async () => {
+    const screen = await openDetail();
+    // The shortcut only exists once the viewer is on screen.
+    await expect
+      .element(screen.getByRole("button", { name: "Inspect" }))
+      .toBeVisible();
+
+    await userEvent.keyboard("i");
+    await expect
+      .element(screen.getByRole("textbox", { name: "x" }))
+      .toBeVisible();
+
+    await userEvent.keyboard("i");
+    await expect
+      .element(screen.getByRole("textbox", { name: "x" }))
+      .not.toBeInTheDocument();
+  });
+
+  it("keeps the panel open while walking screenshots", async () => {
+    const screen = await openDetail();
+    await userEvent.click(screen.getByRole("button", { name: "Inspect" }));
+    await userEvent.fill(screen.getByRole("textbox", { name: "x" }), "378");
+    screen.unmount();
+
+    // The coordinates come from somewhere else — a CI report, a bug report —
+    // and are usually hunted for across several screenshots.
+    const next = await openDetail();
+    await expect
+      .element(next.getByRole("textbox", { name: "x" }))
+      .toHaveValue("378");
   });
 });
