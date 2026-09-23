@@ -1,5 +1,6 @@
 import type { InterpretResult } from "@blazediff/interpret-native";
 import type { Locator } from "playwright-core";
+import type { LogConsoleEvents } from "./consoleEvents";
 import type { Plugin, PluginDef } from "./plugin";
 
 export type PossiblePromise<T> = Promise<T> | T;
@@ -135,12 +136,17 @@ export type UserConfig = {
    */
   concurrency?: number;
   /**
-   * Whether to log Playwright console events while executing capture tasks.
+   * Which browser console events to log while executing capture tasks.
    *
-   * Enabled by default to aid in debugging. Disable to reduce noise in the
-   * console output when you do not need the additional details.
+   * - `true` (default): every console message, at the logger's debug level
+   * - `false`: none
+   * - `"error" | "warn" | "info" | "log" | "debug"`: only messages at or above
+   *   that severity, logged at their matching level (so `"error"` surfaces
+   *   browser errors without `--log-level` tweaks)
+   *
+   * Uncaught page errors are always logged.
    */
-  logConsoleEvents?: boolean;
+  logConsoleEvents?: LogConsoleEvents;
   /**
    * Timeout in milliseconds for network connections (e.g. fetching stories,
    * navigating to pages). If a connection does not respond within this time,

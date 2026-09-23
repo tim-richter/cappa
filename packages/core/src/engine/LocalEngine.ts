@@ -1,3 +1,4 @@
+import type { LogConsoleEvents } from "../consoleEvents";
 import { ScreenshotFileSystem } from "../filesystem";
 import type { PluginTask } from "../plugin";
 import { CaptureRunner } from "../runner/CaptureRunner";
@@ -41,7 +42,7 @@ export type LocalEngineOptions = {
   diff?: DiffOptions;
   retries?: number;
   concurrency?: number;
-  logConsoleEvents?: boolean;
+  logConsoleEvents?: LogConsoleEvents;
   fullPage?: boolean;
   viewport?: Viewport;
   connectionTimeout?: number;

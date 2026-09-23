@@ -65,12 +65,13 @@ export default defineConfig({
 });
 ```
 
-To quiet noisy console output while the plugin runs, toggle the global
-`logConsoleEvents` option inside `cappa.config.ts`:
+To quiet noisy console output while the plugin runs, set the global
+`logConsoleEvents` option inside `cappa.config.ts` to `false`, or to a severity
+such as `'error'` to only surface browser errors:
 
 ```ts
 export default defineConfig({
-  logConsoleEvents: false,
+  logConsoleEvents: 'error',
   plugins: [
     cappaPluginStorybook({
       storybookUrl: 'http://localhost:6006',
