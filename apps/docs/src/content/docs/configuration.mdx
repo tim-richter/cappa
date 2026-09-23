@@ -47,11 +47,24 @@ Higher values will consume more system resources (CPU and memory).
 
 ## logConsoleEvents
 
-- **type**: `boolean`
+- **type**: `boolean | 'error' | 'warn' | 'info' | 'log' | 'debug'`
 - **default**: `true`
 
-Controls whether Playwright console events are logged while captures run. Disable this when your
-stories emit frequent console output and you prefer quieter CLI logs.
+Controls which browser console events are logged while captures run.
+
+- `true` logs every console message at the CLI's debug level (only visible with `--log-level 4` or higher).
+- `false` disables console logging.
+- A severity (`'error'`, `'warn'`, `'info'`, `'log'`, `'debug'`) logs only messages at or above
+  it, at the matching CLI level. `'error'` surfaces `console.error` / `console.assert` failures
+  without raising the log level; `'warn'` adds `console.warn`.
+
+Uncaught page errors are always logged — as errors when a severity is set, otherwise at debug level.
+
+```ts
+export default defineConfig({
+  logConsoleEvents: 'error',
+});
+```
 
 ## screenshot
 

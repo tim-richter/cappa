@@ -5,6 +5,13 @@ import type {
 import { compareImagesGMSD, imagesMatchGMSD } from "./compare/gmsd";
 import { compareImages, imagesMatch } from "./compare/pixel";
 import { defineConfig } from "./config";
+import {
+  attachConsoleLogging,
+  CONSOLE_LOG_LEVELS,
+  type ConsoleLogLevel,
+  type LogConsoleEvents,
+  toConsoleLogLevel,
+} from "./consoleEvents";
 import { LocalEngine, type LocalEngineOptions } from "./engine/LocalEngine";
 import { RunStore, type RunStoreOptions } from "./engine/RunStore";
 import {
@@ -132,13 +139,16 @@ import type {
 
 export {
   type ApproveResult,
+  attachConsoleLogging,
   type CaptureEngine,
   type CaptureManifest,
   CaptureRunner,
   type CaptureRunnerOptions,
   type ChangedScreenshot,
   type ChangeRegion,
+  CONSOLE_LOG_LEVELS,
   type ConfigEnv,
+  type ConsoleLogLevel,
   type CreateFileWatcher,
   collectScreenshots,
   compareImages,
@@ -172,6 +182,7 @@ export {
   type ListTargetsOptions,
   LocalEngine,
   type LocalEngineOptions,
+  type LogConsoleEvents,
   MANIFEST_FILENAME,
   MANIFEST_VERSION,
   mapWithConcurrency,
@@ -227,6 +238,7 @@ export {
   type TaskFailure,
   type TaskRecord,
   type TaskStatus,
+  toConsoleLogLevel,
   toDiffMetaPath,
   toManifestKey,
   toSerializedError,

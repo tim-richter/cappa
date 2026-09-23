@@ -18,6 +18,7 @@ import {
   createDiffSizePngImage,
   type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
+import type { LogConsoleEvents } from "./consoleEvents";
 import { ScreenshotFileSystem } from "./filesystem";
 import { sanitizeScreenshotFilename } from "./paths";
 import type { RunLogLevel } from "./runner/types";
@@ -167,7 +168,7 @@ class ScreenshotTool {
   logger: ScreenshotLogger;
   retries: number;
   filesystem: ScreenshotFileSystem;
-  logConsoleEvents: boolean;
+  logConsoleEvents: LogConsoleEvents;
   connectionTimeout: number;
   private defaultUserAgent = "";
   /** The real logger, kept so `setLogSink(null)` restores the same instance. */
@@ -184,7 +185,7 @@ class ScreenshotTool {
     diff?: DiffOptions;
     retries?: number;
     concurrency?: number;
-    logConsoleEvents?: boolean;
+    logConsoleEvents?: LogConsoleEvents;
     connectionTimeout?: number;
   }) {
     this.browserType = options.browserType || "chromium";

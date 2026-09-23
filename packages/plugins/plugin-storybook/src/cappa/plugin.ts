@@ -1,7 +1,8 @@
-import type {
-  Plugin,
-  ScreenshotCaptureExtras,
-  ScreenshotVariantWithUrl,
+import {
+  attachConsoleLogging,
+  type Plugin,
+  type ScreenshotCaptureExtras,
+  type ScreenshotVariantWithUrl,
 } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import type { Page } from "playwright-core";
@@ -256,7 +257,6 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
     initPage: async (page, screenshotTool) => {
       const logger = getLogger();
-      const { logConsoleEvents = true } = screenshotTool;
 
       const latchMap = new Map<
         string,
@@ -273,14 +273,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         },
       );
 
-      if (logConsoleEvents) {
-        page.on("console", (message) => {
-          logger.debug("console", message.text());
-        });
-      }
-      page.on("pageerror", (error) => {
-        logger.debug("pageerror", error);
-      });
+      attachConsoleLogging(page, screenshotTool.logConsoleEvents, logger);
 
       return { latchMap };
     },

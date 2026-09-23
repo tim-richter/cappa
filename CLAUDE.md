@@ -113,7 +113,7 @@ export default defineConfig({
   outputDir: './screenshots',    // default: './screenshots'
   retries: 2,                    // default: 2
   concurrency: 1,                // default: 1 (number of parallel browser contexts)
-  logConsoleEvents: true,        // default: true
+  logConsoleEvents: true,        // default: true; or 'error' | 'warn' | ...
   diff: {
     type: 'pixel',               // 'pixel' (default) or 'gmsd'
     threshold: 0.1,

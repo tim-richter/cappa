@@ -1,4 +1,8 @@
-import type { Plugin, ScreenshotCaptureExtras } from "@cappa/core";
+import {
+  attachConsoleLogging,
+  type Plugin,
+  type ScreenshotCaptureExtras,
+} from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import type { PageEntry, PagesPluginOptions } from "./types";
 import {
@@ -74,16 +78,8 @@ export const cappaPluginPages: Plugin<PagesPluginOptions> = (options) => {
 
     initPage: async (page, screenshotTool) => {
       const logger = getLogger();
-      const { logConsoleEvents = true } = screenshotTool;
 
-      if (logConsoleEvents) {
-        page.on("console", (message) => {
-          logger.debug("console", message.text());
-        });
-      }
-      page.on("pageerror", (error) => {
-        logger.debug("pageerror", error);
-      });
+      attachConsoleLogging(page, screenshotTool.logConsoleEvents, logger);
 
       return {};
     },

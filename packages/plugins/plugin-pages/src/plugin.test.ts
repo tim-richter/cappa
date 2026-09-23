@@ -29,6 +29,32 @@ describe("cappaPluginPages", () => {
     });
   });
 
+  describe("initPage", () => {
+    const subscribedEvents = async (logConsoleEvents: unknown) => {
+      const plugin = cappaPluginPages({
+        pages: [{ url: "https://example.com" }],
+      });
+      const page = { on: vi.fn() } as any;
+      await plugin.initPage?.(page, { logConsoleEvents } as any);
+      return page.on.mock.calls.map(([event]: [string]) => event);
+    };
+
+    it("subscribes to console events by default", async () => {
+      expect(await subscribedEvents(undefined)).toEqual([
+        "console",
+        "pageerror",
+      ]);
+    });
+
+    it("subscribes to console events for a severity threshold", async () => {
+      expect(await subscribedEvents("error")).toEqual(["console", "pageerror"]);
+    });
+
+    it("only subscribes to page errors when disabled", async () => {
+      expect(await subscribedEvents(false)).toEqual(["pageerror"]);
+    });
+  });
+
   describe("discover", () => {
     it("throws when options are not provided", async () => {
       const plugin = cappaPluginPages(undefined);
