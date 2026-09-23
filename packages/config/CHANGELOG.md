@@ -1,5 +1,12 @@
 # @cappa/config
 
+## 0.1.3
+
+### Patch Changes
+
+- Updated dependencies [0162c16]
+  - @cappa/core@0.14.0
+
 ## 0.1.2
 
 ### Patch Changes

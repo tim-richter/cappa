@@ -1,5 +1,11 @@
 # @cappa/core
 
+## 0.14.0
+
+### Minor Changes
+
+- 0162c16: `logConsoleEvents` now also accepts a severity (`'error' | 'warn' | 'info' | 'log' | 'debug'`). Only browser console messages at or above that severity are logged, at their matching log level, so `logConsoleEvents: 'error'` surfaces browser errors without raising `--log-level`. `true` and `false` behave as before. Adds the `attachConsoleLogging` helper to `@cappa/core` for plugins.
+
 ## 0.13.2
 
 ### Patch Changes
