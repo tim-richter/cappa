@@ -306,6 +306,30 @@ describe("ScreenshotTool retryScreenshot", () => {
     expect(tool.takeScreenshotBuffer).toHaveBeenCalledTimes(1);
   });
 
+  it("compares with the reference as the baseline and the capture second", async () => {
+    // blazediff's interpret is directional: content only in the second image
+    // is an "addition". Swapping these flips additions and deletions.
+    const tool = new ScreenshotTool({ outputDir: "/tmp", retries: 1 });
+    const page = createPage();
+    tool.browser = {} as any;
+
+    const screenshot = Buffer.from("screenshot");
+    const reference = Buffer.from("reference");
+    vi.spyOn(tool, "takeScreenshotBuffer").mockResolvedValue(screenshot);
+    vi.mocked(pixelCompare.compareImages).mockResolvedValue(passResult);
+
+    await tool.retryScreenshot(page as any, reference, {
+      viewport: { width: 1024, height: 768 },
+    });
+
+    expect(pixelCompare.compareImages).toHaveBeenCalledWith(
+      reference,
+      screenshot,
+      true,
+      expect.anything(),
+    );
+  });
+
   it("makes exactly `retries` total attempts when all comparisons fail", async () => {
     const tool = new ScreenshotTool({ outputDir: "/tmp", retries: 3 });
     const page = createPage();

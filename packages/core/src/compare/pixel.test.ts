@@ -449,6 +449,41 @@ describe("compare", () => {
     });
   });
 
+  describe("interpretation direction", () => {
+    async function createBoxedPNG(): Promise<Buffer> {
+      const png = CappaPNG.create(200, 200);
+      png.data.fill(255);
+      for (let y = 50; y < 120; y++) {
+        for (let x = 50; x < 150; x++) {
+          const idx = (200 * y + x) << 2;
+          png.data[idx] = 20;
+          png.data[idx + 1] = 40;
+          png.data[idx + 2] = 200;
+        }
+      }
+      return png.toBuffer();
+    }
+
+    it("reports content only in the second (actual) image as an addition", async () => {
+      const blank = await createSolidColorPNG(200, 200, [255, 255, 255, 255]);
+      const boxed = await createBoxedPNG();
+
+      const added = await compareImages(blank, boxed, true, {
+        interpret: true,
+      });
+      expect(added.interpretation?.regions.map((r) => r.changeType)).toEqual([
+        "addition",
+      ]);
+
+      const removed = await compareImages(boxed, blank, true, {
+        interpret: true,
+      });
+      expect(removed.interpretation?.regions.map((r) => r.changeType)).toEqual([
+        "deletion",
+      ]);
+    });
+  });
+
   describe("performance optimizations", () => {
     it("should not write temp files when both inputs are paths", async () => {
       const writeSpy = vi.spyOn(fsp, "writeFile");
