@@ -1,5 +1,89 @@
 # @cappa/server
 
+## 0.9.2
+
+### Patch Changes
+
+- 99aa5ea: Say what happened when approving, including when it fails
+  
+  Approving in the review UI could fail without saying anything. `fetch` only rejects on a
+  network failure, so a `403` from a read-only server, a `404` for a screenshot that moved,
+  or a `500` from a broken store all reached the UI as silence: the detail view's approve
+  mutation returned the response without looking at it and had no error handler at all, and
+  the batch bar threw correctly but was only ever asked about success. The button stayed
+  where it was, no badge appeared, no message was shown, and clicking again was the only
+  feedback available.
+  
+  **Every approve outcome is now reported.** A single approval is confirmed by name and a
+  batch by count; a request the server refused shows the server's own message; and a name
+  the engine rejected inside an otherwise successful response is named too — a `200` is not
+  proof that anything was approved.
+  
+  **A failed approval no longer looks like a successful one.** The screenshot stays
+  unapproved, the page stays where it is, and a batch keeps its selection so retrying is one
+  click instead of a fresh round of selecting.
+  
+  Both approve surfaces share one mutation, so they cannot drift apart again, and a failed
+  mutation nobody handles is now reported by the query client rather than swallowed — which
+  is what made the original bug invisible.
+- 2a06bb3: Give the review UI loading, error and empty states worth reading
+  
+  Every data page in the review UI rendered the same three lines: an unstyled
+  `<div>Loading...</div>`, a bare `Error fetching screenshots`, and — for a category with
+  nothing in it — either a blank white area (grid view) or `No results.` (list view). None
+  of the three said anything useful, and the error said least of all: the server's own
+  explanation and the status code were both thrown away, and the only way out was a full
+  page reload.
+  
+  **Failures now say what failed and offer a way back.** The error state shows the server's
+  message and the HTTP status behind it, and a **Retry** action that refetches in place. The
+  six pages share one `QueryState` wrapper for this, so the loading, error and empty
+  behaviour is defined once rather than copied per page.
+  
+  **Loading is a skeleton, not a word.** The page keeps its header and layout while data is
+  in flight instead of collapsing to a line of text, so nothing jumps when the list arrives.
+  
+  **An empty category says which kind of empty it is.** "No changed screenshots —
+  everything matches the baseline" rather than a blank page, in both grid and list view. The
+  home page skips sections that have nothing in them and says so once when there is nothing
+  at all, naming the search term when a search is what came back empty.
+  
+  Opening a screenshot that no longer exists is also reported as missing rather than as a
+  failed request: a 404 used to reach the page as a rejected query — React Query refuses a
+  query that resolves to `undefined` — and was reported as a broken one.
+- 0d502c9: Let the review UI draw a region you type in
+  
+  A diff report says where something changed — CI logs an interpreted region list, a
+  colleague quotes a box in a bug report, a design hands you a position and a size — and
+  until now none of those numbers could be put on the image. The only regions the review UI
+  could draw were the ones `diff.interpret` produced locally, on a screenshot cappa had just
+  diffed itself, which is exactly the situation you are not in when you are reading someone
+  else's report.
+  
+  **The screenshot header has an Inspect control now** (the crosshair, or the `I` key). Type
+  a position and a size and the box is drawn over the screenshot, in image pixels — the same
+  coordinate space a diff report quotes. Add as many regions as you need; each gets its own
+  colour, kept clear of the `changeType` colours so a typed region and an interpreted one
+  are never mistakable for each other.
+  
+  **The box follows you.** It is drawn in every view mode — side by side, toggle, overlay,
+  split and diff — so you can switch between them with the region fixed on the same content,
+  and the regions persist as you walk from screenshot to screenshot, because the coordinates
+  you are chasing rarely belong to the screenshot you are looking at when you get them.
+  
+  **A region that does not fit the image says so.** Each view reports the image's own pixel
+  size, and a box that reaches past an edge is drawn dashed and called out in the panel
+  rather than left to look like a change that moved: coordinates that overflow usually mean
+  the report was taken at a different viewport or device pixel ratio than the screenshot on
+  screen, which is worth knowing before you go hunting for something that was never there.
+  
+  The compare views now scale a screenshot to fit rather than to the panel's height, a
+  side-effect of pinning the region layer to the image itself: an image taller than the
+  panel used to be cropped by it, and is now shown whole.
+- Updated dependencies [21556e3]
+  - @cappa/core@0.13.1
+  - @cappa/protocol@0.9.0
+
 ## 0.9.1
 
 ### Patch Changes
