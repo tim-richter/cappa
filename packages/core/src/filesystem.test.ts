@@ -379,4 +379,27 @@ describe("diff metadata sidecar", () => {
       await readDiffMeta(path.join(tempDir, "diff", "missing.png")),
     ).toBeUndefined();
   });
+
+  it("removes a diff image together with its sidecar", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+    await fileSystem.writeDiffFile("nested/button.png", Buffer.from("diff"));
+    await fileSystem.writeDiffMetaFile("nested/button.png", {
+      numDiffPixels: 1,
+      percentDifference: 0.1,
+    } as DiffMetadata);
+
+    await fileSystem.removeDiffFile("nested/button.png");
+
+    const dir = path.join(tempDir, "diff", "nested");
+    expect(fs.existsSync(path.join(dir, "button.png"))).toBe(false);
+    expect(fs.existsSync(path.join(dir, "button.json"))).toBe(false);
+  });
+
+  it("does not fail removing a diff that does not exist", async () => {
+    const fileSystem = new ScreenshotFileSystem(tempDir);
+
+    await expect(
+      fileSystem.removeDiffFile("missing.png"),
+    ).resolves.toBeUndefined();
+  });
 });

@@ -360,6 +360,20 @@ export class ScreenshotFileSystem {
   }
 
   /**
+   * Remove a diff image and its metadata sidecar, if there are any.
+   *
+   * A diff is what makes a screenshot "changed", so one left over from an
+   * earlier run outlives the change it described: a partial run (a re-capture,
+   * a watch-triggered run) does not clear `diff/`, and a screenshot that now
+   * matches its baseline would otherwise stay "changed" forever.
+   */
+  async removeDiffFile(filename: string): Promise<void> {
+    const filepath = this.getDiffFilePath(filename);
+    await fsp.rm(filepath, { force: true });
+    await fsp.rm(toDiffMetaPath(filepath), { force: true });
+  }
+
+  /**
    * Get the path to a diff metadata sidecar file (`<name>.json`)
    */
   getDiffMetaFilePath(filename: string): string {

@@ -1,4 +1,5 @@
 import type { Screenshot } from "@cappa/core";
+import { vol } from "memfs";
 import { describe, expect, it } from "vitest";
 import { createServer } from "../src/server";
 import { createFakeEngine, type FakeEngine } from "./fakeEngine";
@@ -99,6 +100,20 @@ describe("GET /api/screenshots", () => {
         prev: "3",
       },
     ]);
+  });
+
+  it("versions asset URLs by mtime so a re-capture gets a fresh URL", async () => {
+    vol.fromJSON({ "dist/screenshots/actual/Screenshot 1.png": "png" });
+    const { mtimeMs } = vol.statSync(
+      "dist/screenshots/actual/Screenshot 1.png",
+    );
+    const { app } = await build();
+
+    const response = await app.inject({ url: "/api/screenshots/1" });
+
+    expect(response.json().actualPath).toBe(
+      `/assets/screenshots/actual/Screenshot 1.png?v=${Math.trunc(mtimeMs)}`,
+    );
   });
 
   it("reads through to the engine on every request", async () => {

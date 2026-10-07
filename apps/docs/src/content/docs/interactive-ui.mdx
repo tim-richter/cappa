@@ -32,11 +32,19 @@ tasks already in flight finish, but nothing new starts.
 When the run finishes, the screenshot lists refresh themselves — the Changed, New and
 Passed tabs reflect what was just captured with no reload.
 
+Anything else that writes to the output directory — `cappa capture` in another terminal,
+a watch run you did not follow — shows up with the **Reload** button (↻) next to the
+Cappa title in the sidebar. The server re-reads `actual/`, `expected/` and `diff/` on every
+request, so there is never a reason to restart `cappa review`.
+
 ## Re-capturing a single screenshot
 
 Every screenshot's detail page has a **Re-capture** button. It runs that one task and
 leaves every other result untouched, which makes the tighten-a-diff loop short: change
 your component, re-capture, look at the diff, approve.
+
+A re-capture that now matches its baseline drops the earlier diff, so the screenshot moves
+from Changed to Passed rather than staying behind with a stale diff.
 
 The button needs to know which capture task produced the screenshot, and that is not
 something a filename can tell it — `@cappa/plugin-storybook` writes

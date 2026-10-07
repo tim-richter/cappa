@@ -600,6 +600,12 @@ class ScreenshotTool {
       );
       this.logger.debug(`Actual screenshot saved: ${filepath}`);
 
+      // Whatever an earlier run concluded no longer holds: drop its diff so a
+      // screenshot that now passes stops reading as "changed".
+      await this.filesystem.removeDiffFile(
+        options.diffImageFilename || filename,
+      );
+
       if (retryScreenshot.passed) {
         this.logger.success(`Screenshot passed visual comparison`);
       } else {

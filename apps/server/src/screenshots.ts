@@ -25,7 +25,7 @@ const querySchema = z.object({
 
 export const screenshotsPlugin: FastifyPluginAsync = async (fastify) => {
   const list = async (): Promise<ScreenshotView[]> => {
-    return transform(await fastify.engine.listScreenshots());
+    return transform(await fastify.engine.listScreenshots(), fastify.outputDir);
   };
 
   fastify.get("/", async (request, reply) => {

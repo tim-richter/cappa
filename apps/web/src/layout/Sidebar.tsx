@@ -8,6 +8,7 @@ import {
 import { Camera, Check, Plus, Trash, TriangleAlert } from "lucide-react";
 import { Link, useLocation } from "react-router";
 import { useScreenshotTotal, useServerConfig } from "@/api/hooks";
+import { ReloadButton } from "@/components/ReloadButton";
 
 export const AppSidebar = () => {
   const pathname = useLocation().pathname;
@@ -17,9 +18,12 @@ export const AppSidebar = () => {
   return (
     <Sidebar>
       <SidebarHeader className="border-b py-4">
-        <Link to="/" className="text-2xl font-bold">
-          Cappa
-        </Link>
+        <div className="flex items-center justify-between">
+          <Link to="/" className="text-2xl font-bold">
+            Cappa
+          </Link>
+          <ReloadButton />
+        </div>
         <p className="text-sm text-muted-foreground">
           Visual regression report
         </p>

@@ -1,6 +1,16 @@
+import fs from "node:fs";
+import os from "node:os";
 import path from "node:path";
 import { initLogger } from "@cappa/logger";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import * as pixelCompare from "./compare/pixel";
 import ScreenshotTool from "./screenshot";
 
@@ -449,6 +459,53 @@ describe("ScreenshotTool retryScreenshot", () => {
 
     expect(result.passed).toBe(false);
     expect(bufferSpy).toHaveBeenCalledTimes(3);
+  });
+});
+
+describe("ScreenshotTool stale diffs", () => {
+  const createPage = () => ({
+    waitForTimeout: vi.fn(async () => {}),
+    screenshot: vi.fn(async () => Buffer.from("test")),
+    viewportSize: vi.fn(() => ({ width: 1024, height: 768 })),
+    setViewportSize: vi.fn(async () => {}),
+    url: vi.fn(() => "http://localhost:6006/iframe.html?id=button--primary"),
+  });
+
+  let outputDir: string;
+
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(pixelCompare.compareImages).mockReset();
+    outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "cappa-stale-diff-"));
+  });
+
+  afterEach(() => {
+    fs.rmSync(outputDir, { recursive: true, force: true });
+  });
+
+  it("removes an earlier diff when the screenshot now passes", async () => {
+    const tool = new ScreenshotTool({ outputDir });
+    tool.browser = {} as any;
+    await tool.filesystem.writeDiffFile("Button.png", Buffer.from("old"));
+    fs.mkdirSync(path.join(outputDir, "expected"), { recursive: true });
+    fs.writeFileSync(path.join(outputDir, "expected", "Button.png"), "base");
+
+    vi.spyOn(tool, "takeScreenshotBuffer").mockResolvedValue(
+      Buffer.from("screenshot"),
+    );
+    vi.mocked(pixelCompare.compareImages).mockResolvedValue({
+      numDiffPixels: 0,
+      totalPixels: 10000,
+      percentDifference: 0,
+      passed: true,
+      differentSizes: false,
+    });
+
+    await tool.capture(createPage() as any, "Button.png", {});
+
+    expect(fs.existsSync(path.join(outputDir, "diff", "Button.png"))).toBe(
+      false,
+    );
   });
 });
 
