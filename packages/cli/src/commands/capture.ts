@@ -740,7 +740,11 @@ export const runCapture = async (
     try {
       run = await engine.startRun({
         filter: options.filter,
-        clearActual: true,
+        // Only a full run starts from an empty `actual/`. A filtered run
+        // captures a subset; clearing would leave every other screenshot with
+        // a baseline and no capture — `deleted` — and approving that deletes
+        // the baseline. Each captured screenshot replaces its own diff instead.
+        clearActual: !options.filter,
       });
     } catch (error) {
       // One run at a time is the host's deliberate design, not a fault, so it

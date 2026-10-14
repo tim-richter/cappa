@@ -42,10 +42,8 @@ cappa capture --json
     are what `cappa agent check` reviews.
   - Exit code 1 with an empty `errors[]` just means screenshots differ — expected, not a failure.
 - To re-capture only some screenshots: `cappa capture --json --filter "<glob over task ids>"`.
-  Task ids are in `results[].taskId`, e.g. `example-button--primary` for Storybook. **A filtered
-  capture clears all of `actual/`**, so every screenshot it did not re-capture shows up as
-  `deleted` until the next full capture. Never approve `deleted` screenshots after a filtered
-  capture; run a full `cappa capture` before approving anything.
+  Task ids are in `results[].taskId`, e.g. `example-button--primary` for Storybook. A filtered
+  capture replaces only the screenshots it captures; everything else keeps its last capture.
 - Skip this step if the user only asked to review what is already captured.
 
 ## 2. Check
@@ -69,7 +67,7 @@ One line per non-passing screenshot: `<name>: <label> — <headline>`. Then, per
 - `regression-likely` → something looks broken. Point the user at it. If they want it fixed (or
   you were asked to fix regressions), find the cause in the working tree (`git diff`, recent
   commits touching the component), fix the code, re-capture just that task with `--filter`, and
-  re-check (then a full capture before approving anything — see step 1). Never approve a regression.
+  re-check. Never approve a regression.
 - `intentional-likely` → a deliberate restyle or content change. Ask the user to confirm, then
   `cappa agent approve <name> [<name> ...] --json`.
 - `noise-likely` → anti-aliasing or non-deterministic content. Ask once: mask, approve or ignore.
@@ -77,9 +75,8 @@ One line per non-passing screenshot: `<name>: <label> — <headline>`. Then, per
   animation) — approving only postpones the next failure. See `MASKING.md`.
 - `new` (no baseline yet) → the screenshot is new. Glance at it only if asked; approving makes it
   the baseline.
-- `deleted` (baseline without a capture) → the story/page was removed, failed to capture, or the
-  last capture was filtered (see step 1). Check before approving: approving a deleted screenshot
-  **deletes its baseline**.
+- `deleted` (baseline without a capture) → the story/page was removed or failed to capture. Check
+  capture output before approving: approving a deleted screenshot **deletes its baseline**.
 
 Approving by verdict: `cappa agent approve --label intentional-likely --json` approves every changed
 screenshot whose current verdict has that label.

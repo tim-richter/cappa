@@ -424,7 +424,19 @@ describe("runCapture", () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it("starts the run with the filter and clears actual/", async () => {
+  it("clears actual/ before a full run", async () => {
+    const engine = makeFakeEngine({});
+    engineRef.current = engine;
+
+    await runCapture();
+
+    expect(engine.startRun).toHaveBeenCalledWith({
+      filter: undefined,
+      clearActual: true,
+    });
+  });
+
+  it("keeps actual/ for a filtered run, so the rest does not read as deleted", async () => {
     const engine = makeFakeEngine({});
     engineRef.current = engine;
 
@@ -432,7 +444,7 @@ describe("runCapture", () => {
 
     expect(engine.startRun).toHaveBeenCalledWith({
       filter: "button--*",
-      clearActual: true,
+      clearActual: false,
     });
   });
 
@@ -917,7 +929,7 @@ describe("runCapture --watch", () => {
 
     expect(engine.startRun).toHaveBeenCalledWith({
       filter: "Button/*",
-      clearActual: true,
+      clearActual: false,
     });
     expect(engine.startWatch).toHaveBeenCalledWith({ filter: "Button/*" });
     // The engine — and its warm browser — has to outlive the first run.

@@ -360,6 +360,21 @@ export class ScreenshotFileSystem {
   }
 
   /**
+   * Remove a screenshot's diff image and metadata sidecar, if any.
+   *
+   * A run that does not clear `diff/` — a filtered or single-screenshot
+   * re-capture — would otherwise leave the previous run's diff behind for a
+   * screenshot that now passes, and a screenshot with a diff is `changed`.
+   */
+  async removeDiffFiles(filename: string): Promise<void> {
+    const filepath = this.getDiffFilePath(filename);
+    await Promise.all([
+      fsp.rm(filepath, { force: true }),
+      fsp.rm(toDiffMetaPath(filepath), { force: true }),
+    ]);
+  }
+
+  /**
    * Get the path to a diff metadata sidecar file (`<name>.json`)
    */
   getDiffMetaFilePath(filename: string): string {

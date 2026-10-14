@@ -35,6 +35,10 @@ cappa capture --filter "button*"
 cappa capture -f "card--default"
 ```
 
+A filtered run replaces only the screenshots it captures. Every other screenshot keeps its result
+from the last run, rather than losing its capture and showing up as `deleted`. A full run (no
+filter) still starts from an empty `actual/` and `diff/`.
+
 When a filter is active, Cappa displays a hint box and logs how many tasks matched per plugin so
 you can verify the pattern is selecting what you expect.
 
