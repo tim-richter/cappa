@@ -175,6 +175,26 @@ describe("describeChanges", () => {
     expect(describeChanges(screenshots)[2]).toContain("SomethingNew");
   });
 
+  it("labels the kebab-case change types and lowercase severities interpret reports today", () => {
+    const lines = describeChanges([
+      changedScreenshot("a", {
+        severity: "high",
+        totalRegions: 1,
+        regions: [
+          region(
+            "color-change",
+            "top",
+            { x: 0, y: 0, width: 10, height: 10 },
+            0.2,
+          ),
+        ],
+      }),
+    ]);
+
+    expect(lines[0]).toContain("HIGH");
+    expect(lines.at(-1)).toContain("color at top");
+  });
+
   it("truncates the region list at maxRegions", () => {
     const regions = Array.from({ length: 7 }, (_, index) =>
       region(

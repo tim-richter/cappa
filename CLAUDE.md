@@ -48,6 +48,7 @@ The foundational library. Core exports:
 - `defineConfig` — type helper for `cappa.config.ts`
 - `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`)
+- `runAgentCheck` / `deriveVerdict` / `renderJudgmentTiles` — agent review (`src/agent/`): heuristic verdicts from the diff interpretation, judgment requests with region crops, verdicts tied to an image fingerprint
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
 Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `playwright-core ^1.55`.
@@ -59,6 +60,7 @@ The published CLI binary (`cappa`). Commands:
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
+- `agent check|judge|approve|init` — visual review for coding agents: heuristic verdicts, judgment requests with region crops, exact-name approval, skill install (skill sources live in `packages/cli/skills/cappa/`)
 - `init` — scaffolds `cappa.config.ts` in the current directory
 
 Config is loaded from `cappa.config.ts` in CWD via **jiti** (supports TypeScript without compilation).
@@ -139,7 +141,8 @@ export default defineConfig({
 ├── actual/                # freshly captured screenshots (cleared before each run)
 ├── expected/              # approved baseline screenshots
 ├── diff/                  # diff images for changed screenshots (cleared before each run)
-└── .cappa-manifest.json   # screenshot name → the capture task that produced it
+├── .cappa-manifest.json   # screenshot name → the capture task that produced it
+└── .cappa-agent/          # `cappa agent` report + judgment requests/verdicts (self-gitignored)
 ```
 
 Screenshot categories: `new`, `deleted`, `changed`, `passed`.

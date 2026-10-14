@@ -1,6 +1,7 @@
 import { initLogger } from "@cappa/logger";
 import { Command } from "commander";
 import { version } from "../package.json";
+import { registerAgentCommand } from "./commands/agent";
 import { approve } from "./commands/approve";
 import { registerCaptureCommand } from "./commands/capture";
 import { init } from "./commands/init";
@@ -89,6 +90,8 @@ program
     DEFAULT_MAX_REGIONS,
   )
   .action(status);
+
+registerAgentCommand(program);
 
 program
   .command("init")
