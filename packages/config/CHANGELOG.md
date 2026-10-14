@@ -1,5 +1,13 @@
 # @cappa/config
 
+## 0.1.4
+
+### Patch Changes
+
+- Updated dependencies [540c914]
+- Updated dependencies [540c914]
+  - @cappa/core@0.15.0
+
 ## 0.1.3
 
 ### Patch Changes
