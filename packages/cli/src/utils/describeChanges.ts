@@ -1,3 +1,4 @@
+import { normalizeChangeType } from "@cappa/core";
 import chalk from "chalk";
 import { z } from "zod";
 
@@ -55,31 +56,37 @@ export type ReportableScreenshot = {
   };
 };
 
+// Compared case-insensitively: `@blazediff/interpret-native` reports `high`
+// today and reported `High` before.
 const severityColor = (severity: string) => {
-  switch (severity) {
-    case "High":
+  switch (severity.toLowerCase()) {
+    case "high":
       return chalk.red;
-    case "Medium":
+    case "medium":
       return chalk.yellow;
-    case "Low":
+    case "low":
       return chalk.green;
     default:
       return chalk.gray;
   }
 };
 
-/** Human-readable labels for the `changeType` values reported by blazediff. */
+/**
+ * Human-readable labels for the `changeType` values reported by blazediff,
+ * keyed by their normalised (kebab-case) form so both `color-change` and the
+ * older `ColorChange` resolve.
+ */
 const CHANGE_TYPE_LABELS: Record<string, string> = {
-  Addition: "added",
-  Deletion: "removed",
-  ColorChange: "color",
-  ContentChange: "content",
-  Shift: "shifted",
-  RenderingNoise: "noise",
+  addition: "added",
+  deletion: "removed",
+  "color-change": "color",
+  "content-change": "content",
+  shift: "shifted",
+  "rendering-noise": "noise",
 };
 
 const changeTypeLabel = (changeType: string) =>
-  CHANGE_TYPE_LABELS[changeType] ?? changeType;
+  CHANGE_TYPE_LABELS[normalizeChangeType(changeType)] ?? changeType;
 
 /** `content at center · 0.90% · 360x200 at (420, 300)` */
 const describeRegion = (region: ParsedRegion): string => {

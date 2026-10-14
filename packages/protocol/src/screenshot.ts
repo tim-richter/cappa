@@ -36,6 +36,27 @@ export const diffMetadataSchema = z.object({
 
 export type DiffMetadata = z.infer<typeof diffMetadataSchema>;
 
+/**
+ * The verdict `cappa agent check` reached for a changed screenshot.
+ *
+ * Unlike the interpretation this is cappa's own shape, so it is described
+ * rather than carried opaquely. `label` and `action` stay plain strings on the
+ * wire so a newer engine adding a label does not make an older client reject
+ * the whole screenshot list.
+ */
+export const agentReviewSchema = z.object({
+  label: z.string(),
+  headline: z.string(),
+  rationale: z.array(z.string()),
+  action: z.string(),
+  source: z.enum(["heuristic", "agent"]),
+  confidence: z.number().optional(),
+  pending: z.boolean(),
+  reviewedAt: z.string(),
+});
+
+export type AgentReview = z.infer<typeof agentReviewSchema>;
+
 const screenshotBase = {
   id: z.string(),
   name: z.string(),
@@ -83,6 +104,7 @@ export const changedScreenshotSchema = z.object({
   expectedPath: z.string(),
   diffPath: z.string(),
   diffMeta: diffMetadataSchema.optional(),
+  review: agentReviewSchema.optional(),
 });
 
 export const passedScreenshotSchema = z.object({

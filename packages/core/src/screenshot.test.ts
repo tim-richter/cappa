@@ -1,3 +1,5 @@
+import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import { initLogger } from "@cappa/logger";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
@@ -600,5 +602,48 @@ describe("setLogSink", () => {
     // reference (a spy, say) keeps working.
     tool.setLogSink(null);
     expect(tool.logger).toBe(baseLogger);
+  });
+});
+
+describe("stale diffs", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("removes the previous run's diff before capturing a screenshot again", async () => {
+    const outputDir = await fsp.mkdtemp(path.join(os.tmpdir(), "cappa-stale-"));
+    try {
+      const tool = new ScreenshotTool({ outputDir });
+      tool.browser = {} as any;
+      vi.spyOn(tool, "takeScreenshot").mockResolvedValue(
+        path.join(outputDir, "actual/button/primary.png"),
+      );
+      tool.filesystem.hasExpectedFile = vi.fn(async () => false);
+
+      // Left behind by an earlier run that is not being cleared.
+      await tool.filesystem.writeDiffFile(
+        "button/primary.png",
+        Buffer.from("x"),
+      );
+      await tool.filesystem.writeDiffMetaFile("button/primary.png", {
+        numDiffPixels: 1,
+        percentDifference: 1,
+      });
+
+      await tool.capture(
+        { url: () => "about:blank" } as any,
+        "button/primary.png",
+        {},
+      );
+
+      await expect(
+        fsp.access(tool.filesystem.getDiffFilePath("button/primary.png")),
+      ).rejects.toThrow();
+      await expect(
+        fsp.access(tool.filesystem.getDiffMetaFilePath("button/primary.png")),
+      ).rejects.toThrow();
+    } finally {
+      await fsp.rm(outputDir, { recursive: true, force: true });
+    }
   });
 });

@@ -2,6 +2,7 @@ import type { Screenshot } from "@cappa/protocol";
 import { HttpResponse, http } from "msw";
 import { captureHandlers } from "./capture";
 import { mockDiffMeta } from "./diffMeta";
+import { mockAgentReview } from "./review";
 
 const CATEGORIES = ["new", "deleted", "changed", "passed"];
 
@@ -70,6 +71,7 @@ export const handlers = [
           expectedPath: "https://picsum.photos/200/300",
           diffPath: "https://picsum.photos/200/300",
           category: "changed",
+          review: mockAgentReview,
         },
       ]);
     }
@@ -174,6 +176,7 @@ export const handlers = [
         diffPath: "/images/4diff.png",
         category: "changed",
         diffMeta: mockDiffMeta,
+        review: mockAgentReview,
         // Deliberately unlike the name, as every real plugin's ids are.
         taskId: "Screenshot 3",
         plugin: "docs",

@@ -3,6 +3,7 @@ import { MemoryRouter } from "react-router";
 import { describe, expect, it, vi } from "vitest";
 import { userEvent } from "vitest/browser";
 import { render } from "vitest-browser-react";
+import { mockAgentReview } from "@/mocks/review";
 import { List } from "./List";
 
 const screenshots: Screenshot[] = [
@@ -49,6 +50,24 @@ describe("List", () => {
     const { container } = await renderList();
     const th = container.querySelector("th");
     expect(th?.textContent?.trim()).toBe("Name");
+  });
+
+  it("has no Review column when nothing was reviewed", async () => {
+    const { container } = await renderList();
+    expect(container.querySelectorAll("th")).toHaveLength(1);
+  });
+
+  it("shows the agent verdict in a Review column", async () => {
+    const reviewed = screenshots.map((s) =>
+      s.category === "changed" ? { ...s, review: mockAgentReview } : s,
+    );
+    const screen = await renderList({ screenshots: reviewed });
+
+    await expect.element(screen.getByText("Regression likely")).toBeVisible();
+    const headers = Array.from(screen.container.querySelectorAll("th"), (th) =>
+      th.textContent?.trim(),
+    );
+    expect(headers).toEqual(["Name", "Review"]);
   });
 
   it("in select mode clicking a row link calls onSelectionChange", async () => {

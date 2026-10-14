@@ -424,7 +424,19 @@ describe("runCapture", () => {
     expect(exitSpy).not.toHaveBeenCalled();
   });
 
-  it("starts the run with the filter and clears actual/", async () => {
+  it("clears actual/ before a full run", async () => {
+    const engine = makeFakeEngine({});
+    engineRef.current = engine;
+
+    await runCapture();
+
+    expect(engine.startRun).toHaveBeenCalledWith({
+      filter: undefined,
+      clearActual: true,
+    });
+  });
+
+  it("keeps actual/ for a filtered run, so the rest does not read as deleted", async () => {
     const engine = makeFakeEngine({});
     engineRef.current = engine;
 
@@ -432,7 +444,7 @@ describe("runCapture", () => {
 
     expect(engine.startRun).toHaveBeenCalledWith({
       filter: "button--*",
-      clearActual: true,
+      clearActual: false,
     });
   });
 
@@ -503,6 +515,158 @@ describe("runCapture", () => {
     expect(onFail).toHaveBeenCalledWith([
       expect.objectContaining({ name: "home" }),
     ]);
+  });
+});
+
+describe("runCapture --json", () => {
+  let exitSpy: ReturnType<typeof vi.spyOn>;
+  let writeSpy: ReturnType<typeof vi.spyOn>;
+
+  const printed = () =>
+    JSON.parse(
+      writeSpy.mock.calls.map((call: unknown[]) => String(call[0])).join(""),
+    );
+
+  beforeEach(() => {
+    for (const fn of Object.values(loggerInstance)) {
+      if (typeof fn === "function") {
+        (fn as ReturnType<typeof vi.fn>).mockReset();
+      }
+    }
+    loggerInstance.level = 4;
+
+    getConfigMock.mockResolvedValue({ outputDir: "screenshots" });
+    exitSpy = vi
+      .spyOn(process, "exit")
+      .mockImplementation(() => undefined as never);
+    // Call the flush callback, as the real stream does once written.
+    writeSpy = vi.spyOn(process.stdout, "write").mockImplementation(((
+      _chunk: unknown,
+      done?: () => void,
+    ) => {
+      done?.();
+      return true;
+    }) as never);
+  });
+
+  afterEach(() => {
+    exitSpy.mockRestore();
+    writeSpy.mockRestore();
+    loggerInstance.level = 4;
+  });
+
+  it("prints one document instead of progress and reports", async () => {
+    engineRef.current = makeFakeEngine({
+      events: [
+        event("discover:plugin", { plugin: "pages", taskCount: 1 }),
+        event("run:complete", { summary: {} as never }),
+      ],
+      detail: { totalTasks: 1, completedTasks: 1, failedTasks: 0 },
+      screenshots: [
+        {
+          name: "home",
+          category: "passed",
+          actualPath: "actual/home.png",
+          expectedPath: "expected/home.png",
+        },
+      ] as never,
+    });
+
+    await runCapture({ json: true });
+
+    expect(printed()).toEqual({
+      ok: true,
+      runId: "run-1",
+      durationMs: expect.any(Number),
+      tasks: { total: 1, completed: 1, failed: 0 },
+      screenshots: { total: 1, passed: 1, changed: 0, new: 0, deleted: 0 },
+      errors: [],
+      results: [],
+    });
+    // Info-level output is muted; warnings and errors (stderr) are kept.
+    expect(loggerInstance.level).toBe(1);
+    expect(loggerInstance.success).not.toHaveBeenCalled();
+    expect(exitSpy).not.toHaveBeenCalled();
+  });
+
+  it("separates broken tasks from screenshots to review, and exits 1", async () => {
+    engineRef.current = makeFakeEngine({
+      detail: {
+        totalTasks: 2,
+        completedTasks: 2,
+        failedTasks: 2,
+        failures: [
+          {
+            pluginName: "storybook",
+            taskId: "button--primary",
+            taskUrl: "",
+            result: { success: false, filepath: "button/primary.png" },
+          },
+          {
+            pluginName: "storybook",
+            taskId: "card--broken",
+            taskUrl: "",
+            result: { error: { message: "story threw" } },
+          },
+        ] as never,
+      },
+      screenshots: [
+        {
+          name: "button/primary",
+          category: "changed",
+          taskId: "button--primary",
+          plugin: "storybook",
+          actualPath: "a",
+          expectedPath: "e",
+          diffPath: "d",
+          diffMeta: { numDiffPixels: 10, percentDifference: 1.25 },
+        },
+      ] as never,
+    });
+
+    await runCapture({ json: true });
+
+    expect(printed()).toMatchObject({
+      ok: false,
+      errors: [
+        { taskId: "card--broken", plugin: "storybook", error: "story threw" },
+      ],
+      results: [
+        {
+          name: "button/primary",
+          category: "changed",
+          taskId: "button--primary",
+          plugin: "storybook",
+          percentDifference: 1.25,
+        },
+      ],
+      next: "cappa agent check --json",
+    });
+    expect(loggerInstance.box).not.toHaveBeenCalled();
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("reports a run that threw as JSON instead of throwing", async () => {
+    engineRef.current = makeFakeEngine({
+      events: [
+        event("run:error", { error: { name: "Error", message: "boom" } }),
+      ],
+      detail: { error: { name: "Error", message: "boom" } },
+    });
+
+    await runCapture({ json: true });
+
+    expect(printed()).toEqual({ ok: false, runId: "run-1", error: "boom" });
+    expect(exitSpy).toHaveBeenCalledWith(1);
+  });
+
+  it("refuses --json with --watch", async () => {
+    await runCapture({ json: true, watch: true });
+
+    expect(loggerInstance.error).toHaveBeenCalledWith(
+      expect.stringContaining("--json cannot be combined with --watch"),
+    );
+    expect(exitSpy).toHaveBeenCalledWith(1);
   });
 });
 
@@ -765,7 +929,7 @@ describe("runCapture --watch", () => {
 
     expect(engine.startRun).toHaveBeenCalledWith({
       filter: "Button/*",
-      clearActual: true,
+      clearActual: false,
     });
     expect(engine.startWatch).toHaveBeenCalledWith({ filter: "Button/*" });
     // The engine — and its warm browser — has to outlive the first run.

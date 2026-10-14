@@ -48,17 +48,20 @@ The foundational library. Core exports:
 - `defineConfig` — type helper for `cappa.config.ts`
 - `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`)
+- `runAgentCheck` / `deriveVerdict` / `renderJudgmentTiles` — agent review (`src/agent/`): heuristic verdicts from the diff interpretation, judgment requests with region crops, verdicts tied to an image fingerprint
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
 Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `playwright-core ^1.55`.
 
 ### `@cappa/cli`
 The published CLI binary (`cappa`). Commands:
-- `capture` — runs all plugin `discover` → `execute` phases, clears `actual/` and `diff/` before each run
+- `capture` — runs all plugin `discover` → `execute` phases, clears `actual/` and `diff/` before each full run (a `--filter` run keeps them; each captured screenshot replaces its own diff)
 - `capture --ci` — CI mode; also fires `onFail` callback after capture
+- `capture --json` — one JSON summary on stdout (`errors` = broken tasks, `results` = screenshots that differ); logs muted, warnings/errors on stderr
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
+- `agent check|judge|approve|init` — visual review for coding agents: heuristic verdicts, judgment requests with region crops, exact-name approval, skill install for Claude Code / Agent Skills / OpenCode (sources in `packages/cli/integrations/`; `{{cappa}}` is replaced with the project's runner at install)
 - `init` — scaffolds `cappa.config.ts` in the current directory
 
 Config is loaded from `cappa.config.ts` in CWD via **jiti** (supports TypeScript without compilation).
@@ -139,7 +142,8 @@ export default defineConfig({
 ├── actual/                # freshly captured screenshots (cleared before each run)
 ├── expected/              # approved baseline screenshots
 ├── diff/                  # diff images for changed screenshots (cleared before each run)
-└── .cappa-manifest.json   # screenshot name → the capture task that produced it
+├── .cappa-manifest.json   # screenshot name → the capture task that produced it
+└── .cappa-agent/          # `cappa agent` report + judgment requests/verdicts (self-gitignored)
 ```
 
 Screenshot categories: `new`, `deleted`, `changed`, `passed`.
@@ -151,6 +155,10 @@ the link as it captures, and `collectScreenshots` folds it back in as `taskId`, 
 what makes re-capturing a single screenshot from the review UI possible. It is optional
 everywhere: a screenshot with no entry simply has no `taskId`, and nothing may fall back
 to `name`.
+
+`collectScreenshots` folds in `.cappa-agent/report.json` the same way: a changed screenshot gets
+`review` (the last `cappa agent check` verdict) only while both its images are older than that
+check, so the review UI never shows a verdict about pixels that have since been re-captured.
 
 ## Development Workflows
 

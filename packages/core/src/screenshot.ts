@@ -813,6 +813,10 @@ class ScreenshotTool {
     const diffFilename = extras.diffImageFilename ?? filename;
     const diffOverride = extras.diff;
 
+    // This capture decides the screenshot's diff afresh: whatever the last run
+    // left in `diff/` describes an image that is about to be replaced.
+    await this.filesystem.removeDiffFiles(diffFilename);
+
     if (!(await this.filesystem.hasExpectedFile(filename))) {
       this.logger.debug(
         `Expected image not found for ${filename}, taking screenshot`,

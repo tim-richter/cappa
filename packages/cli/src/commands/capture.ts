@@ -14,6 +14,7 @@ import { LocalEngine } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import chalk from "chalk";
 import type { Command } from "commander";
+import { buildCaptureJsonReport } from "../utils/captureReport";
 import {
   DEFAULT_MAX_REGIONS,
   describeChanges,
@@ -178,6 +179,7 @@ function generateFailureReportMessage(
 
 type CaptureOptions = {
   ci?: boolean;
+  json?: boolean;
   filter?: string;
   maxRegions?: number;
   server?: string;
@@ -581,6 +583,17 @@ async function renderRunToCompletion(
   }
 }
 
+/**
+ * Print a JSON document and wait until it is flushed: `process.exit` right
+ * after a plain `write` can cut off output that is still queued for a pipe.
+ */
+const writeJson = (value: unknown): Promise<void> =>
+  new Promise((resolve) => {
+    process.stdout.write(`${JSON.stringify(value, null, 2)}\n`, () =>
+      resolve(),
+    );
+  });
+
 /** How long a `SIGINT` waits for a remote host to acknowledge cancellation. */
 const REMOTE_CANCEL_TIMEOUT_MS = 5000;
 
@@ -589,6 +602,19 @@ export const runCapture = async (
 ): Promise<void> => {
   const logger = getLogger();
   const captureStart = performance.now();
+
+  if (options.json && options.watch) {
+    logger.error("--json cannot be combined with --watch: watch never ends.");
+    process.exit(1);
+    return;
+  }
+
+  // stdout carries exactly one JSON document. Progress and report boxes are
+  // info-level and muted; warnings and errors stay, and consola writes those
+  // to stderr, so a failure is still explained without corrupting the output.
+  if (options.json) {
+    logger.level = Math.min(logger.level, 1);
+  }
 
   // Checked before the config is even loaded: a conflicting invocation is a
   // mistake to name, not something to half-do.
@@ -714,7 +740,11 @@ export const runCapture = async (
     try {
       run = await engine.startRun({
         filter: options.filter,
-        clearActual: true,
+        // Only a full run starts from an empty `actual/`. A filtered run
+        // captures a subset; clearing would leave every other screenshot with
+        // a baseline and no capture — `deleted` — and approving that deletes
+        // the baseline. Each captured screenshot replaces its own diff instead.
+        clearActual: !options.filter,
       });
     } catch (error) {
       // One run at a time is the host's deliberate design, not a fault, so it
@@ -742,7 +772,7 @@ export const runCapture = async (
       (detail?.failures.length ?? 0) > 0 ||
       (detail?.deletedScreenshots.length ?? 0) > 0;
 
-    if (!failedDuringRun && (isCi || hasFailure)) {
+    if (!failedDuringRun && (isCi || hasFailure || options.json)) {
       try {
         groupedScreenshots = await engine.listScreenshots();
       } catch (err) {
@@ -761,6 +791,15 @@ export const runCapture = async (
   // A plugin that threw has always escaped this command rather than being
   // summarised, and the browser is closed by the time it does.
   if (detail?.error) {
+    if (options.json) {
+      await writeJson({
+        ok: false,
+        runId: detail.id,
+        error: detail.error.message,
+      });
+      process.exit(1);
+      return;
+    }
     throw toThrowable(detail.error);
   }
 
@@ -771,6 +810,19 @@ export const runCapture = async (
 
   if (isCi) {
     await executeOnFailCallback(config, groupedScreenshots, { remote });
+  }
+
+  if (options.json) {
+    const report = buildCaptureJsonReport({
+      detail,
+      screenshots: groupedScreenshots,
+      durationMs: performance.now() - captureStart,
+    });
+    await writeJson(report);
+    if (!report.ok) {
+      process.exit(1);
+    }
+    return;
   }
 
   const duration = formatDuration(performance.now() - captureStart);
@@ -827,6 +879,10 @@ export const registerCaptureCommand = (program: Command): void => {
     .command("capture")
     .description("Capture screenshots")
     .option("--ci", "run capture in CI mode and execute onFail callback")
+    .option(
+      "--json",
+      "print a JSON summary to stdout instead of progress and reports",
+    )
     .option(
       "-f, --filter <pattern>",
       "only capture tasks whose id matches the given glob pattern",

@@ -1,0 +1,185 @@
+---
+title: Agent review
+description: Let a coding agent such as Claude Code judge changed screenshots, fix regressions and approve intended changes.
+---
+
+`cappa agent` turns a failed visual run into something a coding agent can review cheaply. A
+heuristic labels every changed screenshot from its [diff interpretation](/configuration#diffinterpret);
+only the changes it cannot settle are handed to the agent, as small crops of each changed region
+instead of full-page screenshots. The agent writes a verdict, Cappa folds it back in, and the agent
+approves what you confirm — or, because it has your code, fixes what is broken.
+
+The approach follows [BlazeDiff's agent review](https://www.blazediff.dev/guides/claude-code-visual-review),
+adapted to Cappa's plugins and baselines.
+
+## Setup
+
+Install the skill into your project, next to `cappa.config.ts`:
+
+```bash
+cappa agent init
+```
+
+What gets installed depends on the agents the project already uses. You can also pick with
+`--stack`:
+
+| Stack | Detected by | Installs |
+| --- | --- | --- |
+| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/` |
+| `agents` | `.agents/`, `AGENTS.md` | the skill in `.agents/skills/cappa/` (the vendor-neutral Agent Skills directory, read by Codex and others) |
+| `opencode` | `.opencode/`, `opencode.json(c)` | the `.agents` skill, plus OpenCode commands and a judge subagent (below) |
+
+`--stack all` installs everything. The skill is `SKILL.md`, `JUDGING.md` and `MASKING.md`.
+
+The installed files call Cappa the way your project runs it: `pnpm exec cappa`, `yarn cappa`,
+`bunx cappa` or `npx cappa`, picked from the lockfile. Override it with `--runner "<command>"`.
+Commit the files and tailor them to your project. Re-running `init` skips files you modified,
+unless you pass `--force`.
+
+Then ask your agent for a visual review, or run `/cappa` in Claude Code.
+
+### OpenCode
+
+OpenCode reads the skill from `.agents/skills/`. The `opencode` stack also adds commands that run
+the review flow, and a subagent that keeps the judging out of your main conversation:
+
+| File | What it does |
+| --- | --- |
+| `.opencode/commands/cappa-review.md` | `/cappa-review [request]` injects the current `agent check` state. It captures when asked or when nothing is captured yet, hands pending judgments to `cappa-judge`, reports one line per screenshot and offers next steps. |
+| `.opencode/commands/cappa-judge.md` | `/cappa-judge [names]` runs the judge as a subtask on the pending screenshots, or on the ones named. |
+| `.opencode/commands/cappa-approve.md` | `/cappa-approve <names or label>` approves by exact name or verdict label. It holds back regressions and deletions unless you name them explicitly. |
+| `.opencode/agents/cappa-judge.md` | A `cappa-judge` subagent. It reads the region crops and the git history in its own context, and records verdicts with `cappa agent judge`. |
+
+The judge works in a sandbox. It cannot edit files, fetch from the web or start other agents. In
+the shell it may only run `cappa agent check`, `cappa agent judge` and read-only git (`diff`,
+`log`, `show`, `status`). So it can record verdicts, but it cannot approve, capture or change
+code.
+
+The commands and the agent use the runner chosen at install time, because OpenCode runs their
+shell steps before the model sees them, and its permission rules match command text literally.
+
+If the project also has `.claude/skills/cappa`, OpenCode uses that copy of the skill instead of
+the one in `.agents/skills`. Keep the two in sync if you tailor them.
+
+## How a review runs
+
+1. **Capture**: the agent runs `cappa capture --json` (see
+   [machine-readable output](/cli#machine-readable-output)).
+2. **Check** — `cappa agent check --json` labels every changed screenshot:
+
+   | Label | Meaning | Next step |
+   | --- | --- | --- |
+   | `regression-likely` | Structural change (content added, removed or replaced) at medium or high severity | Investigate, fix |
+   | `intentional-likely` | Confident recolour, or content shifted/restyled with structure intact | Approve if intended |
+   | `noise-likely` | Rendering noise, or a sub-perceptual (< 0.01 %) low-severity change | Mask or approve |
+   | `ambiguous` | Anything else, including changed image dimensions | Judged by the agent |
+
+3. **Judge** — for each `ambiguous` change, Cappa writes a judgment request the agent reads instead
+   of the full screenshots:
+   - `locator.png` — a thumbnail with every changed region outlined and numbered
+   - `regions.png` — one `expected | actual` row per region, cropped with context
+   - `overview.png` — expected and actual side by side, when the dimensions changed
+   - `request.json` — regions, heuristic label, interpretation summary and paths
+
+   The agent records its verdict with `cappa agent judge` (or by writing `verdict.json`) and
+   re-runs `cappa agent check`, which applies it.
+4. **Act** — the agent reports one line per screenshot, asks you to confirm, and approves with
+   `cappa agent approve`. A regression can be fixed in code and re-captured with `--filter`.
+
+`cappa agent check` never captures: it reads the screenshots the last `cappa capture` left on disk,
+so it is safe to run as often as needed. It works without `diff.interpret` — when a capture did not
+persist an interpretation, it is computed on demand.
+
+## In the review UI
+
+`cappa review` shows the verdicts too. Changed screenshots get a verdict badge in the list and
+grid views. A robot icon marks a verdict an agent wrote; a magnifier marks the heuristic's label.
+The detail page shows the headline, the reasons, the confidence and when the check ran. You can
+look at what the agent concluded, agree or disagree, and approve from the same screen.
+
+A verdict is shown only while it still describes the images on disk. Once a screenshot is
+re-captured or approved after the check, its verdict disappears until the next
+`cappa agent check`. A verdict written with `cappa agent judge` shows up after the next check
+applies it.
+
+## Commands
+
+### `cappa agent check`
+
+```bash
+cappa agent check --json
+```
+
+Prints `{ reportPath, total, passed, changed, new, deleted, pendingJudgments, results }`, where
+`results` holds one entry per non-passing screenshot:
+
+```json
+{
+  "name": "example/button/primary",
+  "category": "changed",
+  "verdict": {
+    "label": "ambiguous",
+    "headline": "2 regions: 1 content-change, 1 shift @ center (1.20%, medium)",
+    "action": "investigate",
+    "source": "heuristic"
+  },
+  "pending": true,
+  "judgment": "/abs/screenshots/.cappa-agent/judgments/example/button/primary"
+}
+```
+
+Headlines are built so the same kind of change produces the same text on every screenshot, which
+lets an agent spot one shared cause — a footer date, a theme toggle — without opening any image.
+The full report, with regions and absolute paths, is written to `reportPath`.
+
+| Option | Description |
+| --- | --- |
+| `--judge <mode>` | `ambiguous` (default) requests judgments for ambiguous changes only; `all` for every changed screenshot; `none` for none. Existing judgments are always kept and applied. |
+| `--max-tile-regions <n>` | Regions rendered into each `regions.png` (default 8). |
+| `--json` | Print the summary as JSON and nothing else. |
+
+Exits with `1` while any screenshot is changed, new or deleted, like `cappa status`.
+
+### `cappa agent judge`
+
+```bash
+cappa agent judge example/button/primary --label regression-likely \
+  --headline "Submit label truncated" --rationale "'Submit' renders as 'Subm'" --confidence 0.9 --json
+```
+
+Records a validated verdict for one or more screenshots with a judgment request. `--label` is
+`regression-likely`, `intentional-likely` or `noise-likely`. Passing several names records one
+shared verdict.
+
+A verdict is tied to a fingerprint of the expected and actual images it was made about. When a
+re-capture changes either image, the verdict is dropped and the screenshot is judged again.
+
+### `cappa agent approve`
+
+```bash
+cappa agent approve example/button/primary --json
+cappa agent approve --label intentional-likely --json
+```
+
+Approves screenshots by **exact** name — unlike `cappa approve --filter`, which matches substrings —
+or every changed screenshot whose current verdict carries a label. Refused when `CI` is set, so
+baselines only change on developer machines.
+
+### `cappa agent init`
+
+Installs the skill files described in [Setup](#setup).
+
+## Files
+
+Everything lives in `<outputDir>/.cappa-agent/`, which carries its own `.gitignore` — judgments are
+only valid for the screenshots on the machine that made them.
+
+```
+.cappa-agent/
+├── report.json
+└── judgments/<screenshot name>/
+    ├── request.json
+    ├── locator.png
+    ├── regions.png      # or overview.png
+    └── verdict.json     # written by the agent
+```

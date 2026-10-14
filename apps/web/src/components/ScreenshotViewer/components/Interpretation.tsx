@@ -3,39 +3,41 @@ import { Badge } from "@ui/components/badge";
 import { cn } from "@ui/lib/utils";
 
 /**
- * Visual styling per `changeType` reported by blazediff's interpret pass.
- * Falls back to a neutral style for unknown/future change types.
+ * Visual styling per `changeType` reported by blazediff's interpret pass,
+ * keyed by the kebab-case form current releases report. Earlier releases
+ * reported PascalCase (`ColorChange`), so lookups normalise first. Falls back
+ * to a neutral style for unknown/future change types.
  */
 const CHANGE_TYPE_STYLES: Record<
   string,
   { label: string; box: string; dot: string }
 > = {
-  Addition: {
+  addition: {
     label: "Added",
     box: "border-emerald-500 bg-emerald-500/10",
     dot: "bg-emerald-500",
   },
-  Deletion: {
+  deletion: {
     label: "Removed",
     box: "border-red-500 bg-red-500/10",
     dot: "bg-red-500",
   },
-  ColorChange: {
+  "color-change": {
     label: "Color",
     box: "border-blue-500 bg-blue-500/10",
     dot: "bg-blue-500",
   },
-  ContentChange: {
+  "content-change": {
     label: "Content",
     box: "border-amber-500 bg-amber-500/10",
     dot: "bg-amber-500",
   },
-  Shift: {
+  shift: {
     label: "Shifted",
     box: "border-violet-500 bg-violet-500/10",
     dot: "bg-violet-500",
   },
-  RenderingNoise: {
+  "rendering-noise": {
     label: "Noise",
     box: "border-zinc-400 bg-zinc-400/10",
     dot: "bg-zinc-400",
@@ -48,14 +50,24 @@ const DEFAULT_CHANGE_TYPE_STYLE = {
   dot: "bg-zinc-400",
 };
 
+export const normalizeChangeType = (changeType: string): string =>
+  changeType
+    .replace(/([a-z0-9])([A-Z])/g, "$1-$2")
+    .replace(/[\s_]+/g, "-")
+    .toLowerCase();
+
 function changeTypeStyle(changeType: string) {
-  return CHANGE_TYPE_STYLES[changeType] ?? DEFAULT_CHANGE_TYPE_STYLE;
+  return (
+    CHANGE_TYPE_STYLES[normalizeChangeType(changeType)] ??
+    DEFAULT_CHANGE_TYPE_STYLE
+  );
 }
 
+// Keyed lowercase; current interpret releases report `high`, earlier ones `High`.
 const SEVERITY_STYLES: Record<string, string> = {
-  Low: "bg-emerald-800 text-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-300",
-  Medium: "bg-amber-700 text-amber-50 dark:bg-amber-900/50 dark:text-amber-300",
-  High: "bg-red-800 text-red-50 dark:bg-red-900/50 dark:text-red-300",
+  low: "bg-emerald-800 text-emerald-100 dark:bg-emerald-900/50 dark:text-emerald-300",
+  medium: "bg-amber-700 text-amber-50 dark:bg-amber-900/50 dark:text-amber-300",
+  high: "bg-red-800 text-red-50 dark:bg-red-900/50 dark:text-red-300",
 };
 
 export function SeverityBadge({
@@ -70,7 +82,8 @@ export function SeverityBadge({
       variant="default"
       className={cn(
         "uppercase text-xs cursor-default",
-        SEVERITY_STYLES[severity] ?? "bg-secondary text-secondary-foreground",
+        SEVERITY_STYLES[severity.toLowerCase()] ??
+          "bg-secondary text-secondary-foreground",
         className,
       )}
     >

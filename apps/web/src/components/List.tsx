@@ -3,6 +3,7 @@ import type { RowSelectionState, Updater } from "@tanstack/react-table";
 import { cva } from "class-variance-authority";
 import type { MouseEvent } from "react";
 import { Link } from "react-router";
+import { AgentVerdictBadge } from "./AgentVerdictBadge";
 import { DataTable, type DataTableColumnDef } from "./DataTable";
 import { EmptyState } from "./EmptyState";
 
@@ -72,6 +73,21 @@ export const List = ({
       },
     },
   ];
+
+  // Only when there is something to show: an empty column on every page of
+  // a project that never ran `cappa agent check` is noise.
+  if (
+    screenshots.some((s) => s.category === "changed" && s.review !== undefined)
+  ) {
+    columns.push({
+      id: "review",
+      header: "Review",
+      cell: ({ row }) =>
+        row.original.category === "changed" && row.original.review ? (
+          <AgentVerdictBadge review={row.original.review} />
+        ) : null,
+    });
+  }
 
   return (
     <DataTable

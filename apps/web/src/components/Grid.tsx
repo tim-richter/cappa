@@ -5,6 +5,7 @@ import { cn } from "@ui/lib/utils";
 import type { FC } from "react";
 import { Link } from "react-router";
 import { findPreviewScreenshot } from "@/util/screenshot";
+import { AgentVerdictBadge } from "./AgentVerdictBadge";
 import { CategoryBadge } from "./CategoryBadge";
 import { EmptyState } from "./EmptyState";
 
@@ -92,6 +93,9 @@ export const Grid: FC<ScreenshotGridProps> = ({
                   <h3 className="font-medium text-card-foreground truncate flex-1 mr-2">
                     {screenshot.name}
                   </h3>
+                  {screenshot.category === "changed" && screenshot.review && (
+                    <AgentVerdictBadge review={screenshot.review} />
+                  )}
                 </div>
               </div>
             </Link>
