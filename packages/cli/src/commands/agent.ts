@@ -250,6 +250,7 @@ export const agentApprove = (names: string[], options: ApproveOptions) =>
 type InitOptions = JsonOption & {
   stack?: SkillStack | "all";
   force?: boolean;
+  runner?: string;
 };
 
 export const agentInit = (options: InitOptions) =>
@@ -262,14 +263,15 @@ export const agentInit = (options: InitOptions) =>
           ? [options.stack]
           : detectSkillStacks(cwd);
 
-    const files = await installAgentSkills({
+    const { runner, files, warnings } = await installAgentSkills({
       cwd,
       stacks,
       force: options.force,
+      runner: options.runner,
     });
 
     if (options.json) {
-      printJson({ stacks, files });
+      printJson({ stacks, runner, files, warnings });
       return;
     }
 
@@ -282,8 +284,14 @@ export const agentInit = (options: InitOptions) =>
       }[file.status];
       logger.log(`${verb} ${file.path}`);
     }
+    logger.log(chalk.dim(`commands run as \`${runner}\` (--runner to change)`));
+    for (const warning of warnings) {
+      logger.warn(warning);
+    }
     logger.success(
-      "Agent skill installed — ask your agent to run a visual review, or use /cappa in Claude Code",
+      stacks.includes("opencode")
+        ? "Agent integration installed — run /cappa-review in OpenCode, or /cappa in Claude Code"
+        : "Agent skill installed — ask your agent to run a visual review, or use /cappa in Claude Code",
     );
   });
 
@@ -388,6 +396,10 @@ export const registerAgentCommand = (program: Command): void => {
       parseChoice([...SKILL_STACK_NAMES, "all"] as const, "--stack"),
     )
     .option("--force", "overwrite skill files that were modified")
+    .option(
+      "--runner <command>",
+      "how the project runs cappa, e.g. `pnpm exec cappa` (default: from the lockfile)",
+    )
     .option("--json", "print a JSON summary to stdout")
     .action(agentInit);
 };

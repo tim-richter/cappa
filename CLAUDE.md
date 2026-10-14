@@ -61,7 +61,7 @@ The published CLI binary (`cappa`). Commands:
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
-- `agent check|judge|approve|init` — visual review for coding agents: heuristic verdicts, judgment requests with region crops, exact-name approval, skill install (skill sources live in `packages/cli/skills/cappa/`)
+- `agent check|judge|approve|init` — visual review for coding agents: heuristic verdicts, judgment requests with region crops, exact-name approval, skill install for Claude Code / Agent Skills / OpenCode (sources in `packages/cli/integrations/`; `{{cappa}}` is replaced with the project's runner at install)
 - `init` — scaffolds `cappa.config.ts` in the current directory
 
 Config is loaded from `cappa.config.ts` in CWD via **jiti** (supports TypeScript without compilation).

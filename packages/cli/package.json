@@ -28,7 +28,7 @@
   "files": [
     "dist",
     "bin",
-    "skills",
+    "integrations",
     "package.json",
     "README.md"
   ],

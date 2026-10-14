@@ -1,6 +1,8 @@
 ---
 name: cappa
 description: Run and review Cappa visual regression tests — capture screenshots, judge what changed, fix regressions, approve intended changes. Trigger on "visual test", "visual regression", "screenshot diff", "review screenshots", "cappa", "/cappa".
+metadata:
+  opencode/slash: "true"
 ---
 
 # cappa
@@ -8,6 +10,8 @@ description: Run and review Cappa visual regression tests — capture screenshot
 Cappa captures screenshots (Storybook stories, pages) with Playwright and diffs them against
 approved baselines. `cappa agent` turns the diff into something you can judge cheaply: a heuristic
 labels each change, and only the ones it cannot settle are handed to you with small crops.
+
+Run the CLI as `{{cappa}}` in this project; the examples below write `cappa` for short.
 
 Sibling files — read on demand:
 - `JUDGING.md` — judging changes when `pendingJudgments > 0`.

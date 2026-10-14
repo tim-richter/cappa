@@ -20,13 +20,46 @@ Install the skill into your project, next to `cappa.config.ts`:
 cappa agent init
 ```
 
-This writes `SKILL.md`, `JUDGING.md` and `MASKING.md` to `.claude/skills/cappa/` (Claude Code) and/or
-`.agents/skills/cappa/` (the vendor-neutral Agent Skills directory, read by Codex and others),
-depending on whether the project has a `.claude/`, `CLAUDE.md`, `.agents/` or `AGENTS.md`. Pick
-explicitly with `--stack claude`, `--stack agents` or `--stack all`. Commit the files and tailor
-them to your project — re-running `init` skips files you modified unless you pass `--force`.
+What gets installed depends on the agents the project already uses. You can also pick with
+`--stack`:
+
+| Stack | Detected by | Installs |
+| --- | --- | --- |
+| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/` |
+| `agents` | `.agents/`, `AGENTS.md` | the skill in `.agents/skills/cappa/` (the vendor-neutral Agent Skills directory, read by Codex and others) |
+| `opencode` | `.opencode/`, `opencode.json(c)` | the `.agents` skill, plus OpenCode commands and a judge subagent (below) |
+
+`--stack all` installs everything. The skill is `SKILL.md`, `JUDGING.md` and `MASKING.md`.
+
+The installed files call Cappa the way your project runs it: `pnpm exec cappa`, `yarn cappa`,
+`bunx cappa` or `npx cappa`, picked from the lockfile. Override it with `--runner "<command>"`.
+Commit the files and tailor them to your project. Re-running `init` skips files you modified,
+unless you pass `--force`.
 
 Then ask your agent for a visual review, or run `/cappa` in Claude Code.
+
+### OpenCode
+
+OpenCode reads the skill from `.agents/skills/`. The `opencode` stack also adds commands that run
+the review flow, and a subagent that keeps the judging out of your main conversation:
+
+| File | What it does |
+| --- | --- |
+| `.opencode/commands/cappa-review.md` | `/cappa-review [request]` injects the current `agent check` state. It captures when asked or when nothing is captured yet, hands pending judgments to `cappa-judge`, reports one line per screenshot and offers next steps. |
+| `.opencode/commands/cappa-judge.md` | `/cappa-judge [names]` runs the judge as a subtask on the pending screenshots, or on the ones named. |
+| `.opencode/commands/cappa-approve.md` | `/cappa-approve <names or label>` approves by exact name or verdict label. It holds back regressions and deletions unless you name them explicitly. |
+| `.opencode/agents/cappa-judge.md` | A `cappa-judge` subagent. It reads the region crops and the git history in its own context, and records verdicts with `cappa agent judge`. |
+
+The judge works in a sandbox. It cannot edit files, fetch from the web or start other agents. In
+the shell it may only run `cappa agent check`, `cappa agent judge` and read-only git (`diff`,
+`log`, `show`, `status`). So it can record verdicts, but it cannot approve, capture or change
+code.
+
+The commands and the agent use the runner chosen at install time, because OpenCode runs their
+shell steps before the model sees them, and its permission rules match command text literally.
+
+If the project also has `.claude/skills/cappa`, OpenCode uses that copy of the skill instead of
+the one in `.agents/skills`. Keep the two in sync if you tailor them.
 
 ## How a review runs
 
