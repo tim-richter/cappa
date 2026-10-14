@@ -30,7 +30,8 @@ Then ask your agent for a visual review, or run `/cappa` in Claude Code.
 
 ## How a review runs
 
-1. **Capture** — the agent runs `cappa capture` as usual.
+1. **Capture**: the agent runs `cappa capture --json` (see
+   [machine-readable output](/cli#machine-readable-output)).
 2. **Check** — `cappa agent check --json` labels every changed screenshot:
 
    | Label | Meaning | Next step |
@@ -55,6 +56,18 @@ Then ask your agent for a visual review, or run `/cappa` in Claude Code.
 `cappa agent check` never captures: it reads the screenshots the last `cappa capture` left on disk,
 so it is safe to run as often as needed. It works without `diff.interpret` — when a capture did not
 persist an interpretation, it is computed on demand.
+
+## In the review UI
+
+`cappa review` shows the verdicts too. Changed screenshots get a verdict badge in the list and
+grid views. A robot icon marks a verdict an agent wrote; a magnifier marks the heuristic's label.
+The detail page shows the headline, the reasons, the confidence and when the check ran. You can
+look at what the agent concluded, agree or disagree, and approve from the same screen.
+
+A verdict is shown only while it still describes the images on disk. Once a screenshot is
+re-captured or approved after the check, its verdict disappears until the next
+`cappa agent check`. A verdict written with `cappa agent judge` shows up after the next check
+applies it.
 
 ## Commands
 

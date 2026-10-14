@@ -57,6 +57,7 @@ Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `play
 The published CLI binary (`cappa`). Commands:
 - `capture` — runs all plugin `discover` → `execute` phases, clears `actual/` and `diff/` before each run
 - `capture --ci` — CI mode; also fires `onFail` callback after capture
+- `capture --json` — one JSON summary on stdout (`errors` = broken tasks, `results` = screenshots that differ); logs muted, warnings/errors on stderr
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
@@ -154,6 +155,10 @@ the link as it captures, and `collectScreenshots` folds it back in as `taskId`, 
 what makes re-capturing a single screenshot from the review UI possible. It is optional
 everywhere: a screenshot with no entry simply has no `taskId`, and nothing may fall back
 to `name`.
+
+`collectScreenshots` folds in `.cappa-agent/report.json` the same way: a changed screenshot gets
+`review` (the last `cappa agent check` verdict) only while both its images are older than that
+check, so the review UI never shows a verdict about pixels that have since been re-captured.
 
 ## Development Workflows
 

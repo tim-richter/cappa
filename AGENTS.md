@@ -53,6 +53,7 @@ Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `play
 The published CLI binary (`cappa`). Commands:
 - `capture` — runs all plugin `discover` → `execute` phases, clears `actual/` and `diff/` before each run
 - `capture --ci` — CI mode; also fires `onFail` callback after capture
+- `capture --json` — one JSON summary on stdout (`errors` = broken tasks, `results` = screenshots that differ); logs muted, warnings/errors on stderr
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary

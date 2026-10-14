@@ -3,8 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import sharp from "sharp";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { collectScreenshots } from "../screenshots/collectScreenshots";
+import { agentReportPath } from "./paths";
 import {
-  agentReportPath,
   clearJudgment,
   judgmentDir,
   parseAgentVerdict,
@@ -288,6 +289,88 @@ describe("runAgentCheck", () => {
   it("writes the report to .cappa-agent/report.json", async () => {
     const report = await runAgentCheck({ outputDir });
     expect(report.reportPath).toBe(agentReportPath(outputDir));
+  });
+});
+
+describe("review folded into collectScreenshots", () => {
+  const reviewOf = async (name: string) => {
+    const screenshot = (await collectScreenshots(outputDir)).find(
+      (s) => s.name === name,
+    );
+    return screenshot?.category === "changed" ? screenshot.review : undefined;
+  };
+
+  it("carries the last check's verdict on changed screenshots", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    expect(await reviewOf("grown")).toBeUndefined();
+
+    const report = await runAgentCheck({ outputDir });
+
+    expect(await reviewOf("grown")).toEqual({
+      label: "ambiguous",
+      headline: "image dimensions changed",
+      rationale: expect.any(Array),
+      action: "investigate",
+      source: "heuristic",
+      pending: true,
+      reviewedAt: report.createdAt,
+    });
+  });
+
+  it("carries a judge's verdict once a check applied it", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    await runAgentCheck({ outputDir });
+    await writeAgentVerdict(outputDir, "grown", {
+      label: "intentional-likely",
+      headline: "new footer",
+      rationale: ["matches the footer change"],
+      confidence: 0.7,
+    });
+    await runAgentCheck({ outputDir });
+
+    expect(await reviewOf("grown")).toMatchObject({
+      label: "intentional-likely",
+      source: "agent",
+      confidence: 0.7,
+      pending: false,
+      rationale: ["matches the footer change"],
+    });
+  });
+
+  it("drops the verdict once the screenshot is re-captured", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    await runAgentCheck({ outputDir });
+    expect(await reviewOf("grown")).toBeDefined();
+
+    // A capture after the check: the actual image is newer than the report.
+    const later = new Date(Date.now() + 60_000);
+    await fsp.utimes(path.join(outputDir, "actual/grown.png"), later, later);
+
+    expect(await reviewOf("grown")).toBeUndefined();
+  });
+
+  it("ignores a corrupt report", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    await runAgentCheck({ outputDir });
+    await fsp.writeFile(agentReportPath(outputDir), "{not json");
+
+    expect(await reviewOf("grown")).toBeUndefined();
   });
 });
 

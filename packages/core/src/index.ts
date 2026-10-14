@@ -116,6 +116,7 @@ import {
   type ScreenshotStore,
 } from "./store";
 import type {
+  AgentReview,
   ChangedScreenshot,
   ConfigEnv,
   DeletedScreenshot,
@@ -139,6 +140,7 @@ import type {
 
 export * from "./agent";
 export {
+  type AgentReview,
   type ApproveResult,
   attachConsoleLogging,
   type CaptureEngine,

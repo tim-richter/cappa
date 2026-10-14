@@ -60,8 +60,10 @@ export {
   watchStatusSchema,
 } from "./run";
 export {
+  type AgentReview,
   type ApproveRequest,
   type ApproveResult,
+  agentReviewSchema,
   approveRequestSchema,
   approveResultSchema,
   type ChangedScreenshot,

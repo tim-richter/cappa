@@ -10,6 +10,12 @@ import sharp from "sharp";
 import { mapWithConcurrency } from "../mapWithConcurrency";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
 import type { DiffOptions, Screenshot } from "../types";
+import {
+  AGENT_REPORT_VERSION,
+  agentDir,
+  agentReportPath,
+  judgmentsRoot,
+} from "./paths";
 import { renderJudgmentTiles, renderOverview } from "./tiles";
 import {
   ACTION_BY_LABEL,
@@ -42,8 +48,6 @@ import {
  * judgments/<name>/verdict.json     written by the judge
  * ```
  */
-export const AGENT_DIRNAME = ".cappa-agent";
-
 const REQUEST_FILE = "request.json";
 const VERDICT_FILE = "verdict.json";
 const JUDGMENT_FILES = [
@@ -53,9 +57,6 @@ const JUDGMENT_FILES = [
   "regions.png",
   "overview.png",
 ];
-
-/** Bumped only if `request.json` or `report.json` change incompatibly. */
-export const AGENT_REPORT_VERSION = 1;
 
 /**
  * Which changed screenshots get a judgment request.
@@ -141,15 +142,6 @@ export type AgentReport = {
   /** Every non-passing screenshot, changed ones first. */
   entries: AgentReportEntry[];
 };
-
-export const agentDir = (outputDir: string): string =>
-  path.resolve(outputDir, AGENT_DIRNAME);
-
-const judgmentsRoot = (outputDir: string): string =>
-  path.join(agentDir(outputDir), "judgments");
-
-export const agentReportPath = (outputDir: string): string =>
-  path.join(agentDir(outputDir), "report.json");
 
 /**
  * The directory holding a screenshot's judgment.

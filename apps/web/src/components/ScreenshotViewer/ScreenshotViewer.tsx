@@ -24,7 +24,9 @@ import { Link, useNavigate } from "react-router";
 import { useServerConfig } from "@/api/hooks";
 import { RecaptureButton } from "@/components/Capture/RecaptureButton";
 import { isFullyApproved, useApproveBatch } from "@/hooks/useApproveBatch";
+import { AgentVerdictBadge } from "../AgentVerdictBadge";
 import { CategoryBadge } from "../CategoryBadge";
+import { AgentReviewSummary } from "./components/AgentReview";
 import { Diff } from "./components/Diff";
 import {
   InspectPanel,
@@ -193,6 +195,10 @@ export function ScreenshotComparison({
                   />
                 )}
 
+              {screenshot.category === "changed" && screenshot.review && (
+                <AgentVerdictBadge review={screenshot.review} />
+              )}
+
               {screenshot.approved && (
                 <Badge
                   variant="default"
@@ -326,31 +332,39 @@ export function ScreenshotComparison({
 
       <InspectProvider regions={regions}>
         {/* Comparison Content */}
-        <div className="flex-1 overflow-hidden p-6">
-          {screenshot.category === "new" && (
-            <Single screenshotPath={screenshot.actualPath} />
+        <div className="flex-1 overflow-hidden p-6 flex flex-col">
+          {screenshot.category === "changed" && screenshot.review && (
+            <AgentReviewSummary review={screenshot.review} />
           )}
-          {screenshot.category === "deleted" && (
-            <Single screenshotPath={screenshot.expectedPath} />
-          )}
-          {screenshot.category === "passed" && (
-            <Single screenshotPath={screenshot.actualPath} />
-          )}
-          {screenshot.category === "changed" && (
-            <>
-              {viewMode === "side-by-side" && (
-                <SideBySide screenshot={screenshot} />
-              )}
+          {/* Bounded, so a summary above never pushes the h-full views out. */}
+          <div className="flex-1 min-h-0">
+            {screenshot.category === "new" && (
+              <Single screenshotPath={screenshot.actualPath} />
+            )}
+            {screenshot.category === "deleted" && (
+              <Single screenshotPath={screenshot.expectedPath} />
+            )}
+            {screenshot.category === "passed" && (
+              <Single screenshotPath={screenshot.actualPath} />
+            )}
+            {screenshot.category === "changed" && (
+              <>
+                {viewMode === "side-by-side" && (
+                  <SideBySide screenshot={screenshot} />
+                )}
 
-              {viewMode === "toggle-view" && <Toggle screenshot={screenshot} />}
+                {viewMode === "toggle-view" && (
+                  <Toggle screenshot={screenshot} />
+                )}
 
-              {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
+                {viewMode === "overlay" && <Overlay screenshot={screenshot} />}
 
-              {viewMode === "split" && <Split screenshot={screenshot} />}
+                {viewMode === "split" && <Split screenshot={screenshot} />}
 
-              {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
-            </>
-          )}
+                {viewMode === "diff-only" && <Diff screenshot={screenshot} />}
+              </>
+            )}
+          </div>
         </div>
 
         {inspectOpen && (

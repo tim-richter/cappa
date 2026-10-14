@@ -1,5 +1,6 @@
 import type { InterpretResult } from "@blazediff/interpret-native";
 import type { Locator } from "playwright-core";
+import type { VerdictAction, VerdictLabel } from "./agent/verdict";
 import type { LogConsoleEvents } from "./consoleEvents";
 import type { Plugin, PluginDef } from "./plugin";
 
@@ -264,6 +265,25 @@ export interface DiffMetadata {
   interpretation?: InterpretResult;
 }
 
+/**
+ * The verdict `cappa agent check` reached for a changed screenshot, as the
+ * review UI shows it.
+ */
+export interface AgentReview {
+  label: VerdictLabel;
+  headline: string;
+  rationale: string[];
+  action: VerdictAction;
+  /** `heuristic` from the diff signals; `agent` from a judge's verdict. */
+  source: "heuristic" | "agent";
+  /** 0-1, when the judge gave one. */
+  confidence?: number;
+  /** A judgment was requested and no verdict had been written yet. */
+  pending: boolean;
+  /** When the check that produced this ran (ISO 8601). */
+  reviewedAt: string;
+}
+
 export type ChangedScreenshot = {
   category: "changed";
   diffPath: string;
@@ -274,6 +294,12 @@ export type ChangedScreenshot = {
    * `diff/<name>.json` sidecar. Absent if the sidecar was not written.
    */
   diffMeta?: DiffMetadata;
+  /**
+   * The last `cappa agent check` verdict. Absent when no check has run, or
+   * when either image changed since — a verdict about other pixels is not one
+   * worth showing.
+   */
+  review?: AgentReview;
 };
 
 export type PassedScreenshot = {

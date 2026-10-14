@@ -35,6 +35,7 @@ element. Fix or mask it once — a shared decorator/preview parameter in Storybo
 re-check instead of judging each screenshot. Storybook replaces arrays rather than merging them,
 so a story that sets its own `mask` must repeat the shared selectors.
 
-After changing masks, re-capture the affected tasks (`cappa capture --filter ...`); the new
-screenshots will still differ from the unmasked baselines once — approve those after confirming
-with the user.
+After changing masks, re-capture (`cappa capture --json`, or `--filter ...` to check quickly — but
+a filtered capture marks everything else `deleted`, so do a full capture before approving). The
+masked screenshots will still differ from the unmasked baselines once — approve those after
+confirming with the user.

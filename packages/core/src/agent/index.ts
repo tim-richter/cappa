@@ -1,13 +1,15 @@
 export {
   AGENT_DIRNAME,
   AGENT_REPORT_VERSION,
+  agentDir,
+  agentReportPath,
+} from "./paths";
+export {
   type AgentRegion,
   type AgentReport,
   type AgentReportEntry,
   type AgentVerdictInput,
   type AppliedVerdict,
-  agentDir,
-  agentReportPath,
   clearJudgment,
   fingerprintImages,
   JUDGE_MODES,

@@ -358,6 +358,44 @@ describe("approving a deleted screenshot", () => {
   });
 });
 
+describe("agent review", () => {
+  beforeEach(() => {
+    // The inspect panel and view mode persist; start from the defaults.
+    localStorage.clear();
+  });
+
+  const openDetail = (id: string) =>
+    renderPageWithRoute(
+      "/screenshots/:id",
+      `/screenshots/${id}`,
+      <Screenshot />,
+    );
+
+  it("shows the verdict, its headline and its reasons", async () => {
+    const screen = await openDetail("3");
+    const summary = screen.getByRole("region", { name: "Agent review" });
+
+    await expect
+      .element(summary.getByText("Submit button label is truncated"))
+      .toBeVisible();
+    await expect
+      .element(summary.getByText("'Submit' renders as 'Subm' in region #1"))
+      .toBeVisible();
+    await expect
+      .element(summary.getByText(/Judged by agent · 90% confidence/))
+      .toBeVisible();
+  });
+
+  it("shows nothing for a screenshot no check has reviewed", async () => {
+    const screen = await openDetail("5");
+
+    await expect.element(screen.getByText("5", { exact: true })).toBeVisible();
+    expect(
+      screen.getByRole("region", { name: "Agent review" }).query(),
+    ).toBeNull();
+  });
+});
+
 describe("inspecting a region", () => {
   beforeEach(() => {
     // The panel and its regions are persisted, so one test opening it would

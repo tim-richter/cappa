@@ -88,6 +88,10 @@ export type _DiffMetadata = AssertAssignable<
   protocol.DiffMetadata,
   core.DiffMetadata
 >;
+export type _AgentReview = AssertAssignable<
+  protocol.AgentReview,
+  core.AgentReview
+>;
 
 describe("protocol schemas accept what core produces", () => {
   it("round-trips a run event", () => {
@@ -204,6 +208,16 @@ describe("protocol schemas accept what core produces", () => {
         expectedPath: "expected/c.png",
         diffPath: "diff/c.png",
         diffMeta: { numDiffPixels: 10, percentDifference: 1.5 },
+        review: {
+          label: "regression-likely",
+          headline: "1 deletion @ top (1.50%, high)",
+          rationale: ["high severity with structural changes (1 deletion)"],
+          action: "investigate",
+          source: "agent",
+          confidence: 0.9,
+          pending: false,
+          reviewedAt: "2026-10-14T12:00:00.000Z",
+        },
       },
       {
         id: "4",
