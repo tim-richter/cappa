@@ -57,28 +57,48 @@ cappa agent check --json
 Returns `{ reportPath, total, passed, changed, new, deleted, pendingJudgments, results }`.
 `results` lists non-passing screenshots only, each
 `{ name, category, verdict?: { label, headline, action, source }, pending?, judgment? }`.
+It exits 1 whenever anything is not passing — that is the normal result, not a failure. A real
+failure prints `{ "error": "..." }` instead.
 
 - `category: "changed"` carries a `verdict`. `source: "heuristic"` came from the diff signals;
   `source: "agent"` is a verdict you (or another judge) wrote.
+- A heuristic label is a guess from pixel signals, not a finding. In particular it calls any
+  medium- or high-severity structural change `regression-likely` — including content that was
+  added or removed on purpose. Before treating a heuristic `regression-likely` as broken, check it
+  against the code; if a deliberate change explains it, judge it (`--judge all`, below) instead of
+  "fixing" the feature.
 - `pending: true` → the heuristic said `ambiguous`; `judgment` is the directory with the evidence.
   **Read `JUDGING.md`**, judge them, then re-run `cappa agent check --json`.
-- `--judge all` requests a judgment for *every* changed screenshot, not only ambiguous ones — use it
-  when the user wants a thorough review or you doubt a heuristic label.
+- `--judge all` requests a judgment for *every* changed screenshot, not only ambiguous ones, so
+  each gets a `judgment` directory with `locator.png` and `regions.png`. Use it whenever you need
+  to look anyway: you doubt a heuristic label, or the user wants a thorough review. Then judge per
+  `JUDGING.md` like any other pending entry.
+- Requests are sticky: once made, a request stays `pending` through every later check until it
+  gets a verdict, the screenshot is approved, or a re-capture changes its images. After
+  `--judge all`, judge every pending entry — including the ones whose heuristic label you agree
+  with (one `cappa agent judge` call per shared label is enough) — or `pendingJudgments` never
+  reaches 0.
+- Judging means reading images. If you cannot read images yourself, don't improvise — hand the
+  `judgment` directories to a subagent whose model can (the `cappa-judge` subagent, when
+  `cappa agent init` installed one), let it judge per `JUDGING.md`, and use the verdicts it
+  records (or run `cappa agent judge` with the labels it returns).
 
 ## 3. Report and act
 One line per non-passing screenshot: `<name>: <label> — <headline>`. Then, per label:
 
-- `regression-likely` → something looks broken. Point the user at it. If they want it fixed (or
-  you were asked to fix regressions), find the cause in the working tree (`git diff`, recent
-  commits touching the component), fix the code, re-capture just that task with `--filter`, and
-  re-check. Never approve a regression.
+- `regression-likely` → something looks broken. If the verdict is the heuristic's
+  (`source: "heuristic"`), confirm it against the code first (see step 2). Point the user at it.
+  If they want it fixed (or you were asked to fix regressions), find the cause in the working
+  tree (`git diff`, recent commits touching the component), fix the code, re-capture just that
+  task with `--filter`, and re-check. Never approve a regression.
 - `intentional-likely` → a deliberate restyle or content change. Ask the user to confirm, then
   `cappa agent approve <name> [<name> ...] --json`.
 - `noise-likely` → anti-aliasing or non-deterministic content. Ask once: mask, approve or ignore.
   Prefer masking when the source is inherently unstable (clock, relative time, random avatar,
   animation) — approving only postpones the next failure. See `MASKING.md`.
-- `new` (no baseline yet) → the screenshot is new. Glance at it only if asked; approving makes it
-  the baseline.
+- `new` (no baseline yet) → the screenshot is new. There are no crops — looking means reading the
+  full-size image in `<outputDir>/actual/<name>.png`, so do it only if asked (and through an
+  image-capable subagent if you cannot read images). Approving makes it the baseline.
 - `deleted` (baseline without a capture) → the story/page was removed or failed to capture. Check
   capture output before approving: approving a deleted screenshot **deletes its baseline**.
 
@@ -87,9 +107,14 @@ screenshot whose current verdict has that label.
 
 ## Hard rules
 - Never approve without explicit user confirmation, and never approve `regression-likely`.
+  `cappa agent approve` refuses to; if the change is in fact intended, judge it
+  `intentional-likely` first. Pass `--allow-regression` only when the user explicitly tells you to
+  approve that regression.
 - `cappa agent approve` matches names exactly. Don't use plain `cappa approve` — its `--filter`
   is a substring match and approves far more than you intend.
 - Never edit files under `expected/`, `actual/`, `diff/` or `.cappa-agent/` by hand (except
   writing `verdict.json`).
+- Never hand-roll crops, image diffs or pixel forensics (ImageMagick, scripts). Cappa's crops are
+  the evidence; if a screenshot has none, `cappa agent check --json --judge all` produces them.
 - In CI (`CI=true`), only `cappa agent check` is allowed; baselines change on developer machines.
 - Re-capturing invalidates verdicts for screenshots whose images changed — that is intended.

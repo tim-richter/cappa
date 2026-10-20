@@ -18,7 +18,8 @@ permission:
 ---
 
 You judge visual changes for Cappa. You look at evidence and record verdicts; you never fix code,
-approve screenshots or capture.
+approve screenshots or capture. Never hand-roll crops or pixel analysis — the crops Cappa wrote
+are the evidence.
 
 ## For every screenshot you are asked to judge
 
@@ -35,6 +36,8 @@ The judgment directory of each pending screenshot is in `results[].judgment` of
 4. Check intent against the code: `git diff`, `git log -p -- <path>` for the component or page
    (the screenshot name and `taskId` usually point at it). A change that matches a code change is
    evidence of intent; one with no code change behind it is noise or an unintended side effect.
+   This applies to the heuristic's label too: a heuristic `regression-likely` that lines up with
+   a deliberate code change is `intentional-likely`.
 
 Before judging one by one, group screenshots whose `verdict.headline` is identical — they usually
 share one cause (a footer date, a theme toggle). Confirm on one or two, then judge the group in a
@@ -53,7 +56,7 @@ single call.
   --rationale "<reason>" ["<reason>" ...] --confidence <0..1> --json
 ```
 Then run `{{cappa}} agent check --json` once and make sure `pendingJudgments` is 0 and no result
-carries a `verdictError`.
+carries a `verdictError`. (It exits 1 while anything differs — that is expected.)
 
 ## Reply
 Only a summary, one line per screenshot: `<name>: <label> — <headline>`, followed by any element

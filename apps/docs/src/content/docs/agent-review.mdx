@@ -25,7 +25,7 @@ What gets installed depends on the agents the project already uses. You can also
 
 | Stack | Detected by | Installs |
 | --- | --- | --- |
-| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/` |
+| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/`, plus a `cappa-judge` subagent in `.claude/agents/` that judges screenshots in its own context |
 | `agents` | `.agents/`, `AGENTS.md` | the skill in `.agents/skills/cappa/` (the vendor-neutral Agent Skills directory, read by Codex and others) |
 | `opencode` | `.opencode/`, `opencode.json(c)` | the `.agents` skill, plus OpenCode commands and a judge subagent (below) |
 
@@ -69,7 +69,7 @@ the one in `.agents/skills`. Keep the two in sync if you tailor them.
 
    | Label | Meaning | Next step |
    | --- | --- | --- |
-   | `regression-likely` | Structural change (content added, removed or replaced) at medium or high severity | Investigate, fix |
+   | `regression-likely` | Structural change (content added, removed or replaced) at medium or high severity | Check against the code, then fix |
    | `intentional-likely` | Confident recolour, or content shifted/restyled with structure intact | Approve if intended |
    | `noise-likely` | Rendering noise, or a sub-perceptual (< 0.01 %) low-severity change | Mask or approve |
    | `ambiguous` | Anything else, including changed image dimensions | Judged by the agent |
@@ -82,7 +82,13 @@ the one in `.agents/skills`. Keep the two in sync if you tailor them.
    - `request.json` — regions, heuristic label, interpretation summary and paths
 
    The agent records its verdict with `cappa agent judge` (or by writing `verdict.json`) and
-   re-runs `cappa agent check`, which applies it.
+   re-runs `cappa agent check`, which applies it. To get the same evidence for changes the
+   heuristic already labelled, the skill runs `cappa agent check --judge all`. The skill does this
+   when a heuristic label looks doubtful, for example a `regression-likely` that a deliberate code
+   change explains. A request stays pending until it gets a verdict, so after `--judge all` the
+   agent judges every change. An agent whose model cannot read images hands the judgment
+   directories to the `cappa-judge` subagent (or any subagent that can read images), rather than
+   working from the raw screenshots.
 4. **Act** — the agent reports one line per screenshot, asks you to confirm, and approves with
    `cappa agent approve`. A regression can be fixed in code and re-captured with `--filter`.
 
@@ -164,6 +170,10 @@ cappa agent approve --label intentional-likely --json
 Approves screenshots by **exact** name — unlike `cappa approve --filter`, which matches substrings —
 or every changed screenshot whose current verdict carries a label. Refused when `CI` is set, so
 baselines only change on developer machines.
+
+It also refuses any screenshot whose current verdict is `regression-likely`. If the change was
+intended, judge it `intentional-likely` first. To approve a regression anyway, pass
+`--allow-regression`.
 
 ### `cappa agent init`
 

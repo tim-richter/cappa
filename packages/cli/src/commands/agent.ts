@@ -170,6 +170,7 @@ export const agentJudge = (names: string[], options: JudgeOptions) =>
 
 type ApproveOptions = JsonOption & {
   label?: JudgedLabel[];
+  allowRegression?: boolean;
 };
 
 export const agentApprove = (names: string[], options: ApproveOptions) =>
@@ -198,31 +199,46 @@ export const agentApprove = (names: string[], options: ApproveOptions) =>
       );
     }
 
-    if (options.label?.length) {
-      // Re-check rather than trusting the last report: approving off a label
-      // the screenshots no longer carry is exactly the mistake to prevent.
+    // Re-check rather than trusting the last report: approving off a label
+    // the screenshots no longer carry is exactly the mistake to prevent, and
+    // a changed screenshot's current verdict is what the regression guard
+    // below needs.
+    const verdicts = new Map<string, VerdictLabel>();
+    const needsCheck =
+      !!options.label?.length ||
+      names.some((name) => byName.get(name)?.category === "changed");
+    if (needsCheck) {
       const previous = await readAgentReport(config.outputDir);
       const report = await runAgentCheck({
         outputDir: config.outputDir,
         diff: config.diff,
         judge: previous?.judge ?? "ambiguous",
       });
-      const labels = new Set<string>(options.label);
       for (const entry of report.entries) {
-        if (
-          entry.category === "changed" &&
-          entry.verdict &&
-          labels.has(entry.verdict.label)
-        ) {
-          wanted.add(entry.name);
+        if (entry.category === "changed" && entry.verdict) {
+          verdicts.set(entry.name, entry.verdict.label);
         }
       }
+    }
+
+    const labels = new Set<string>(options.label);
+    for (const [name, label] of verdicts) {
+      if (labels.has(label)) wanted.add(name);
     }
 
     const toApprove = [...wanted].flatMap((name) => {
       const screenshot = byName.get(name);
       return screenshot && screenshot.category !== "passed" ? [screenshot] : [];
     });
+
+    const regressions = toApprove
+      .filter((s) => verdicts.get(s.name) === "regression-likely")
+      .map((s) => s.name);
+    if (regressions.length > 0 && !options.allowRegression) {
+      throw new Error(
+        `Refusing to approve regression-likely: ${regressions.join(", ")} — if the change is intended, judge it (\`cappa agent check --judge all\`, then \`cappa agent judge <name> --label intentional-likely\`), or pass --allow-regression.`,
+      );
+    }
 
     const fileSystem = new ScreenshotFileSystem(config.outputDir);
     await fileSystem.approveScreenshots(toApprove, config.diff);
@@ -383,6 +399,10 @@ export const registerAgentCommand = (program: Command): void => {
       "--label <label>",
       "also approve every changed screenshot with this verdict label (repeatable)",
       collectLabel,
+    )
+    .option(
+      "--allow-regression",
+      "approve screenshots whose current verdict is regression-likely",
     )
     .option("--json", "print a JSON summary to stdout")
     .action(agentApprove);

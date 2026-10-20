@@ -6,7 +6,8 @@ import path from "node:path";
  * Agent integrations `cappa agent init` can install, and the files each one
  * gets.
  *
- * - `claude` — Claude Code: the skill in `.claude/skills/cappa`.
+ * - `claude` — Claude Code: the skill in `.claude/skills/cappa` plus a
+ *   `cappa-judge` subagent that judges screenshots in its own context.
  * - `agents` — the vendor-neutral Agent Skills directory `.agents/skills`,
  *   read by Codex, OpenCode and other agents that adopted it.
  * - `opencode` — OpenCode: the `.agents` skill plus slash commands that run
@@ -31,7 +32,13 @@ const skillInto = (dir: string): FileMapping[] =>
   }));
 
 export const STACK_FILES = {
-  claude: skillInto(".claude/skills/cappa"),
+  claude: [
+    ...skillInto(".claude/skills/cappa"),
+    {
+      source: "claude/agents/cappa-judge.md",
+      target: path.join(".claude", "agents", "cappa-judge.md"),
+    },
+  ],
   agents: skillInto(".agents/skills/cappa"),
   opencode: [
     ...skillInto(".agents/skills/cappa"),

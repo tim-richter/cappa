@@ -89,13 +89,15 @@ describe("renderIntegrationFile", () => {
 describe("installAgentSkills", () => {
   it("writes, then leaves identical files alone", async () => {
     const first = await installAgentSkills({ cwd, stacks: ["claude"] });
-    expect(first.files.map((r) => r.status)).toEqual([
-      "written",
-      "written",
-      "written",
+    expect(first.files.map((r) => path.relative(cwd, r.path))).toEqual([
+      ".claude/skills/cappa/SKILL.md",
+      ".claude/skills/cappa/JUDGING.md",
+      ".claude/skills/cappa/MASKING.md",
+      ".claude/agents/cappa-judge.md",
     ]);
-    expect(first.files[0]?.path).toBe(
-      path.join(cwd, ".claude/skills/cappa/SKILL.md"),
+    expect(first.files.every((r) => r.status === "written")).toBe(true);
+    expect(await read(".claude/agents/cappa-judge.md")).toContain(
+      "`npx cappa agent judge`",
     );
 
     const second = await installAgentSkills({ cwd, stacks: ["claude"] });

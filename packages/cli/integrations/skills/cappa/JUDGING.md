@@ -1,7 +1,19 @@
 # cappa — judging changes
 
 Used when `cappa agent check --json` reports `pendingJudgments > 0`: the heuristic labelled those
-changes `ambiguous` and is deferring to you.
+changes `ambiguous` and is deferring to you — or you asked for every change with `--judge all`.
+
+## Can you read images?
+Judging is visual. If your model cannot read images, don't substitute your own tooling (no
+ImageMagick, no manual crops, no pixel statistics). Hand the pending `judgment` directories to a
+subagent whose model can read images — the `cappa-judge` subagent if `cappa agent init` installed
+one — and have it follow this file; it records verdicts with `cappa agent judge` (or returns
+labels and rationale for you to record).
+
+## Judge everything that is pending
+A request stays pending through every later check until it has a verdict. After `--judge all`
+that includes changes whose heuristic label you agree with — record those too (one call per
+shared label), or `pendingJudgments` never reaches 0.
 
 ## Look for one shared cause first
 Before opening anything, group the pending `results[]` by `verdict.headline`. Headlines are built so
@@ -26,7 +38,8 @@ For each pending entry, in its `judgment` directory:
    continues outside its crop.
 5. You have the source code — use it. A diff that lines up with a change in the working tree or a
    recent commit is evidence of intent; one with no code change behind it is evidence of noise
-   or a regression elsewhere.
+   or a regression elsewhere. The heuristic's label is one more signal, not the answer: it calls
+   structural changes `regression-likely` even when they were made on purpose.
 
 Labels:
 - `regression-likely` — broken, missing, clipped, overlapping, misaligned, wrong data, truncated

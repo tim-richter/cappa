@@ -190,6 +190,34 @@ describe("agent approve", () => {
     ]);
   });
 
+  it("refuses a regression unless allowed", async () => {
+    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentJudge(["grown"], {
+      json: true,
+      label: "regression-likely",
+      headline: "footer is clipped",
+    });
+    stdout.mockClear();
+    process.exitCode = undefined;
+
+    await agentApprove(["grown", "new-one"], { json: true });
+    expect(output().error).toMatch(
+      /Refusing to approve regression-likely: grown/,
+    );
+    expect(process.exitCode).toBe(1);
+    await expect(
+      fsp.access(path.join(outputDir, "expected/new-one.png")),
+    ).rejects.toThrow();
+
+    stdout.mockClear();
+    await agentApprove([], { json: true, label: ["regression-likely"] });
+    expect(output().error).toMatch(/Refusing to approve regression-likely/);
+
+    stdout.mockClear();
+    await agentApprove(["grown"], { json: true, allowRegression: true });
+    expect(output().approved).toEqual([{ name: "grown", category: "changed" }]);
+  });
+
   it("refuses in CI", async () => {
     process.env.CI = "true";
     await agentApprove(["grown"], { json: true });
