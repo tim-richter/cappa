@@ -10,6 +10,10 @@ import {
   toManifestKey,
 } from "../screenshots/manifest";
 import {
+  findRefusedConnection,
+  NO_WEB_SERVER_HINT,
+} from "../webServer/unreachable";
+import {
   didScreenshotFail,
   filterTasks,
   getDeletedScreenshots,
@@ -53,6 +57,19 @@ export type CaptureRunnerOptions = {
   id?: string;
   /** Injectable clock, for deterministic tests. */
   now?: () => number;
+  /**
+   * Runs after `run:start` and before anything is cleared or discovered —
+   * the engine starts its web servers here. Its log lines become run events,
+   * and a rejection fails the run with `actual/` still intact.
+   */
+  prepare?: (
+    log: (level: RunLogLevel, message: string) => void,
+  ) => Promise<void>;
+  /**
+   * The advice appended to a refused connection, given the origin that
+   * refused when the error names one. Defaults to suggesting a `webServer`.
+   */
+  explainUnreachable?: (origin: string | undefined) => string;
 };
 
 /**
@@ -73,6 +90,8 @@ export class CaptureRunner {
   private readonly outputDir: string;
   private readonly fileSystem: ScreenshotFileSystem;
   private readonly now: () => number;
+  private readonly prepare: CaptureRunnerOptions["prepare"];
+  private readonly explainUnreachable: (origin: string | undefined) => string;
   private readonly listeners = new Set<RunEventListener>();
   private readonly controller = new AbortController();
 
@@ -108,6 +127,9 @@ export class CaptureRunner {
       new ScreenshotFileSystem(this.outputDir);
     this.id = options.id ?? randomUUID();
     this.now = options.now ?? (() => Date.now());
+    this.prepare = options.prepare;
+    this.explainUnreachable =
+      options.explainUnreachable ?? (() => NO_WEB_SERVER_HINT);
   }
 
   /** Subscribe to run events. Returns an unsubscribe function. */
@@ -220,6 +242,13 @@ export class CaptureRunner {
 
     try {
       try {
+        if (this.prepare) {
+          // Not `idle`: starting the app can take as long as a build, and a
+          // client polling the run should see it working.
+          this.state = "discovering";
+          await this.prepare((level, message) => this.log(level, message));
+        }
+
         if (request.clearActual ?? true) {
           this.log("debug", `Cleaning output directory: ${this.outputDir}`);
           this.fileSystem.clearActual();
@@ -231,7 +260,8 @@ export class CaptureRunner {
         if (!this.controller.signal.aborted) {
           await this.execute(pluginTasks);
         }
-      } catch (error) {
+      } catch (thrown) {
+        const error = this.toUnreachableError(thrown) ?? thrown;
         this.error = error;
         this.state = "failed";
         this.finishedAt = this.now();
@@ -517,6 +547,8 @@ export class CaptureRunner {
 
           completedTasks++;
 
+          result = this.explainTaskError(result);
+
           const failed = didScreenshotFail(result);
           const status = toTaskStatus(result);
           const typedResult = result as PluginCaptureResult | undefined;
@@ -560,6 +592,50 @@ export class CaptureRunner {
         failed: pluginHasFailure,
       });
     }
+  }
+
+  /**
+   * The message for a refused connection: where, and what to do about it.
+   *
+   * Identical for every task that hit the same server — no task id, no path —
+   * so a report can collapse 300 of them into one line.
+   */
+  private unreachableMessage(origin: string | undefined): string {
+    const where = origin ?? "the app under test";
+    return `Cannot reach ${where}: connection refused. ${this.explainUnreachable(origin)}`;
+  }
+
+  private toUnreachableError(error: unknown): Error | undefined {
+    const refused = findRefusedConnection(error);
+    if (!refused) {
+      return undefined;
+    }
+    return new Error(this.unreachableMessage(refused.origin), {
+      cause: error,
+    });
+  }
+
+  /**
+   * Replace a plugin's refused-connection error with the explained one.
+   *
+   * Reads the result rather than asking the plugin, so third-party plugins get
+   * the same message without an API change.
+   */
+  private explainTaskError(result: unknown): unknown {
+    const error = (result as PluginCaptureResult | undefined)?.error;
+    if (error === undefined || error === null) {
+      return result;
+    }
+
+    const refused = findRefusedConnection(error);
+    if (!refused) {
+      return result;
+    }
+
+    return {
+      ...(result as PluginCaptureResult),
+      error: this.unreachableMessage(refused.origin),
+    };
   }
 
   private async collectDeleted(): Promise<void> {

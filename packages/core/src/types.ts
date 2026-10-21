@@ -111,6 +111,52 @@ export type DiffOptionsGMSD = { type: "gmsd" } & DiffConfigGMSD;
 export type DiffOptions = DiffOptionsPixel | DiffOptionsGMSD;
 
 /**
+ * A server cappa starts before capturing — the app under test, such as a
+ * Storybook or a preview build — and stops again when it is done.
+ *
+ * Not to be confused with cappa's own review server (`cappa review`,
+ * `cappa serve`, `review.port`): this is what the plugins point at.
+ */
+export type WebServerConfig = {
+  /**
+   * Shell command that starts the server, e.g. `pnpm storybook --ci`.
+   *
+   * Run through a shell, so `pnpm build && pnpm preview` works — including on
+   * Windows. The whole process tree is stopped when cappa is done.
+   */
+  command: string;
+  /**
+   * URL that answers with a 2xx or 3xx status once the server is ready.
+   * Usually the same URL a plugin is configured with.
+   */
+  url: string;
+  /**
+   * Use a server that is already answering at `url` instead of starting one.
+   *
+   * A reused server skips `command` entirely — build step included — and is
+   * never stopped, because cappa did not start it. When `false`, an answering
+   * `url` is an error.
+   *
+   * @default !process.env.CI
+   */
+  reuseExistingServer?: boolean;
+  /**
+   * How long `url` may take to become ready, in milliseconds, measured from
+   * the moment `command` is spawned — so it covers any build step in it.
+   * @default 60000
+   */
+  timeout?: number;
+  /**
+   * Directory `command` runs in. A relative path resolves against the
+   * directory of `cappa.config.ts`, not the current working directory.
+   * @default the directory of `cappa.config.ts`
+   */
+  cwd?: string;
+  /** Environment variables for `command`, merged over the inherited ones. */
+  env?: Record<string, string>;
+};
+
+/**
  * Config used in `cappa.config.ts`
  *
  * @example
@@ -160,6 +206,18 @@ export type UserConfig = {
    * Each plugin may have additional configurable options (defined within the plugin itself).
    */
   plugins?: Array<Plugin | PluginDef>;
+  /**
+   * Server(s) cappa starts before capturing and stops when it is done — the
+   * app the plugins point at. Several entries start in parallel, and all must
+   * be ready before anything is captured.
+   *
+   * @example
+   * webServer: {
+   *   command: "pnpm storybook --ci",
+   *   url: "http://localhost:6006",
+   * }
+   */
+  webServer?: WebServerConfig | WebServerConfig[];
   /**
    * Callback executed when screenshots fail comparison.
    * Receives the failing screenshots so they can be uploaded or processed.

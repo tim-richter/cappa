@@ -109,29 +109,33 @@ if (isCappa()) {
 
 ## Capture stories
 
-Start Storybook in one terminal and keep it running so the plugin can connect to the `storybookUrl`.
-From another terminal, run the Cappa capture command from the directory that contains your config:
+Let Cappa start Storybook for you with [`webServer`](/configuration#webserver):
+
+```ts
+export default defineConfig({
+  webServer: {
+    command: 'pnpm storybook --ci',
+    url: 'http://localhost:6006',
+  },
+  plugins: [cappaPluginStorybook({ storybookUrl: 'http://localhost:6006' })],
+});
+```
 
 ```bash
-# Terminal 1
-pnpm storybook
-
-# Terminal 2
 pnpm cappa capture
 ```
 
-Cappa will fetch the list of stories, load each one in Playwright, and write screenshots, diffs, and
-reports to the configured output directory. Pair it with `cappa review` and `cappa approve` to follow
-the normal approval workflow.
+Cappa starts Storybook — or reuses one that is already running, outside CI — fetches the list of
+stories, loads each one in Playwright, and writes screenshots, diffs, and reports to the configured
+output directory. It stops Storybook again when it is done. Pair it with `cappa review` and
+`cappa approve` to follow the normal approval workflow.
 
-Keep in mind that the dev server of storybook might introduce delays in the story loading. It is therefore
-recommended to build storybook before running cappa capture, and then run cappa on the resulting static files.
+Without a `webServer`, start Storybook yourself and keep it running so the plugin can connect to
+the `storybookUrl`.
 
-> You can use `start-server-and-test` to start Storybook and Cappa in one command.
-> 
-> ```bash
-> pnpm start-server-and-test storybook "pnpm cappa capture"
-> ```
+Keep in mind that the dev server of storybook might introduce delays in the story loading. It is
+therefore recommended to build storybook before running cappa capture in CI, and then run cappa on
+the resulting static files — see [build, then serve](/configuration#build-then-serve).
 
 ## Watch mode
 

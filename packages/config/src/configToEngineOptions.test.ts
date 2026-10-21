@@ -14,6 +14,7 @@ const config = (overrides: Partial<ResolvedUserConfig> = {}) =>
     screenshot: {},
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
     connectionTimeout: 20_000,
+    webServer: [],
     ...overrides,
   }) as ResolvedUserConfig;
 
@@ -86,6 +87,21 @@ describe("configToEngineOptions", () => {
     const options = configToEngineOptions(config({ plugins: undefined }));
 
     expect(options.plugins).toEqual([]);
+  });
+
+  it("passes the resolved web servers through", () => {
+    const webServer = [
+      {
+        command: "pnpm storybook --ci",
+        url: "http://localhost:6006",
+        reuseExistingServer: true,
+        timeout: 60_000,
+        cwd: "/repo",
+        env: {},
+      },
+    ];
+    const options = configToEngineOptions(config({ webServer }));
+    expect(options.webServer).toBe(webServer);
   });
 
   it("does not set a browser idle timeout — that is the command's choice", () => {

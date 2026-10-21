@@ -9,6 +9,12 @@ export type WarmBrowserOptions = {
    * @default 300_000 (5 minutes)
    */
   idleTimeoutMs?: number;
+  /**
+   * Called whenever the browser shuts down — idle eviction and `close()`
+   * alike. Whatever only makes sense while a browser is warm (the app under
+   * test, started for it) goes down with it.
+   */
+  onShutdown?: () => Promise<void>;
 };
 
 /**
@@ -26,6 +32,7 @@ export type WarmBrowserOptions = {
 export class WarmBrowser {
   private readonly createTool: () => ScreenshotTool;
   private readonly idleTimeoutMs: number;
+  private readonly onShutdown: (() => Promise<void>) | undefined;
 
   private tool: ScreenshotTool | null = null;
   private idleTimer: ReturnType<typeof setTimeout> | null = null;
@@ -39,6 +46,7 @@ export class WarmBrowser {
   constructor(options: WarmBrowserOptions) {
     this.createTool = options.create;
     this.idleTimeoutMs = options.idleTimeoutMs ?? 300_000;
+    this.onShutdown = options.onShutdown;
   }
 
   /** True while a browser process is alive. */
@@ -140,8 +148,12 @@ export class WarmBrowser {
       this.tool = null;
       this.inUse = false;
 
-      if (tool) {
-        await tool.close();
+      try {
+        if (tool) {
+          await tool.close();
+        }
+      } finally {
+        await this.onShutdown?.();
       }
     });
   }
@@ -183,8 +195,12 @@ export class WarmBrowser {
       const tool = this.tool;
       this.tool = null;
 
-      if (tool) {
-        await tool.close();
+      try {
+        if (tool) {
+          await tool.close();
+        }
+      } finally {
+        await this.onShutdown?.();
       }
     });
   }

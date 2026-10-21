@@ -1,4 +1,10 @@
-import type { ConfigEnv, UserConfig } from "@cappa/core";
+import path from "node:path";
+import {
+  type ConfigEnv,
+  type ResolvedWebServerConfig,
+  resolveWebServerConfig,
+  type UserConfig,
+} from "@cappa/core";
 import { getLogger } from "@cappa/logger";
 import { getPlugins, isPromise } from "./getPlugins";
 import type { ConfigResult } from "./loadConfig";
@@ -9,13 +15,15 @@ import { loadConfig } from "./loadConfig";
  *
  * `review` is spelled out rather than left to the shallow `Required` above:
  * `getConfig` fills all three of its fields, so callers should not have to
- * re-apply defaults that have already been applied.
+ * re-apply defaults that have already been applied. `webServer` is always a
+ * list, with relative `cwd`s already resolved against the config's directory.
  */
 export type ResolvedUserConfig = Required<
-  Omit<UserConfig, "onFail" | "review">
+  Omit<UserConfig, "onFail" | "review" | "webServer">
 > &
   Pick<UserConfig, "onFail"> & {
     review: Required<NonNullable<UserConfig["review"]>>;
+    webServer: ResolvedWebServerConfig[];
   };
 
 export type GetConfigOptions = {
@@ -95,6 +103,10 @@ export async function getConfig(
     logConsoleEvents: userConfig.logConsoleEvents ?? true,
     diff: diffConfig,
     plugins: userConfig.plugins ? await getPlugins(userConfig.plugins) : [],
+    webServer: resolveWebServerConfig(
+      userConfig.webServer,
+      path.dirname(path.resolve(result.filepath)),
+    ),
     onFail: userConfig.onFail,
     screenshot: {
       fullPage: userConfig.screenshot?.fullPage ?? true,
