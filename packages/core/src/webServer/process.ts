@@ -8,6 +8,9 @@ import {
 /** Grace period between SIGTERM and SIGKILL. */
 export const DEFAULT_KILL_GRACE_MS = 5000;
 
+/** How long to wait for the kernel to reap a SIGKILLed group. */
+const SIGKILL_WAIT_MS = 2000;
+
 const isWindows = process.platform === "win32";
 
 /**
@@ -245,6 +248,15 @@ async function killProcessTree(
       process.kill(-pid, "SIGKILL");
     } catch {
       // Gone in the meantime.
+    }
+
+    // `kill` only queues the signal, and the shell that led the group has
+    // usually exited on the SIGTERM already — so `exited` settled long ago and
+    // says nothing about the server. Wait until the group is actually gone,
+    // or the port is still held when this returns.
+    const killDeadline = Date.now() + SIGKILL_WAIT_MS;
+    while (groupAlive(pid) && Date.now() < killDeadline) {
+      await delay(20);
     }
   }
 
