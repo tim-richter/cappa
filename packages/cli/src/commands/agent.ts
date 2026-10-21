@@ -20,6 +20,7 @@ import chalk from "chalk";
 import { type Command, InvalidArgumentError } from "commander";
 import {
   detectSkillStacks,
+  findProjectRoot,
   installAgentSkills,
   SKILL_STACK_NAMES,
   type SkillStack,
@@ -272,22 +273,24 @@ type InitOptions = JsonOption & {
 export const agentInit = (options: InitOptions) =>
   run(options, async () => {
     const cwd = process.cwd();
+    const root = findProjectRoot(cwd);
     const stacks =
       options.stack === "all"
         ? SKILL_STACK_NAMES
         : options.stack
           ? [options.stack]
-          : detectSkillStacks(cwd);
+          : detectSkillStacks(root);
 
     const { runner, files, warnings } = await installAgentSkills({
       cwd,
+      root,
       stacks,
       force: options.force,
       runner: options.runner,
     });
 
     if (options.json) {
-      printJson({ stacks, runner, files, warnings });
+      printJson({ root, stacks, runner, files, warnings });
       return;
     }
 

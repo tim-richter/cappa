@@ -99,6 +99,56 @@ export const detectSkillStacks = (cwd: string): SkillStack[] => {
   return stacks.length > 0 ? stacks : ["claude"];
 };
 
+const LOCKFILES = {
+  "pnpm-lock.yaml": "pnpm",
+  "yarn.lock": "yarn",
+  "bun.lock": "bun",
+  "bun.lockb": "bun",
+  "package-lock.json": "npm",
+} as const;
+
+type PackageManager = (typeof LOCKFILES)[keyof typeof LOCKFILES];
+
+const detectPackageManager = (dir: string): PackageManager | undefined => {
+  for (const [lockfile, manager] of Object.entries(LOCKFILES)) {
+    if (fs.existsSync(path.join(dir, lockfile))) return manager;
+  }
+  return undefined;
+};
+
+/**
+ * The directory agents work from: the workspace root holding the lockfile.
+ *
+ * `cappa` is often installed in a single workspace package and run with
+ * `pnpm -F <pkg> exec cappa`, which puts `cwd` inside that package — but
+ * agents only read `.claude/` and `.agents/` from the root they were started
+ * in. Walk up to the nearest lockfile or `pnpm-workspace.yaml`, without
+ * leaving the git repository; `cwd` itself when there is neither.
+ */
+export const findProjectRoot = (cwd: string): string => {
+  let current = path.resolve(cwd);
+  while (true) {
+    const has = (entry: string) => fs.existsSync(path.join(current, entry));
+    if (detectPackageManager(current) || has("pnpm-workspace.yaml")) {
+      return current;
+    }
+    const parent = path.dirname(current);
+    if (has(".git") || parent === current) return path.resolve(cwd);
+    current = parent;
+  }
+};
+
+const readPackageName = (dir: string): string | undefined => {
+  try {
+    const { name } = JSON.parse(
+      fs.readFileSync(path.join(dir, "package.json"), "utf8"),
+    );
+    return typeof name === "string" ? name : undefined;
+  } catch {
+    return undefined;
+  }
+};
+
 /**
  * How the project runs its own `cappa` binary, from its lockfile.
  *
@@ -106,13 +156,36 @@ export const detectSkillStacks = (cwd: string): SkillStack[] => {
  * commands *before* the model sees anything, so a bare `cappa` that is not on
  * `PATH` would inject an error instead of the review state; and agent
  * permission rules match the command text literally.
+ *
+ * When `cwd` is a package below `root`, the command switches into it: that is
+ * where `cappa` is installed and where `cappa.config.ts` lives, while agents
+ * run commands from the root.
  */
-export const detectCappaRunner = (cwd: string): string => {
-  const has = (entry: string) => fs.existsSync(path.join(cwd, entry));
-  if (has("pnpm-lock.yaml")) return "pnpm exec cappa";
-  if (has("yarn.lock")) return "yarn cappa";
-  if (has("bun.lock") || has("bun.lockb")) return "bunx cappa";
-  return "npx cappa";
+export const detectCappaRunner = (root: string, cwd: string = root): string => {
+  const manager = detectPackageManager(root);
+  const dir = path.relative(root, cwd).split(path.sep).join("/");
+
+  if (!dir) {
+    return {
+      pnpm: "pnpm exec cappa",
+      yarn: "yarn cappa",
+      bun: "bunx cappa",
+      npm: "npx cappa",
+    }[manager ?? "npm"];
+  }
+
+  switch (manager) {
+    case "pnpm":
+      return `pnpm -C ${dir} exec cappa`;
+    case "yarn": {
+      const name = readPackageName(cwd);
+      return name ? `yarn workspace ${name} cappa` : `yarn --cwd ${dir} cappa`;
+    }
+    case "bun":
+      return `bun --cwd ${dir} x cappa`;
+    default:
+      return `npm exec -w ${dir} -- cappa`;
+  }
 };
 
 /** Fill the `{{cappa}}` placeholder in a source file. */
@@ -126,13 +199,14 @@ export type SkillFileResult = {
 };
 
 export type InstallResult = {
+  root: string;
   runner: string;
   files: SkillFileResult[];
   warnings: string[];
 };
 
 /**
- * Copy each stack's files into the project.
+ * Copy each stack's files into the project root (see `findProjectRoot`).
  *
  * A file that exists with different content is left alone unless `force` is
  * set: users are expected to tailor these to their project, and an upgrade
@@ -141,19 +215,21 @@ export type InstallResult = {
  */
 export const installAgentSkills = async (options: {
   cwd: string;
+  root?: string;
   stacks: readonly SkillStack[];
   force?: boolean;
   runner?: string;
   sourceDir?: string;
 }): Promise<InstallResult> => {
   const sourceDir = options.sourceDir ?? findIntegrationsDir();
-  const runner = options.runner ?? detectCappaRunner(options.cwd);
+  const root = options.root ?? findProjectRoot(options.cwd);
+  const runner = options.runner ?? detectCappaRunner(root, options.cwd);
   const files: SkillFileResult[] = [];
   const seen = new Set<string>();
 
   for (const stack of options.stacks) {
     for (const mapping of STACK_FILES[stack]) {
-      const target = path.resolve(options.cwd, mapping.target);
+      const target = path.resolve(root, mapping.target);
       if (seen.has(target)) continue;
       seen.add(target);
 
@@ -182,7 +258,7 @@ export const installAgentSkills = async (options: {
 
   const warnings: string[] = [];
   const claudeSkill = fs.existsSync(
-    path.resolve(options.cwd, ".claude/skills/cappa/SKILL.md"),
+    path.resolve(root, ".claude/skills/cappa/SKILL.md"),
   );
   if (options.stacks.includes("opencode") && claudeSkill) {
     warnings.push(
@@ -190,5 +266,5 @@ export const installAgentSkills = async (options: {
     );
   }
 
-  return { runner, files, warnings };
+  return { root, runner, files, warnings };
 };

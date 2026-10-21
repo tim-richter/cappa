@@ -11,7 +11,8 @@ Cappa captures screenshots (Storybook stories, pages) with Playwright and diffs 
 approved baselines. `cappa agent` turns the diff into something you can judge cheaply: a heuristic
 labels each change, and only the ones it cannot settle are handed to you with small crops.
 
-Run the CLI as `{{cappa}}` in this project; the examples below write `cappa` for short.
+Run the CLI as `{{cappa}}` from the project root — it already runs in the package holding
+`cappa.config.ts`, so don't `cd` first. The examples below write `cappa` for short.
 
 Sibling files — read on demand:
 - `JUDGING.md` — judging changes when `pendingJudgments > 0`.
@@ -28,8 +29,6 @@ Sibling files — read on demand:
   non-passing screenshot.
 
 ## 1. Capture
-Run from the directory holding `cappa.config.ts`.
-
 ```sh
 cappa capture --json
 ```

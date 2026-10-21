@@ -14,11 +14,16 @@ adapted to Cappa's plugins and baselines.
 
 ## Setup
 
-Install the skill into your project, next to `cappa.config.ts`:
+Install the skill into your project from the directory holding `cappa.config.ts`:
 
 ```bash
 cappa agent init
 ```
+
+The files always land in the project root — the nearest directory above with a lockfile or
+`pnpm-workspace.yaml` — because that is where agents look for skills. So in a monorepo where only
+one package depends on Cappa, run it in that package (`pnpm -F web exec cappa agent init`), and
+the skill still goes to the root.
 
 What gets installed depends on the agents the project already uses. You can also pick with
 `--stack`:
@@ -32,7 +37,10 @@ What gets installed depends on the agents the project already uses. You can also
 `--stack all` installs everything. The skill is `SKILL.md`, `JUDGING.md` and `MASKING.md`.
 
 The installed files call Cappa the way your project runs it: `pnpm exec cappa`, `yarn cappa`,
-`bunx cappa` or `npx cappa`, picked from the lockfile. Override it with `--runner "<command>"`.
+`bunx cappa` or `npx cappa`, picked from the lockfile. When Cappa lives in a workspace package,
+the command switches into it — `pnpm -C packages/web exec cappa`, `yarn workspace web cappa`,
+`bun --cwd packages/web x cappa` or `npm exec -w packages/web -- cappa` — so agents run it from
+the root. Override it with `--runner "<command>"`.
 Commit the files and tailor them to your project. Re-running `init` skips files you modified,
 unless you pass `--force`.
 

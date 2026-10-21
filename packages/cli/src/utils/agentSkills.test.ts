@@ -1,3 +1,4 @@
+import fs from "node:fs";
 import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -6,6 +7,7 @@ import {
   detectCappaRunner,
   detectSkillStacks,
   findIntegrationsDir,
+  findProjectRoot,
   installAgentSkills,
   renderIntegrationFile,
   STACK_FILES,
@@ -76,6 +78,45 @@ describe("detectCappaRunner", () => {
   it("falls back to npx", () => {
     expect(detectCappaRunner(cwd)).toBe("npx cappa");
   });
+
+  it.each([
+    ["pnpm-lock.yaml", "pnpm -C packages/web exec cappa"],
+    ["yarn.lock", "yarn workspace @acme/web cappa"],
+    ["bun.lock", "bun --cwd packages/web x cappa"],
+    ["package-lock.json", "npm exec -w packages/web -- cappa"],
+  ])("switches into a workspace package with %s", async (lockfile, runner) => {
+    const pkg = path.join(cwd, "packages", "web");
+    await fsp.mkdir(pkg, { recursive: true });
+    await fsp.writeFile(path.join(cwd, lockfile), "");
+    await fsp.writeFile(
+      path.join(pkg, "package.json"),
+      JSON.stringify({ name: "@acme/web" }),
+    );
+    expect(detectCappaRunner(cwd, pkg)).toBe(runner);
+  });
+});
+
+describe("findProjectRoot", () => {
+  it("walks up from a workspace package to the lockfile", async () => {
+    const pkg = path.join(cwd, "packages", "web");
+    await fsp.mkdir(pkg, { recursive: true });
+    await fsp.writeFile(path.join(cwd, "pnpm-lock.yaml"), "");
+    expect(findProjectRoot(pkg)).toBe(cwd);
+  });
+
+  it("stops at a lockfile in cwd", async () => {
+    await fsp.writeFile(path.join(cwd, "pnpm-lock.yaml"), "");
+    expect(findProjectRoot(cwd)).toBe(cwd);
+  });
+
+  it("does not leave the git repository", async () => {
+    const repo = path.join(cwd, "repo");
+    const pkg = path.join(repo, "packages", "web");
+    await fsp.mkdir(pkg, { recursive: true });
+    await fsp.mkdir(path.join(repo, ".git"));
+    await fsp.writeFile(path.join(cwd, "pnpm-lock.yaml"), "");
+    expect(findProjectRoot(pkg)).toBe(pkg);
+  });
 });
 
 describe("renderIntegrationFile", () => {
@@ -87,6 +128,21 @@ describe("renderIntegrationFile", () => {
 });
 
 describe("installAgentSkills", () => {
+  it("installs at the workspace root when run from a package", async () => {
+    const pkg = path.join(cwd, "packages", "web");
+    await fsp.mkdir(pkg, { recursive: true });
+    await fsp.writeFile(path.join(cwd, "pnpm-lock.yaml"), "");
+
+    const result = await installAgentSkills({ cwd: pkg, stacks: ["claude"] });
+
+    expect(result.root).toBe(cwd);
+    expect(result.runner).toBe("pnpm -C packages/web exec cappa");
+    expect(await read(".claude/skills/cappa/SKILL.md")).toContain(
+      "`pnpm -C packages/web exec cappa`",
+    );
+    expect(fs.existsSync(path.join(pkg, ".claude"))).toBe(false);
+  });
+
   it("writes, then leaves identical files alone", async () => {
     const first = await installAgentSkills({ cwd, stacks: ["claude"] });
     expect(first.files.map((r) => path.relative(cwd, r.path))).toEqual([
