@@ -136,9 +136,11 @@ import type {
   ScreenshotVariantWithUrl,
   UserConfig,
   Viewport,
+  WebServerConfig,
 } from "./types";
 
 export * from "./agent";
+export * from "./webServer";
 export {
   type AgentReview,
   type ApproveResult,
@@ -259,4 +261,5 @@ export {
   WatchSession,
   type WatchSessionOptions,
   type WatchStatus,
+  type WebServerConfig,
 };

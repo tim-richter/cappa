@@ -32,5 +32,6 @@ export function configToEngineOptions(
     fullPage: config.screenshot?.fullPage ?? true,
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
     connectionTimeout: config.connectionTimeout,
+    webServer: config.webServer,
   };
 }

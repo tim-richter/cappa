@@ -297,6 +297,127 @@ export default defineConfig({
 });
 ```
 
+## webServer
+
+- **type**: `WebServerConfig | WebServerConfig[]`
+- **default**: `undefined`
+
+The app under test — a Storybook, a preview server — that Cappa starts before capturing and stops
+when it is done. The URL already lives in your plugin config; this puts the command that brings
+it up next to it, so neither you, your CI pipeline nor a coding agent has to start it by hand.
+
+Not to be confused with Cappa's own review server (`cappa review`, `cappa serve`,
+[`review.port`](#reviewport)): `webServer` is what the plugins point at.
+
+```ts
+import { defineConfig } from '@cappa/core';
+import { cappaPluginStorybook } from '@cappa/plugin-storybook';
+
+export default defineConfig({
+  webServer: {
+    command: 'pnpm storybook --ci',
+    url: 'http://localhost:6006',
+  },
+  plugins: [cappaPluginStorybook({ storybookUrl: 'http://localhost:6006' })],
+});
+```
+
+| Field | Default | |
+| --- | --- | --- |
+| `command` | — | Shell command that starts the server. Runs through a shell, so `&&` works on Windows too. |
+| `url` | — | Ready once it answers with a 2xx or 3xx status. |
+| `reuseExistingServer` | `!process.env.CI` | Use a server that is already answering at `url` instead of running `command`. When `false`, an answering `url` is an error. |
+| `timeout` | `60000` | How long `url` may take to become ready, in milliseconds, measured from when `command` starts. |
+| `cwd` | directory of `cappa.config.ts` | Where `command` runs. A relative path resolves against the config file's directory, not the current directory. |
+| `env` | `{}` | Environment variables, merged over the inherited ones. |
+
+Pass an array to start several servers. They start in parallel, and all of them must be ready
+before anything is captured — including for a `--filter` run, since Cappa does not know which
+plugin needs which server.
+
+### When it runs
+
+The server starts on the first capture, not when Cappa starts, and every run logs which way it
+went: `Reusing server at …` or `Started \`…\``. When screenshots look like a stale build or another
+branch, that line tells you whether Cappa ran your command at all.
+
+- `cappa capture` stops the server when the capture ends.
+- `cappa review`, `cappa serve` and `cappa capture --watch` keep it running alongside the warm
+  browser, and stop it after the same [`review.browserIdleTimeout`](#reviewbrowseridletimeout).
+  The next capture starts it again — and rebuilds, so it picks up your changes.
+- With `cappa capture --server`, the host starts the server, from its own config.
+
+A reused server is never stopped: Cappa did not start it. A server that Cappa started is stopped
+together with every process it spawned, so nothing is left holding the port. If it exits during
+a run, the captures that fail because of it say so — with the end of its output — and the next
+run starts it again.
+
+The server's output is kept out of the terminal. It is shown when the server fails to start or
+does not become ready in time, and streamed live with `--log-level 4`.
+
+### Build, then serve
+
+`command` can build first. `timeout` covers the build, so raise it:
+
+```ts
+export default defineConfig({
+  webServer: {
+    command: 'pnpm build-storybook && pnpm dlx http-server storybook-static -p 6006 --silent',
+    url: 'http://localhost:6006',
+    timeout: 180_000,
+  },
+});
+```
+
+Reusing a server skips the whole command, build included. Locally that means an already running
+Storybook is captured as it is. Use [a function config](/configuration) to pick a dev server
+locally and a static build in CI:
+
+```ts
+export default defineConfig(({ env }) => ({
+  webServer: env.CI
+    ? {
+        command: 'pnpm build-storybook && pnpm dlx http-server storybook-static -p 6006 --silent',
+        url: 'http://localhost:6006',
+        timeout: 180_000,
+      }
+    : { command: 'pnpm storybook --ci', url: 'http://localhost:6006' },
+}));
+```
+
+### Monorepos
+
+When `cappa.config.ts` lives in one package and the app in another, let the package manager find
+the app. This does not depend on the folder layout, and works the same with `npm -w`,
+`yarn workspace` or `turbo`:
+
+```ts
+webServer: {
+  command: 'pnpm -F @acme/web storybook --ci',
+  url: 'http://localhost:6006',
+},
+```
+
+Or run the package's own script from its directory:
+
+```ts
+webServer: {
+  command: 'pnpm storybook --ci',
+  cwd: '../../apps/web',
+  url: 'http://localhost:6006',
+},
+```
+
+Both work whether Cappa runs from the repository root or from inside the package.
+
+Turborepo's interactive UI expects a terminal, so pass `--ui=stream`
+(`turbo run storybook --filter=@acme/web --ui=stream`) or call the package manager directly.
+
+### Unreachable URLs
+
+When a capture cannot connect to the app at all, Cappa reports it once rather than once per
+task, and says what to do: start it, or add a `webServer` if there is none.
+
 ## onFail
 
 - **type**: `(screenshots: FailedScreenshot[]) => void | Promise<void>`

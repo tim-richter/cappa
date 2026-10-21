@@ -33,10 +33,9 @@ Sibling files — read on demand:
 cappa capture --json
 ```
 
-- Capture needs whatever the plugins point at to be reachable — read `cappa.config.ts`. For
-  `@cappa/plugin-storybook`, the configured Storybook URL must be up (start it with the project's
-  storybook script if it is not, and stop it when you are done). For `@cappa/plugin-pages`, the
-  page URLs must be reachable.
+- If the config has a `webServer`, capture starts and stops the app itself. If it reports an
+  unreachable URL (`Cannot reach …: connection refused`), follow what the error says.
+- Without a `webServer`, make sure the plugin URLs in `cappa.config.ts` are reachable first.
 - `--json` prints one document to stdout: `{ ok, tasks, screenshots, errors, results, next }`.
   Progress is muted; warnings and errors go to stderr.
   - `errors[]` are tasks that broke (a story threw, a page timed out). Fix those first — there is

@@ -44,6 +44,10 @@ the root. Override it with `--runner "<command>"`.
 Commit the files and tailor them to your project. Re-running `init` skips files you modified,
 unless you pass `--force`.
 
+When `cappa.config.ts` has no [`webServer`](/configuration#webserver), `init` points that out:
+without one, the agent has to work out how to start your Storybook or app by itself. `init` never
+edits the config.
+
 Then ask your agent for a visual review, or run `/cappa` in Claude Code.
 
 ### OpenCode
@@ -72,7 +76,8 @@ the one in `.agents/skills`. Keep the two in sync if you tailor them.
 ## How a review runs
 
 1. **Capture**: the agent runs `cappa capture --json` (see
-   [machine-readable output](/cli#machine-readable-output)).
+   [machine-readable output](/cli#machine-readable-output)). With a `webServer`, that also starts
+   and stops the app under test.
 2. **Check** — `cappa agent check --json` labels every changed screenshot:
 
    | Label | Meaning | Next step |

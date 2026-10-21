@@ -108,7 +108,17 @@ export function formatDuration(ms: number): string {
   return `${(ms / 1000).toFixed(2)}s`;
 }
 
-function generateFailureReportMessage(
+const errorMessageOf = (error: unknown): string | undefined => {
+  if (!error) {
+    return undefined;
+  }
+  if (typeof error === "string") {
+    return error;
+  }
+  return error instanceof Error ? error.message : String(error);
+};
+
+export function generateFailureReportMessage(
   failedScreenshots: TaskFailure[],
   deletedScreenshots: string[],
 ): string {
@@ -134,20 +144,41 @@ function generateFailureReportMessage(
   for (const [pluginName, failures] of byPlugin.entries()) {
     lines.push(`\n${chalk.bold(`Plugin: ${pluginName}`)}`);
 
+    // An unreachable app fails every task with the same sentence. Say it once,
+    // with the tasks it covers, instead of once per task.
+    const byError = new Map<string, TaskFailure[]>();
     for (const failed of failures) {
+      const message = errorMessageOf(failed.result.error);
+      if (message !== undefined) {
+        byError.set(message, [...(byError.get(message) ?? []), failed]);
+      }
+    }
+
+    for (const [message, shared] of byError) {
+      if (shared.length < 2) {
+        continue;
+      }
+      const shown = shared.slice(0, 3).map((failed) => failed.taskId);
+      const more = shared.length - shown.length;
+      lines.push(
+        `\n  ${chalk.dim("Tasks:")} ${shown.join(", ")}${more > 0 ? ` and ${more} more` : ""}`,
+      );
+      lines.push(`  ${chalk.red("Error:")} ${message}`);
+    }
+
+    for (const failed of failures) {
+      const errorMsg = errorMessageOf(failed.result.error);
+      if (errorMsg !== undefined && (byError.get(errorMsg)?.length ?? 0) > 1) {
+        continue;
+      }
+
       lines.push(`\n  ${chalk.dim("Task ID:")} ${failed.taskId}`);
 
       const result = failed.result;
       if (result.storyName) {
         lines.push(`  ${chalk.dim("Story:")} ${result.storyName}`);
       }
-      if (result.error) {
-        const errorMsg =
-          typeof result.error === "string"
-            ? result.error
-            : result.error instanceof Error
-              ? result.error.message
-              : String(result.error);
+      if (errorMsg !== undefined) {
         lines.push(`  ${chalk.red("Error:")} ${errorMsg}`);
       }
       if (result.success === false) {

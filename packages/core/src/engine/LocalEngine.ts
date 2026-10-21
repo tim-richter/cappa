@@ -1,3 +1,4 @@
+import { getLogger } from "@cappa/logger";
 import type { LogConsoleEvents } from "../consoleEvents";
 import { ScreenshotFileSystem } from "../filesystem";
 import type { PluginTask } from "../plugin";
@@ -13,6 +14,11 @@ import type {
 import ScreenshotTool from "../screenshot";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
 import type { DiffOptions, Screenshot, Viewport } from "../types";
+import {
+  type ResolvedWebServerConfig,
+  WebServerPool,
+  type WebServerPoolOptions,
+} from "../webServer/WebServerPool";
 import { RunStore, type RunStoreOptions } from "./RunStore";
 import {
   type ApproveResult,
@@ -60,6 +66,52 @@ export type LocalEngineOptions = {
   createWatcher?: CreateFileWatcher;
   /** Watch events buffered for replay to a (re)connecting subscriber. @default 200 */
   maxWatchEvents?: number;
+  /**
+   * The app under test, started before the first run and stopped with the
+   * browser — on `close()` and when it goes idle.
+   */
+  webServer?: ResolvedWebServerConfig[];
+  /** Overrides the web server pool's process and probe hooks. Tests use this. */
+  webServerPool?: Pick<WebServerPoolOptions, "spawn" | "probe" | "killGraceMs">;
+};
+
+const defaultLog: NonNullable<WebServerPoolOptions["log"]> = (
+  level,
+  message,
+) => {
+  try {
+    getLogger()[level](message);
+  } catch {
+    // No logger initialised — an embedder that did not ask for output.
+  }
+};
+
+/**
+ * Stream a web server's output live at debug level. Buffered regardless: the
+ * tail is what explains a server that failed to start.
+ *
+ * To stderr, never stdout — `capture --json` owns stdout.
+ */
+const streamOutputAtDebug = (
+  server: ResolvedWebServerConfig,
+  chunk: string,
+) => {
+  let level = 0;
+  try {
+    level = getLogger().level;
+  } catch {
+    return;
+  }
+  if (level < 4) {
+    return;
+  }
+  const prefix = `[webServer ${server.url}] `;
+  process.stderr.write(
+    chunk
+      .split(/(?<=\n)/)
+      .map((line) => prefix + line)
+      .join(""),
+  );
 };
 
 /**
@@ -79,6 +131,7 @@ export class LocalEngine implements CaptureEngine {
   private readonly fileSystem: ScreenshotFileSystem;
   private readonly browser: WarmBrowser;
   private readonly runs: RunStore;
+  private readonly webServers: WebServerPool;
 
   /**
    * Set synchronously the moment a run is claimed, before any `await`, so two
@@ -109,9 +162,19 @@ export class LocalEngine implements CaptureEngine {
     this.plugins = options.plugins;
     this.fileSystem = new ScreenshotFileSystem(options.outputDir);
     this.runs = new RunStore(options.runStore);
+    this.webServers = new WebServerPool({
+      servers: options.webServer ?? [],
+      log: defaultLog,
+      onOutput: streamOutputAtDebug,
+      ...options.webServerPool,
+    });
     this.browser = new WarmBrowser({
       create: options.createScreenshotTool ?? (() => this.buildTool()),
       idleTimeoutMs: options.browserIdleTimeoutMs,
+      // Same lifetime as the browser, idle timeout included: a review session
+      // left open gives the port back, and the next run starts — and rebuilds
+      // — the app again.
+      onShutdown: () => this.webServers.stop(),
     });
   }
 
@@ -179,6 +242,12 @@ export class LocalEngine implements CaptureEngine {
         plugins: this.plugins,
         outputDir: this.options.outputDir,
         fileSystem: this.fileSystem,
+        // Inside the run rather than before it: `startRun` returns at once
+        // even when a build takes a minute, and the start-up lines reach a
+        // remote client as ordinary run events.
+        prepare: (log) => this.webServers.ensure(log),
+        explainUnreachable: (origin) =>
+          this.webServers.explainUnreachable(origin),
       });
 
       const finish = () => {
@@ -395,7 +464,13 @@ export class LocalEngine implements CaptureEngine {
       : undefined;
     runner?.abort();
 
-    await this.browser.close();
+    try {
+      await this.browser.close();
+    } finally {
+      // Also covered by the browser's shutdown hook — but a browser that never
+      // started has nothing to shut down, and a server may still be starting.
+      await this.webServers.stop();
+    }
   }
 
   private async endWatch(reason: "requested" | "engine-closed"): Promise<void> {
@@ -507,6 +582,9 @@ export class LocalEngine implements CaptureEngine {
     const tool = await this.browser.acquire();
 
     try {
+      // Plugins discover by asking the app, so it has to be up.
+      await this.webServers.ensure();
+
       const discovered = await Promise.all(
         this.plugins.map(async (plugin) => {
           const tasks = await plugin.discover(tool);

@@ -55,6 +55,28 @@ describe("buildCaptureJsonReport", () => {
     expect(report.ok).toBe(false);
   });
 
+  it("collapses identical errors from one plugin into a counted entry", () => {
+    const refused =
+      "Cannot reach http://localhost:6006: connection refused. Add a webServer.";
+    const report = buildCaptureJsonReport({
+      detail: detail({
+        failures: [
+          failure("a", { error: refused }),
+          failure("b", { error: "story threw" }),
+          failure("c", { error: refused }),
+          failure("d", { error: refused }),
+        ],
+      }),
+      screenshots: [],
+      durationMs: 0,
+    });
+
+    expect(report.errors).toEqual([
+      { taskId: "a", plugin: "pages", error: refused, count: 3 },
+      { taskId: "b", plugin: "pages", error: "story threw" },
+    ]);
+  });
+
   it("is not ok when a baseline lost its capture", () => {
     const report = buildCaptureJsonReport({
       detail: detail({ deletedScreenshots: ["gone.png"] }),

@@ -62,6 +62,7 @@ import {
   describeWatchChange,
   formatDuration,
   formatProgress,
+  generateFailureReportMessage,
   registerSignalHandlers,
   registerWatchSignalHandlers,
   renderRunEvent,
@@ -1037,5 +1038,42 @@ describe("runCapture --watch", () => {
     );
     expect(exitSpy).toHaveBeenCalledWith(1);
     expect(engine.close).toHaveBeenCalled();
+  });
+});
+
+describe("generateFailureReportMessage", () => {
+  const failure = (taskId: string, error?: string) => ({
+    taskId,
+    taskUrl: "",
+    pluginName: "storybook",
+    result: error === undefined ? { success: false } : { error },
+  });
+
+  it("says a shared error once, with the tasks it covers", () => {
+    const refused = "Cannot reach http://localhost:6006: connection refused.";
+    const message = generateFailureReportMessage(
+      [
+        failure("a", refused),
+        failure("b", refused),
+        failure("c", refused),
+        failure("d", refused),
+        failure("e", "story threw"),
+      ],
+      [],
+    );
+
+    expect(message.split(refused)).toHaveLength(2);
+    expect(message).toContain("Tasks: a, b, c and 1 more");
+    expect(message).toContain("Task ID: e");
+    expect(message).toContain("Error: story threw");
+    expect(message).not.toContain("Task ID: a");
+  });
+
+  it("lists a single failure as before", () => {
+    const message = generateFailureReportMessage([failure("a", "boom")], []);
+
+    expect(message).toContain("Task ID: a");
+    expect(message).toContain("Error: boom");
+    expect(message).not.toContain("Tasks:");
   });
 });

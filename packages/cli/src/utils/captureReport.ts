@@ -23,8 +23,20 @@ export type CaptureJsonReport = {
     new: number;
     deleted: number;
   };
-  /** Tasks that did not produce a comparable screenshot. */
-  errors: Array<{ taskId: string; plugin: string; error: string }>;
+  /**
+   * Tasks that did not produce a comparable screenshot.
+   *
+   * Identical errors from one plugin collapse into one entry: `taskId` is the
+   * first affected task and `count` how many there were. An unreachable
+   * Storybook fails every story the same way, and 300 copies of one sentence
+   * bury the fix rather than explain it.
+   */
+  errors: Array<{
+    taskId: string;
+    plugin: string;
+    error: string;
+    count?: number;
+  }>;
   /** Every screenshot that is not `passed`. */
   results: Array<{
     name: string;
@@ -78,6 +90,30 @@ const toCaptureError = (
   return undefined;
 };
 
+type CaptureError = CaptureJsonReport["errors"][number];
+
+/**
+ * Fold errors with the same plugin and message into one, keeping the first
+ * task and counting the rest. Order follows each message's first occurrence.
+ */
+export const collapseIdenticalErrors = (
+  errors: readonly CaptureError[],
+): CaptureError[] => {
+  const collapsed = new Map<string, CaptureError>();
+
+  for (const error of errors) {
+    const key = `${error.plugin}\u0000${error.error}`;
+    const existing = collapsed.get(key);
+    if (existing) {
+      existing.count = (existing.count ?? 1) + 1;
+    } else {
+      collapsed.set(key, { ...error });
+    }
+  }
+
+  return [...collapsed.values()];
+};
+
 export const buildCaptureJsonReport = ({
   detail,
   screenshots,
@@ -111,10 +147,12 @@ export const buildCaptureJsonReport = ({
       };
     });
 
-  const errors = failures.flatMap((failure) => {
-    const error = toCaptureError(failure);
-    return error ? [error] : [];
-  });
+  const errors = collapseIdenticalErrors(
+    failures.flatMap((failure) => {
+      const error = toCaptureError(failure);
+      return error ? [error] : [];
+    }),
+  );
 
   return {
     ok: failures.length === 0 && deleted.length === 0,

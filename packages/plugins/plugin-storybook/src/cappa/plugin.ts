@@ -189,10 +189,14 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         if (error instanceof DOMException && error.name === "TimeoutError") {
           throw new Error(
             `Connection to Storybook at ${storybookUrl} timed out after ${timeout}ms. Make sure Storybook is running and accessible.`,
+            { cause: error },
           );
         }
+        // `cause` carries the `ECONNREFUSED` that `fetch failed` hides, which
+        // is what lets the runner recognise an unreachable Storybook.
         throw new Error(
           `Failed to connect to Storybook at ${storybookUrl}. Make sure Storybook is running and accessible. Error: ${(error as Error).message}`,
+          { cause: error },
         );
       }
       if (!response.ok) {

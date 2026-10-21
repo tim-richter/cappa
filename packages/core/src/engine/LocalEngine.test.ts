@@ -17,6 +17,8 @@ import type { RunEvent, RunnablePlugin } from "../runner/types";
 import type ScreenshotTool from "../screenshot";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
 import type { Screenshot } from "../types";
+import type { ResolvedWebServerConfig } from "../webServer";
+import { OutputTail, type ProcessExit } from "../webServer/process";
 import { LocalEngine } from "./LocalEngine";
 import {
   ENGINE_ERROR_CODES,
@@ -744,5 +746,291 @@ describe("LocalEngine watch", () => {
 
     expect(watcher.closeCount).toBe(1);
     expect(engine.isWarm).toBe(false);
+  });
+});
+
+/**
+ * A pretend app under test: `spawn` "starts" it, the probe sees it, and a
+ * test can crash it or watch it being killed — no real processes.
+ */
+const createFakeServers = ({ alreadyServing = false } = {}) => {
+  let serving = alreadyServing;
+  const processes: {
+    kill: ReturnType<typeof vi.fn>;
+    crash: (exit: ProcessExit, output?: string) => void;
+  }[] = [];
+
+  const spawn = vi.fn((_command: string) => {
+    let resolveExit: (exit: ProcessExit) => void = () => {};
+    let exit: ProcessExit | undefined;
+    const exited = new Promise<ProcessExit>((resolve) => {
+      resolveExit = (value) => {
+        exit ??= value;
+        resolve(value);
+      };
+    });
+    const output = new OutputTail();
+    serving = true;
+
+    const kill = vi.fn(async () => {
+      serving = false;
+      resolveExit({ code: null, signal: "SIGTERM" });
+    });
+    processes.push({
+      kill,
+      crash: (value, text = "") => {
+        output.push(text);
+        serving = false;
+        resolveExit(value);
+      },
+    });
+
+    return {
+      pid: 1234,
+      exited,
+      get exit() {
+        return exit;
+      },
+      output,
+      kill,
+    };
+  });
+
+  return {
+    spawn,
+    processes,
+    probe: vi.fn(async () => serving),
+    get serving() {
+      return serving;
+    },
+  };
+};
+
+const storybookServer: ResolvedWebServerConfig = {
+  command: "pnpm storybook --ci",
+  url: "http://localhost:6006",
+  reuseExistingServer: true,
+  timeout: 1000,
+  cwd: "/repo",
+  env: {},
+};
+
+const logMessages = async (engine: LocalEngine, runId: string) => {
+  const messages: string[] = [];
+  engine.subscribeRun(runId, (event) => {
+    if (event.type === "log") {
+      messages.push(event.message);
+    }
+  })();
+  return messages;
+};
+
+describe("LocalEngine web servers", () => {
+  it("starts nothing until the first run, then starts the server inside it", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    expect(servers.spawn).not.toHaveBeenCalled();
+
+    const run = await engine.startRun();
+    await settle(engine, run.id);
+
+    expect(servers.spawn).toHaveBeenCalledWith(
+      "pnpm storybook --ci",
+      expect.objectContaining({ cwd: "/repo" }),
+    );
+    expect(await logMessages(engine, run.id)).toContainEqual(
+      expect.stringContaining("Started `pnpm storybook --ci`"),
+    );
+
+    await engine.close();
+  });
+
+  it("keeps a started server for the next run and says so", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    await settle(engine, (await engine.startRun()).id);
+    const second = await engine.startRun();
+    await settle(engine, second.id);
+
+    expect(servers.spawn).toHaveBeenCalledTimes(1);
+    expect(await logMessages(engine, second.id)).toContainEqual(
+      expect.stringContaining("started earlier by cappa"),
+    );
+
+    await engine.close();
+  });
+
+  it("starts the server for discovery from the UI", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    await engine.listTargets();
+
+    expect(servers.spawn).toHaveBeenCalledTimes(1);
+    await engine.close();
+  });
+
+  it("stops the server on close", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    await settle(engine, (await engine.startRun()).id);
+    await engine.close();
+
+    expect(servers.processes[0]?.kill).toHaveBeenCalled();
+    expect(servers.serving).toBe(false);
+  });
+
+  it("stops the server with the idle browser and starts it again on the next run", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+      browserIdleTimeoutMs: 10,
+    });
+
+    await settle(engine, (await engine.startRun()).id);
+    await vi.waitFor(() => expect(engine.isWarm).toBe(false));
+    await vi.waitFor(() =>
+      expect(servers.processes[0]?.kill).toHaveBeenCalled(),
+    );
+
+    await settle(engine, (await engine.startRun()).id);
+    expect(servers.spawn).toHaveBeenCalledTimes(2);
+
+    await engine.close();
+  });
+
+  it("stops the server after a one-shot run with no idle timeout", async () => {
+    const servers = createFakeServers();
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+      browserIdleTimeoutMs: 0,
+    });
+
+    await settle(engine, (await engine.startRun()).id);
+    await vi.waitFor(() =>
+      expect(servers.processes[0]?.kill).toHaveBeenCalled(),
+    );
+    await engine.close();
+  });
+
+  it("reuses a server that is already up, and never stops it", async () => {
+    const servers = createFakeServers({ alreadyServing: true });
+    const { engine } = createEngine([createPlugin("a", [task("one")])], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    const run = await engine.startRun();
+    await settle(engine, run.id);
+    await engine.close();
+
+    expect(servers.spawn).not.toHaveBeenCalled();
+    expect(servers.serving).toBe(true);
+    expect(await logMessages(engine, run.id)).toContainEqual(
+      expect.stringContaining("Reusing server at http://localhost:6006"),
+    );
+  });
+
+  it("fails the run when the server does not start, and frees the engine", async () => {
+    const servers = createFakeServers();
+    servers.spawn.mockImplementationOnce(() => {
+      const output = new OutputTail();
+      output.push("ERR_PNPM_NO_SCRIPT Missing script: storybook\n");
+      const exit = { code: 1, signal: null };
+      return {
+        pid: 1,
+        exited: Promise.resolve(exit),
+        exit,
+        output,
+        kill: vi.fn(async () => {}),
+      };
+    });
+    servers.probe.mockResolvedValue(false);
+    const plugin = createPlugin("a", [task("one")]);
+    const { engine } = createEngine([plugin], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    const run = await engine.startRun();
+    const detail = await settle(engine, run.id);
+
+    expect(detail.state).toBe("failed");
+    expect(detail.error?.message).toContain("exited with code 1");
+    expect(detail.error?.message).toContain("Missing script: storybook");
+    expect(plugin.discover).not.toHaveBeenCalled();
+
+    // The engine is free for another attempt.
+    servers.probe.mockImplementation(async () => servers.serving);
+    const retry = await engine.startRun();
+    expect((await settle(engine, retry.id)).state).toBe("completed");
+    await engine.close();
+  });
+
+  it("explains refused tasks with a crashed server's output, then restarts it", async () => {
+    const servers = createFakeServers();
+    const plugin = createPlugin("a", [task("one")], async () => {
+      servers.processes[0]?.crash(
+        { code: 137, signal: null },
+        "JavaScript heap out of memory\n",
+      );
+      // Let the pool notice the exit before the task reports.
+      await new Promise((resolve) => setImmediate(resolve));
+      return {
+        error:
+          "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:6006/iframe.html",
+      };
+    });
+    const { engine } = createEngine([plugin], {
+      webServer: [storybookServer],
+      webServerPool: servers,
+    });
+
+    const detail = await settle(engine, (await engine.startRun()).id);
+    const error = String(detail.failures[0]?.result.error);
+
+    expect(error).toContain("Cannot reach http://localhost:6006");
+    expect(error).toContain("exited with code 137");
+    expect(error).toContain("JavaScript heap out of memory");
+
+    vi.mocked(plugin.execute).mockResolvedValue({
+      filepath: `${outputDir}/actual/a.png`,
+      success: true,
+    });
+    await settle(engine, (await engine.startRun()).id);
+    expect(servers.spawn).toHaveBeenCalledTimes(2);
+
+    await engine.close();
+  });
+
+  it("suggests a webServer for refused tasks when none is configured", async () => {
+    const plugin = createPlugin("a", [task("one")], async () => ({
+      error: "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:6006/",
+    }));
+    const { engine } = createEngine([plugin]);
+
+    const detail = await settle(engine, (await engine.startRun()).id);
+
+    expect(String(detail.failures[0]?.result.error)).toContain(
+      "add a `webServer` entry to cappa.config.ts",
+    );
+    await engine.close();
   });
 });

@@ -1,3 +1,4 @@
+import path from "node:path";
 import { defineConfig } from "@cappa/core";
 import { expect, test, vi } from "vitest";
 import { getConfig } from "./getConfig";
@@ -40,6 +41,7 @@ test("return Config when config is set with defineConfig", async () => {
       interpret: false,
     },
     plugins: [],
+    webServer: [],
     onFail: undefined,
     screenshot: {
       fullPage: true,
@@ -169,6 +171,7 @@ test("return Config when config is a function", async () => {
       interpret: false,
     },
     plugins: [],
+    webServer: [],
     onFail: undefined,
     screenshot: {
       fullPage: true,
@@ -207,6 +210,7 @@ test("return Config when config is a promise", async () => {
       interpret: false,
     },
     plugins: [],
+    webServer: [],
     onFail: undefined,
     screenshot: {
       fullPage: true,
@@ -257,6 +261,7 @@ test("passes environment variables to config functions", async () => {
       interpret: false,
     },
     plugins: [],
+    webServer: [],
     onFail: undefined,
     screenshot: {
       fullPage: true,
@@ -354,4 +359,45 @@ test("supports gmsd diff config values", async () => {
     downsample: 1,
     c: 200,
   });
+});
+
+test("resolves webServer against the config file's directory", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    plugins: [],
+    webServer: [
+      {
+        command: "pnpm -F @acme/web storybook --ci",
+        url: "http://localhost:6006",
+      },
+      {
+        command: "pnpm storybook --ci",
+        url: "http://localhost:6007",
+        cwd: "../../apps/web",
+      },
+    ],
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "/repo/packages/visual-tests/cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.webServer.map((entry) => entry.cwd)).toEqual([
+    path.resolve("/repo/packages/visual-tests"),
+    path.resolve("/repo/apps/web"),
+  ]);
+  expect(cappaUserConfig.webServer[0]).toMatchObject({
+    command: "pnpm -F @acme/web storybook --ci",
+    url: "http://localhost:6006",
+    timeout: 60_000,
+    env: {},
+  });
+});
+
+test("rejects a webServer without a url", async () => {
+  const config = { plugins: [], webServer: { command: "pnpm storybook" } };
+
+  await expect(
+    getConfig({ config: config as any, filepath: "./cappa.config.ts" }),
+  ).rejects.toThrow(/webServer\.url/);
 });

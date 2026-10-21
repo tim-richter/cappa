@@ -534,3 +534,131 @@ describe("screenshot tool log forwarding", () => {
     expect(tool.sink).toBeNull();
   });
 });
+
+describe("CaptureRunner web server preparation", () => {
+  it("prepares after run:start and before clearing or discovering", async () => {
+    const order: string[] = [];
+    const fileSystem = createFileSystem();
+    fileSystem.clearActual.mockImplementation(() => order.push("clear"));
+    const plugin = createPlugin({ tasks: [task("a")] });
+    vi.mocked(plugin.discover).mockImplementation(async () => {
+      order.push("discover");
+      return [task("a")];
+    });
+
+    const { runner, events } = createRunner([plugin], {
+      fileSystem,
+      prepare: async (log) => {
+        order.push("prepare");
+        log("info", "Started `pnpm storybook`");
+      },
+    });
+
+    await runner.run();
+
+    expect(order).toEqual(["prepare", "clear", "discover"]);
+    expect(typesOf(events).slice(0, 2)).toEqual(["run:start", "log"]);
+    expect(events[1]).toMatchObject({
+      type: "log",
+      level: "info",
+      message: "Started `pnpm storybook`",
+    });
+  });
+
+  it("fails the run without touching actual/ when preparation fails", async () => {
+    const fileSystem = createFileSystem();
+    const plugin = createPlugin({ tasks: [task("a")] });
+    const { runner, events } = createRunner([plugin], {
+      fileSystem,
+      prepare: async () => {
+        throw new Error("`pnpm storybook` exited with code 1");
+      },
+    });
+
+    await expect(runner.run()).rejects.toThrow(/exited with code 1/);
+
+    expect(fileSystem.clearActual).not.toHaveBeenCalled();
+    expect(plugin.discover).not.toHaveBeenCalled();
+    expect(events.at(-1)).toMatchObject({
+      type: "run:error",
+      error: { message: "`pnpm storybook` exited with code 1" },
+    });
+  });
+});
+
+describe("CaptureRunner unreachable urls", () => {
+  it("explains a refused connection during discovery", async () => {
+    const plugin = createPlugin();
+    const cause = Object.assign(new Error("connect ECONNREFUSED"), {
+      code: "ECONNREFUSED",
+    });
+    vi.mocked(plugin.discover).mockRejectedValue(
+      new Error(
+        "Failed to connect to Storybook at http://localhost:6006. Error: fetch failed",
+        { cause: new TypeError("fetch failed", { cause }) },
+      ),
+    );
+
+    const { runner } = createRunner([plugin]);
+    const error = await runner.run().catch((caught: unknown) => caught);
+
+    expect((error as Error).message).toBe(
+      "Cannot reach http://localhost:6006: connection refused. Start it before capturing, or add a `webServer` entry to cappa.config.ts so cappa starts it for you.",
+    );
+    expect(runner.getSummary().error?.message).toBe((error as Error).message);
+  });
+
+  it("uses the engine's explanation", async () => {
+    const plugin = createPlugin();
+    vi.mocked(plugin.discover).mockRejectedValue(
+      new Error(
+        "page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/",
+      ),
+    );
+    const explainUnreachable = vi.fn(() => "The web server crashed.");
+
+    const { runner } = createRunner([plugin], { explainUnreachable });
+    await expect(runner.run()).rejects.toThrow(
+      "Cannot reach http://localhost:3000: connection refused. The web server crashed.",
+    );
+    expect(explainUnreachable).toHaveBeenCalledWith("http://localhost:3000");
+  });
+
+  it("leaves other discovery errors alone", async () => {
+    const plugin = createPlugin();
+    vi.mocked(plugin.discover).mockRejectedValue(new Error("bad index.json"));
+
+    const { runner } = createRunner([plugin]);
+    await expect(runner.run()).rejects.toThrow(/^bad index\.json$/);
+  });
+
+  it("rewrites refused task errors to one identical message per server", async () => {
+    const plugin = createPlugin({
+      tasks: [task("a"), task("b"), task("c")],
+      execute: async (current) =>
+        current.id === "c"
+          ? { error: "story threw" }
+          : {
+              storyId: current.id,
+              error: `page.goto: net::ERR_CONNECTION_REFUSED at ${current.url}`,
+            },
+    });
+
+    const { runner } = createRunner([plugin]);
+    const detail = await runner.run();
+
+    const errors = detail.failures.map((failure) => failure.result.error);
+    expect(errors).toEqual([
+      expect.stringMatching(
+        /^Cannot reach http:\/\/localhost:6006: connection refused\./,
+      ),
+      expect.stringMatching(
+        /^Cannot reach http:\/\/localhost:6006: connection refused\./,
+      ),
+      "story threw",
+    ]);
+    expect(errors[0]).toBe(errors[1]);
+    // The rest of the plugin's result survives.
+    expect(detail.failures[0]?.result.storyId).toBe("a");
+  });
+});

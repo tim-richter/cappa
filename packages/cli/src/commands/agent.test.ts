@@ -36,6 +36,7 @@ import {
   agentJudge,
   describeAgentReport,
   isCi,
+  webServerHints,
 } from "./agent";
 
 let outputDir: string;
@@ -267,5 +268,34 @@ describe("describeAgentReport", () => {
       "card  ambiguous — image dimensions changed (pending)",
       "fresh  new",
     ]);
+  });
+});
+
+describe("webServerHints", () => {
+  it("suggests a webServer when the config has none", async () => {
+    getConfigMock.mockResolvedValue({ outputDir, webServer: [] });
+
+    const hints = await webServerHints("/repo");
+
+    expect(hints).toEqual([expect.stringContaining("has no `webServer`")]);
+    expect(getConfigMock).toHaveBeenCalledWith(undefined, {
+      cwd: "/repo",
+      command: "agent",
+    });
+  });
+
+  it("says nothing when a webServer is configured", async () => {
+    getConfigMock.mockResolvedValue({
+      outputDir,
+      webServer: [{ command: "pnpm storybook", url: "http://localhost:6006" }],
+    });
+
+    expect(await webServerHints("/repo")).toEqual([]);
+  });
+
+  it("says nothing when there is no config to read", async () => {
+    getConfigMock.mockRejectedValue(new Error("Config not found."));
+
+    expect(await webServerHints("/repo")).toEqual([]);
   });
 });

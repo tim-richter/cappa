@@ -270,6 +270,33 @@ type InitOptions = JsonOption & {
   runner?: string;
 };
 
+/**
+ * Advice about the config the skill will run against. Read-only: `agent init`
+ * installs skill files and never edits `cappa.config.ts`.
+ *
+ * Without a `webServer` the skill still works, but the agent has to get the
+ * app under test running by itself — which is exactly the project-specific
+ * guesswork `webServer` exists to remove.
+ */
+export const webServerHints = async (cwd: string): Promise<string[]> => {
+  let config: Awaited<ReturnType<typeof getConfig>>;
+  try {
+    config = await getConfig(undefined, { cwd, command: "agent" });
+  } catch {
+    // No config, or one that does not load: nothing to advise on here.
+    return [];
+  }
+
+  if (config.webServer.length > 0) {
+    return [];
+  }
+
+  return [
+    "cappa.config.ts has no `webServer`, so the agent has to start whatever the plugins point at itself. " +
+      'Add one and `cappa capture` starts and stops it: webServer: { command: "pnpm storybook --ci", url: "http://localhost:6006" }',
+  ];
+};
+
 export const agentInit = (options: InitOptions) =>
   run(options, async () => {
     const cwd = process.cwd();
@@ -289,8 +316,10 @@ export const agentInit = (options: InitOptions) =>
       runner: options.runner,
     });
 
+    const hints = await webServerHints(cwd);
+
     if (options.json) {
-      printJson({ root, stacks, runner, files, warnings });
+      printJson({ root, stacks, runner, files, warnings, hints });
       return;
     }
 
@@ -306,6 +335,9 @@ export const agentInit = (options: InitOptions) =>
     logger.log(chalk.dim(`commands run as \`${runner}\` (--runner to change)`));
     for (const warning of warnings) {
       logger.warn(warning);
+    }
+    for (const hint of hints) {
+      logger.info(hint);
     }
     logger.success(
       stacks.includes("opencode")
