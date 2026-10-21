@@ -1,5 +1,13 @@
 # @cappa/plugin-storybook
 
+## 0.11.2
+
+### Patch Changes
+
+- 7323d2c: Keep the original error as `cause` when Storybook cannot be reached, so cappa can recognise a refused connection and explain it.
+- Updated dependencies [7323d2c]
+  - @cappa/core@0.16.0
+
 ## 0.11.1
 
 ### Patch Changes
