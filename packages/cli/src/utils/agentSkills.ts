@@ -23,7 +23,26 @@ const SKILL = [
   "skills/cappa/MASKING.md",
 ] as const;
 
-type FileMapping = { source: string; target: string };
+/**
+ * A judge subagent's frontmatter takes a `model:`, in the agent's own format.
+ * Without one the judge runs on the calling model — so a caller whose model
+ * cannot read images gets a judge that cannot either.
+ */
+export type JudgeFormat = "claude" | "opencode";
+
+type FileMapping = { source: string; target: string; judge?: JudgeFormat };
+
+/**
+ * Both judges share one body; their own source files are only the
+ * frontmatter each agent needs. The body points at the copy of `JUDGING.md`
+ * the agent's caller reads — for OpenCode that is the `.claude` copy when
+ * there is one, since OpenCode prefers it over `.agents` (see the warning in
+ * `installAgentSkills`), and judge and caller must not follow two copies.
+ */
+const JUDGE_BODY = "judge/cappa-judge.md";
+
+const CLAUDE_JUDGING = ".claude/skills/cappa/JUDGING.md";
+const AGENTS_JUDGING = ".agents/skills/cappa/JUDGING.md";
 
 const skillInto = (dir: string): FileMapping[] =>
   SKILL.map((source) => ({
@@ -37,6 +56,7 @@ export const STACK_FILES = {
     {
       source: "claude/agents/cappa-judge.md",
       target: path.join(".claude", "agents", "cappa-judge.md"),
+      judge: "claude",
     },
   ],
   agents: skillInto(".agents/skills/cappa"),
@@ -46,11 +66,17 @@ export const STACK_FILES = {
       "commands/cappa-review.md",
       "commands/cappa-judge.md",
       "commands/cappa-approve.md",
-      "agents/cappa-judge.md",
-    ].map((file) => ({
-      source: `opencode/${file}`,
-      target: path.join(".opencode", file),
-    })),
+    ].map(
+      (file): FileMapping => ({
+        source: `opencode/${file}`,
+        target: path.join(".opencode", file),
+      }),
+    ),
+    {
+      source: "opencode/agents/cappa-judge.md",
+      target: path.join(".opencode", "agents", "cappa-judge.md"),
+      judge: "opencode",
+    },
   ],
 } satisfies Record<string, FileMapping[]>;
 
@@ -192,6 +218,25 @@ export const detectCappaRunner = (root: string, cwd: string = root): string => {
 export const renderIntegrationFile = (source: string, runner: string) =>
   source.replaceAll("{{cappa}}", runner);
 
+/**
+ * Which judge a model id is for: OpenCode names models `provider/model`,
+ * Claude Code takes an alias (`sonnet`) or a model id, neither with a slash.
+ */
+export const judgeFormatOf = (model: string): JudgeFormat =>
+  model.includes("/") ? "opencode" : "claude";
+
+/** Pin a judge's model: a `model:` line at the top of its frontmatter. */
+export const withJudgeModel = (source: string, model: string) =>
+  source.replace(/^---\n/, `---\nmodel: ${model}\n`);
+
+/** The model pinned in an installed judge, if any. */
+const readJudgeModel = (source: string) =>
+  /^---\nmodel: (.*)\n/.exec(source)?.[1]?.trim() || undefined;
+
+/** A judge file without its `model:` line, to tell a re-pin from an edit. */
+const withoutJudgeModel = (source: string) =>
+  source.replace(/^(---\n)model: .*\n/, "$1");
+
 export type SkillFileResult = {
   stack: SkillStack;
   path: string;
@@ -201,6 +246,8 @@ export type SkillFileResult = {
 export type InstallResult = {
   root: string;
   runner: string;
+  /** The model pinned in each judge that was installed; absent = inherited. */
+  judgeModels: Partial<Record<JudgeFormat, string>>;
   files: SkillFileResult[];
   warnings: string[];
 };
@@ -212,6 +259,12 @@ export type InstallResult = {
  * set: users are expected to tailor these to their project, and an upgrade
  * must not silently discard that. A target shared by two stacks (the
  * `.agents` skill) is written once.
+ *
+ * `judgeModel` goes into the judge whose format it matches (see
+ * `judgeFormatOf`). Without it, a judge keeps the model it was pinned to.
+ * Changing only that model is not a modification: an installed judge that
+ * differs from the new one by its `model:` line alone is rewritten without
+ * `force`.
  */
 export const installAgentSkills = async (options: {
   cwd: string;
@@ -219,11 +272,39 @@ export const installAgentSkills = async (options: {
   stacks: readonly SkillStack[];
   force?: boolean;
   runner?: string;
+  judgeModel?: string;
   sourceDir?: string;
 }): Promise<InstallResult> => {
   const sourceDir = options.sourceDir ?? findIntegrationsDir();
   const root = options.root ?? findProjectRoot(options.cwd);
   const runner = options.runner ?? detectCappaRunner(root, options.cwd);
+  const judgeModel = options.judgeModel?.trim() || undefined;
+  const judgeFormats = options.stacks.flatMap((stack) =>
+    STACK_FILES[stack].flatMap((mapping) =>
+      mapping.judge ? [mapping.judge] : [],
+    ),
+  );
+
+  if (judgeModel && !judgeFormats.includes(judgeFormatOf(judgeModel))) {
+    throw new Error(
+      judgeFormatOf(judgeModel) === "opencode"
+        ? `--judge-model "${judgeModel}" is an OpenCode model (provider/model), but no OpenCode judge is being installed — add --stack opencode`
+        : `--judge-model "${judgeModel}" is a Claude Code model, but no Claude Code judge is being installed — OpenCode models are written provider/model, e.g. anthropic/claude-sonnet-5-5`,
+    );
+  }
+
+  const judgeModels: InstallResult["judgeModels"] = {};
+  if (judgeModel) judgeModels[judgeFormatOf(judgeModel)] = judgeModel;
+
+  const claudeSkillDir = path.resolve(root, ".claude/skills/cappa");
+  const hasClaudeSkill =
+    options.stacks.includes("claude") ||
+    fs.existsSync(path.join(claudeSkillDir, "SKILL.md"));
+  const judgingFor: Record<JudgeFormat, string> = {
+    claude: CLAUDE_JUDGING,
+    opencode: hasClaudeSkill ? CLAUDE_JUDGING : AGENTS_JUDGING,
+  };
+
   const files: SkillFileResult[] = [];
   const seen = new Set<string>();
 
@@ -233,19 +314,39 @@ export const installAgentSkills = async (options: {
       if (seen.has(target)) continue;
       seen.add(target);
 
-      const source = renderIntegrationFile(
-        await fsp.readFile(path.join(sourceDir, mapping.source), "utf8"),
-        runner,
-      );
+      const read = (file: string) =>
+        fsp.readFile(path.join(sourceDir, file), "utf8");
+      let template = await read(mapping.source);
+      if (mapping.judge) {
+        template = `${template}\n${await read(JUDGE_BODY)}`.replaceAll(
+          "{{judging}}",
+          judgingFor[mapping.judge],
+        );
+      }
+      const rendered = renderIntegrationFile(template, runner);
       const existing = await fsp
         .readFile(target, "utf8")
         .catch(() => undefined);
+      let source = rendered;
+      if (mapping.judge) {
+        const model =
+          judgeModels[mapping.judge] ??
+          (existing === undefined ? undefined : readJudgeModel(existing));
+        if (model) {
+          judgeModels[mapping.judge] = model;
+          source = withJudgeModel(rendered, model);
+        }
+      }
 
       if (existing === source) {
         files.push({ stack, path: target, status: "unchanged" });
         continue;
       }
-      if (existing !== undefined && !options.force) {
+      const repinned =
+        mapping.judge !== undefined &&
+        existing !== undefined &&
+        withoutJudgeModel(existing) === rendered;
+      if (existing !== undefined && !options.force && !repinned) {
         files.push({ stack, path: target, status: "skipped" });
         continue;
       }
@@ -257,14 +358,17 @@ export const installAgentSkills = async (options: {
   }
 
   const warnings: string[] = [];
-  const claudeSkill = fs.existsSync(
-    path.resolve(root, ".claude/skills/cappa/SKILL.md"),
-  );
-  if (options.stacks.includes("opencode") && claudeSkill) {
+  if (options.stacks.includes("opencode") && hasClaudeSkill) {
     warnings.push(
-      "OpenCode reads .claude/skills too, and uses that copy of the cappa skill over the one in .agents/skills — keep the two in sync if you tailor them.",
+      "OpenCode reads .claude/skills too, and uses that copy of the cappa skill over the one in .agents/skills — so its cappa-judge follows .claude/skills/cappa/JUDGING.md. Tailor that copy; keep .agents/skills in sync for other agents.",
     );
   }
 
-  return { root, runner, files, warnings };
+  if (judgeFormats.includes("opencode") && !judgeModels.opencode) {
+    warnings.push(
+      "The OpenCode cappa-judge runs on the calling model, so it cannot judge if that model cannot read images. Pin a vision model: --judge-model <provider/model>",
+    );
+  }
+
+  return { root, runner, judgeModels, files, warnings };
 };

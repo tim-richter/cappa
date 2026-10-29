@@ -36,6 +36,7 @@ import {
   agentJudge,
   describeAgentReport,
   isCi,
+  judgeGuardVerdict,
   webServerHints,
 } from "./agent";
 
@@ -297,5 +298,31 @@ describe("webServerHints", () => {
     getConfigMock.mockRejectedValue(new Error("Config not found."));
 
     expect(await webServerHints("/repo")).toEqual([]);
+  });
+});
+
+describe("judgeGuardVerdict", () => {
+  const hook = (command: unknown) =>
+    JSON.stringify({ tool_name: "Bash", tool_input: { command } });
+
+  it("lets allowed commands through", () => {
+    expect(
+      judgeGuardVerdict(hook("npx cappa agent check --json"), "npx cappa"),
+    ).toBeUndefined();
+  });
+
+  it("blocks with the reason", () => {
+    expect(judgeGuardVerdict(hook("rm -rf ."), "npx cappa")).toMatch(
+      /^cappa-judge: the judge may run only/,
+    );
+  });
+
+  it("blocks what it cannot read instead of failing open", () => {
+    expect(judgeGuardVerdict("not json", "npx cappa")).toContain(
+      "could not read",
+    );
+    expect(judgeGuardVerdict(hook(undefined), "npx cappa")).toContain(
+      "could not read",
+    );
   });
 });

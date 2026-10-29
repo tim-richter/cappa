@@ -220,9 +220,143 @@ describe("installAgentSkills", () => {
     const result = await installAgentSkills({
       cwd,
       stacks: ["claude", "opencode"],
+      judgeModel: "openai/gpt-5",
     });
     expect(result.warnings).toEqual([
       expect.stringContaining("OpenCode reads .claude/skills too"),
     ]);
+  });
+
+  it("warns that the opencode judge runs on the calling model", async () => {
+    const result = await installAgentSkills({ cwd, stacks: ["opencode"] });
+    expect(result.judgeModels).toEqual({});
+    expect(result.warnings).toEqual([
+      expect.stringContaining("--judge-model <provider/model>"),
+    ]);
+    expect(await read(".opencode/agents/cappa-judge.md")).not.toMatch(
+      /^---\nmodel:/,
+    );
+  });
+
+  it("pins the judge whose format the model matches", async () => {
+    const result = await installAgentSkills({
+      cwd,
+      stacks: ["claude", "opencode"],
+      judgeModel: "openai/gpt-5",
+    });
+
+    expect(result.judgeModels).toEqual({ opencode: "openai/gpt-5" });
+    expect(result.warnings.some((w) => w.includes("--judge-model"))).toBe(
+      false,
+    );
+    const judge = await read(".opencode/agents/cappa-judge.md");
+    expect(judge.startsWith("---\nmodel: openai/gpt-5\ndescription:")).toBe(
+      true,
+    );
+    expect(await read(".claude/agents/cappa-judge.md")).not.toMatch(
+      /^---\nmodel:/,
+    );
+  });
+
+  it("pins the claude judge to an alias", async () => {
+    const result = await installAgentSkills({
+      cwd,
+      stacks: ["claude"],
+      judgeModel: "sonnet",
+    });
+    expect(result.judgeModels).toEqual({ claude: "sonnet" });
+    expect(await read(".claude/agents/cappa-judge.md")).toMatch(
+      /^---\nmodel: sonnet\nname: cappa-judge\n/,
+    );
+  });
+
+  it("rejects a model no installed judge can take", async () => {
+    await expect(
+      installAgentSkills({ cwd, stacks: ["opencode"], judgeModel: "sonnet" }),
+    ).rejects.toThrow("provider/model");
+    await expect(
+      installAgentSkills({ cwd, stacks: ["agents"], judgeModel: "a/b" }),
+    ).rejects.toThrow("--stack opencode");
+  });
+
+  it("re-pins a judge without --force, and keeps its pin when re-run", async () => {
+    await installAgentSkills({ cwd, stacks: ["opencode"] });
+
+    const pinned = await installAgentSkills({
+      cwd,
+      stacks: ["opencode"],
+      judgeModel: "anthropic/claude-sonnet-5-5",
+    });
+    const judge = (r: typeof pinned) =>
+      r.files.find(
+        (f) => f.path.endsWith("cappa-judge.md") && f.path.includes("agents"),
+      );
+    expect(judge(pinned)?.status).toBe("written");
+
+    const rerun = await installAgentSkills({ cwd, stacks: ["opencode"] });
+    expect(judge(rerun)?.status).toBe("unchanged");
+    expect(rerun.judgeModels).toEqual({
+      opencode: "anthropic/claude-sonnet-5-5",
+    });
+    expect(await read(".opencode/agents/cappa-judge.md")).toContain(
+      "model: anthropic/claude-sonnet-5-5",
+    );
+  });
+
+  it("does not re-pin a judge the user edited", async () => {
+    await installAgentSkills({ cwd, stacks: ["claude"] });
+    const target = path.join(cwd, ".claude/agents/cappa-judge.md");
+    await fsp.appendFile(target, "\ntailored\n");
+
+    const result = await installAgentSkills({
+      cwd,
+      stacks: ["claude"],
+      judgeModel: "opus",
+    });
+    expect(result.files.at(-1)?.status).toBe("skipped");
+    expect(await fsp.readFile(target, "utf8")).not.toMatch(/^---\nmodel:/);
+  });
+
+  it("points the opencode judge at the .agents skill", async () => {
+    await installAgentSkills({ cwd, stacks: ["opencode"] });
+    expect(await read(".opencode/agents/cappa-judge.md")).toContain(
+      "Follow `.agents/skills/cappa/JUDGING.md`:",
+    );
+  });
+
+  it("points both judges at the .claude skill when OpenCode would read it", async () => {
+    await installAgentSkills({ cwd, stacks: ["claude", "opencode"] });
+    for (const [judge, skill] of [
+      [".claude/agents/cappa-judge.md", ".claude/skills/cappa/JUDGING.md"],
+      [".opencode/agents/cappa-judge.md", ".claude/skills/cappa/JUDGING.md"],
+    ] as const) {
+      const text = await read(judge);
+      expect(text).toContain(`Follow \`${skill}\`:`);
+      expect(text).not.toContain("{{");
+      expect(text).toContain("cannot read images");
+      expect(fs.existsSync(path.join(cwd, skill))).toBe(true);
+    }
+  });
+
+  it("guards the claude judge's Bash with the project's runner", async () => {
+    await fsp.writeFile(path.join(cwd, "pnpm-lock.yaml"), "");
+    await installAgentSkills({ cwd, stacks: ["claude"] });
+    const judge = await read(".claude/agents/cappa-judge.md");
+    expect(judge).toContain(
+      `command: 'pnpm exec cappa agent guard --runner "pnpm exec cappa"'`,
+    );
+    expect(judge).toContain('- matcher: "Bash"');
+  });
+
+  it("does not tell a blind judge to --force the install", async () => {
+    await installAgentSkills({ cwd, stacks: ["claude", "opencode"] });
+    for (const judge of [
+      ".claude/agents/cappa-judge.md",
+      ".opencode/agents/cappa-judge.md",
+    ]) {
+      const text = await read(judge);
+      expect(text).toContain("agent init --judge-model <model>`");
+      expect(text).not.toContain("--force");
+    }
   });
 });

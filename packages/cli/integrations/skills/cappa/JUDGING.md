@@ -3,12 +3,22 @@
 Used when `cappa agent check --json` reports `pendingJudgments > 0`: the heuristic labelled those
 changes `ambiguous` and is deferring to you — or you asked for every change with `--judge all`.
 
-## Can you read images?
-Judging is visual. If your model cannot read images, don't substitute your own tooling (no
-ImageMagick, no manual crops, no pixel statistics). Hand the pending `judgment` directories to a
-subagent whose model can read images — the `cappa-judge` subagent if `cappa agent init` installed
-one — and have it follow this file; it records verdicts with `cappa agent judge` (or returns
-labels and rationale for you to record).
+## Who judges
+If the `cappa-judge` subagent is installed (`cappa agent init` adds it for Claude Code and
+OpenCode), hand it the pending screenshots — always, even one, and even if you can read images.
+It may be pinned to a different model than yours because yours cannot read images, and you
+cannot reliably tell that yourself. It also keeps the crops out of your context. It follows this
+file and records verdicts with `cappa agent judge`; use what it records. If it replies that it
+cannot read images, pass that on to the user and stop.
+
+Each judgment means two images, so one judge cannot take hundreds. Give a judge at most about 20
+screenshots — fewer when they have many regions — and start several judges in parallel for the
+rest, each with its own names. Keep screenshots that share a `verdict.headline` (below) with the
+same judge, so it can judge them in one call.
+
+Only without `cappa-judge` do you judge yourself, by this file. If your model cannot read images,
+hand the `judgment` directories to any subagent whose model can. Never substitute your own
+tooling (no ImageMagick, no manual crops, no pixel statistics) and never judge blind.
 
 ## Judge everything that is pending
 A request stays pending through every later check until it has a verdict. After `--judge all`
@@ -48,16 +58,14 @@ Labels:
 - `noise-likely` — anti-aliasing, sub-pixel text rendering, non-deterministic content.
 
 ## Record the verdict
-Preferred — validated, and accepts several names for one shared cause:
+With `cappa agent judge` — it validates the verdict, and takes several names for one shared
+cause. Don't write `verdict.json` by hand.
 ```sh
 cappa agent judge <name> [<name> ...] --label <label> --headline "<one line>" \
   [--rationale "<reason>" ...] [--confidence 0.8] --json
 ```
-Or write `verdict.json` next to `request.json`:
-```json
-{ "label": "regression-likely", "headline": "Submit button label is truncated",
-  "rationale": ["'Submit' renders as 'Subm' in region #3"], "confidence": 0.9 }
-```
+For example: `--label regression-likely --headline "Submit button label is truncated"
+--rationale "'Submit' renders as 'Subm' in region #3" --confidence 0.9`.
 
 Then re-run `cappa agent check --json` and continue with step 3 of `SKILL.md`. A verdict whose
 `verdictError` is set was rejected — fix it and re-check.

@@ -30,7 +30,7 @@ What gets installed depends on the agents the project already uses. You can also
 
 | Stack | Detected by | Installs |
 | --- | --- | --- |
-| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/`, plus a `cappa-judge` subagent in `.claude/agents/` that judges screenshots in its own context |
+| `claude` | `.claude/`, `CLAUDE.md` (also the fallback) | the skill in `.claude/skills/cappa/`, plus a `cappa-judge` subagent in `.claude/agents/` that judges screenshots in its own context (below) |
 | `agents` | `.agents/`, `AGENTS.md` | the skill in `.agents/skills/cappa/` (the vendor-neutral Agent Skills directory, read by Codex and others) |
 | `opencode` | `.opencode/`, `opencode.json(c)` | the `.agents` skill, plus OpenCode commands and a judge subagent (below) |
 
@@ -70,8 +70,46 @@ code.
 The commands and the agent use the runner chosen at install time, because OpenCode runs their
 shell steps before the model sees them, and its permission rules match command text literally.
 
+### The judge's model
+
+Judging means reading images. A subagent runs on the model that started it, so if your main
+agent uses a model that cannot read images, the judge cannot either. Pin the judge to one that
+can with `--judge-model`:
+
+```bash
+cappa agent init --judge-model anthropic/claude-sonnet-5-5   # OpenCode: provider/model
+cappa agent init --judge-model sonnet                        # Claude Code: alias or model id
+```
+
+The model goes into the `model:` field of the judge whose format it matches. `init` refuses a
+model that no installed judge can take. Changing the model rewrites the judge without `--force`.
+Re-running `init` without the flag keeps the pinned model. Without a pin, `init` warns about the
+OpenCode judge. Every Claude model can read images, so the Claude Code judge works without one.
+
+A judge that still finds it cannot see the crops records nothing. It replies with the
+`--judge-model` command to run instead of guessing from the region metadata. Don't rely on that
+check alone: a model that cannot read images does not always notice. Pinning a vision model is
+what makes judging work.
+
+### The Claude Code judge
+
+Claude Code's agent files cannot limit Bash to particular commands, so the Claude Code
+`cappa-judge` uses a `PreToolUse` hook instead. Before every shell command the judge runs, the
+hook calls `cappa agent guard`, which allows the same commands as the OpenCode judge:
+`cappa agent check`, `cappa agent judge` and read-only git. It refuses anything else, including
+chaining, pipes, redirects and command substitution.
+
+### Large reviews
+
+Each judgment comes with two images, so a single judge cannot take hundreds of them. The skill
+gives each judge about 20 screenshots and runs several judges in parallel. Screenshots that share
+a headline stay with the same judge.
+
+### Two copies of the skill
+
 If the project also has `.claude/skills/cappa`, OpenCode uses that copy of the skill instead of
-the one in `.agents/skills`. Keep the two in sync if you tailor them.
+the one in `.agents/skills`, and `init` points the OpenCode judge at it too. Tailor the `.claude`
+copy, and keep `.agents/skills` in sync for other agents.
 
 ## How a review runs
 
@@ -94,14 +132,15 @@ the one in `.agents/skills`. Keep the two in sync if you tailor them.
    - `overview.png` — expected and actual side by side, when the dimensions changed
    - `request.json` — regions, heuristic label, interpretation summary and paths
 
-   The agent records its verdict with `cappa agent judge` (or by writing `verdict.json`) and
+   The agent records its verdict with `cappa agent judge` and
    re-runs `cappa agent check`, which applies it. To get the same evidence for changes the
    heuristic already labelled, the skill runs `cappa agent check --judge all`. The skill does this
    when a heuristic label looks doubtful, for example a `regression-likely` that a deliberate code
    change explains. A request stays pending until it gets a verdict, so after `--judge all` the
-   agent judges every change. An agent whose model cannot read images hands the judgment
-   directories to the `cappa-judge` subagent (or any subagent that can read images), rather than
-   working from the raw screenshots.
+   agent judges every change. When the `cappa-judge` subagent is installed, the agent always
+   hands the judging to it, so a judge pinned with `--judge-model` is never bypassed. Without
+   one, an agent whose model cannot read images hands the judgment directories to any subagent
+   that can, rather than working from the raw screenshots.
 4. **Act** — the agent reports one line per screenshot, asks you to confirm, and approves with
    `cappa agent approve`. A regression can be fixed in code and re-captured with `--filter`.
 
@@ -190,7 +229,9 @@ intended, judge it `intentional-likely` first. To approve a regression anyway, p
 
 ### `cappa agent init`
 
-Installs the skill files described in [Setup](#setup).
+Installs the skill files described in [Setup](#setup). `--stack`, `--runner` and `--force` are
+covered there; `--judge-model <model>` pins the judge subagent to a model that can read images
+(see [The judge's model](#the-judges-model)).
 
 ## Files
 
@@ -204,5 +245,5 @@ only valid for the screenshots on the machine that made them.
     ├── request.json
     ├── locator.png
     ├── regions.png      # or overview.png
-    └── verdict.json     # written by the agent
+    └── verdict.json     # written by `cappa agent judge`
 ```

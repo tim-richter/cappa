@@ -18,6 +18,8 @@ Current state of the last capture (`{{cappa}} agent check --json`):
 2. **Judge** — if `pendingJudgments > 0`, hand the pending screenshots to the `cappa-judge`
    subagent (Task tool) instead of reading the images yourself; it keeps the crops out of this
    conversation and records a verdict per screenshot. Then re-run `{{cappa}} agent check --json`.
+   If the judge replies that it cannot read images, pass its message on to the user and stop
+   there — never judge the screenshots yourself without seeing them.
    For a thorough second opinion on every change — or when you doubt a heuristic label, e.g. a
    `regression-likely` that matches a deliberate code change — run
    `{{cappa}} agent check --judge all --json` first so every changed screenshot gets a request,

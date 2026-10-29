@@ -25,6 +25,7 @@ import {
   SKILL_STACK_NAMES,
   type SkillStack,
 } from "../utils/agentSkills";
+import { judgeCommandRefusal } from "../utils/judgeGuard";
 
 /**
  * `cappa agent` — visual review for coding agents.
@@ -268,6 +269,7 @@ type InitOptions = JsonOption & {
   stack?: SkillStack | "all";
   force?: boolean;
   runner?: string;
+  judgeModel?: string;
 };
 
 /**
@@ -308,18 +310,19 @@ export const agentInit = (options: InitOptions) =>
           ? [options.stack]
           : detectSkillStacks(root);
 
-    const { runner, files, warnings } = await installAgentSkills({
+    const { runner, judgeModels, files, warnings } = await installAgentSkills({
       cwd,
       root,
       stacks,
       force: options.force,
       runner: options.runner,
+      judgeModel: options.judgeModel,
     });
 
     const hints = await webServerHints(cwd);
 
     if (options.json) {
-      printJson({ root, stacks, runner, files, warnings, hints });
+      printJson({ root, stacks, runner, judgeModels, files, warnings, hints });
       return;
     }
 
@@ -333,6 +336,9 @@ export const agentInit = (options: InitOptions) =>
       logger.log(`${verb} ${file.path}`);
     }
     logger.log(chalk.dim(`commands run as \`${runner}\` (--runner to change)`));
+    for (const [stack, model] of Object.entries(judgeModels)) {
+      logger.log(chalk.dim(`${stack} cappa-judge runs on \`${model}\``));
+    }
     for (const warning of warnings) {
       logger.warn(warning);
     }
@@ -345,6 +351,46 @@ export const agentInit = (options: InitOptions) =>
         : "Agent skill installed — ask your agent to run a visual review, or use /cappa in Claude Code",
     );
   });
+
+const readStdin = async (stream: NodeJS.ReadableStream = process.stdin) => {
+  const chunks: Buffer[] = [];
+  for await (const chunk of stream) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return Buffer.concat(chunks).toString("utf8");
+};
+
+/**
+ * Decide a Claude Code `PreToolUse` hook call for the `cappa-judge`
+ * subagent: `undefined` lets the Bash command run, a message blocks it.
+ * Anything it cannot read is blocked too — a guard that fails open is no
+ * guard.
+ */
+export const judgeGuardVerdict = (
+  input: string,
+  runner: string,
+): string | undefined => {
+  let command: unknown;
+  try {
+    command = JSON.parse(input)?.tool_input?.command;
+  } catch {
+    return "cappa-judge: could not read the hook input";
+  }
+  if (typeof command !== "string") {
+    return "cappa-judge: could not read the hook input";
+  }
+  const refusal = judgeCommandRefusal(command, runner);
+  return refusal ? `cappa-judge: ${refusal}` : undefined;
+};
+
+export const agentGuard = async (options: { runner: string }) => {
+  const message = judgeGuardVerdict(await readStdin(), options.runner);
+  if (message) {
+    process.stderr.write(`${message}\n`);
+    // 2 is the exit code Claude Code reads as "block this tool call".
+    process.exitCode = 2;
+  }
+};
 
 const parseChoice =
   <T extends string>(choices: readonly T[], what: string) =>
@@ -455,6 +501,17 @@ export const registerAgentCommand = (program: Command): void => {
       "--runner <command>",
       "how the project runs cappa, e.g. `pnpm exec cappa` (default: from the lockfile)",
     )
+    .option(
+      "--judge-model <model>",
+      "pin the cappa-judge subagent to a model that can read images: provider/model for OpenCode, an alias or model id for Claude Code (default: the calling model)",
+    )
     .option("--json", "print a JSON summary to stdout")
     .action(agentInit);
+
+  // Called by the Claude Code judge's PreToolUse hook, not by people.
+  agent
+    .command("guard", { hidden: true })
+    .description("Allow or block a cappa-judge Bash call (Claude Code hook)")
+    .requiredOption("--runner <command>", "how the project runs cappa")
+    .action(agentGuard);
 };

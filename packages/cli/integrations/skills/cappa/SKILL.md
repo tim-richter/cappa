@@ -76,10 +76,8 @@ failure prints `{ "error": "..." }` instead.
   `--judge all`, judge every pending entry — including the ones whose heuristic label you agree
   with (one `cappa agent judge` call per shared label is enough) — or `pendingJudgments` never
   reaches 0.
-- Judging means reading images. If you cannot read images yourself, don't improvise — hand the
-  `judgment` directories to a subagent whose model can (the `cappa-judge` subagent, when
-  `cappa agent init` installed one), let it judge per `JUDGING.md`, and use the verdicts it
-  records (or run `cappa agent judge` with the labels it returns).
+- Judging means reading images. When the `cappa-judge` subagent is installed, it always does the
+  judging, not you — see `JUDGING.md`. Never judge blind.
 
 ## 3. Report and act
 One line per non-passing screenshot: `<name>: <label> — <headline>`. Then, per label:
@@ -110,8 +108,8 @@ screenshot whose current verdict has that label.
   approve that regression.
 - `cappa agent approve` matches names exactly. Don't use plain `cappa approve` — its `--filter`
   is a substring match and approves far more than you intend.
-- Never edit files under `expected/`, `actual/`, `diff/` or `.cappa-agent/` by hand (except
-  writing `verdict.json`).
+- Never edit files under `expected/`, `actual/`, `diff/` or `.cappa-agent/` by hand — verdicts
+  go through `cappa agent judge`.
 - Never hand-roll crops, image diffs or pixel forensics (ImageMagick, scripts). Cappa's crops are
   the evidence; if a screenshot has none, `cappa agent check --json --judge all` produces them.
 - In CI (`CI=true`), only `cappa agent check` is allowed; baselines change on developer machines.
