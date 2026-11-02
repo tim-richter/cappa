@@ -194,8 +194,12 @@ describe("installAgentSkills", () => {
     ]);
 
     const judge = await read(".opencode/agents/cappa-judge.md");
-    expect(judge).toContain('"pnpm exec cappa agent judge*": allow');
+    expect(judge).toContain("`pnpm exec cappa agent judge`");
     expect(judge).not.toContain("{{cappa}}");
+    // Literal bash patterns break on other runners and shells; the judge's
+    // shell is limited by its instructions, not by an allowlist.
+    expect(judge).toContain("  edit: deny\n");
+    expect(judge).not.toContain("bash:");
     expect(await read(".opencode/commands/cappa-review.md")).toContain(
       "!`pnpm exec cappa agent check --json || true`",
     );

@@ -62,13 +62,15 @@ the review flow, and a subagent that keeps the judging out of your main conversa
 | `.opencode/commands/cappa-approve.md` | `/cappa-approve <names or label>` approves by exact name or verdict label. It holds back regressions and deletions unless you name them explicitly. |
 | `.opencode/agents/cappa-judge.md` | A `cappa-judge` subagent. It reads the region crops and the git history in its own context, and records verdicts with `cappa agent judge`. |
 
-The judge works in a sandbox. It cannot edit files, fetch from the web or start other agents. In
-the shell it may only run `cappa agent check`, `cappa agent judge` and read-only git (`diff`,
-`log`, `show`, `status`). So it can record verdicts, but it cannot approve, capture or change
-code.
+The judge works in a sandbox. It cannot edit files, fetch from the web or start other agents.
+Its shell is not narrowed to particular commands: OpenCode's permission patterns match command
+text literally, so a list of allowed commands breaks as soon as the runner, the shell or the
+quoting differs. Its instructions limit it to `cappa agent check`, `cappa agent judge` and
+read-only git (`diff`, `log`, `show`, `status`), so it records verdicts but does not approve,
+capture or change code.
 
 The commands and the agent use the runner chosen at install time, because OpenCode runs their
-shell steps before the model sees them, and its permission rules match command text literally.
+shell steps before the model sees them.
 
 ### The judge's model
 
@@ -95,9 +97,9 @@ what makes judging work.
 
 Claude Code's agent files cannot limit Bash to particular commands, so the Claude Code
 `cappa-judge` uses a `PreToolUse` hook instead. Before every shell command the judge runs, the
-hook calls `cappa agent guard`, which allows the same commands as the OpenCode judge:
-`cappa agent check`, `cappa agent judge` and read-only git. It refuses anything else, including
-chaining, pipes, redirects and command substitution.
+hook calls `cappa agent guard`, which allows only `cappa agent check`, `cappa agent judge` and
+read-only git. It refuses anything else, including chaining, pipes, redirects and command
+substitution.
 
 ### Large reviews
 
