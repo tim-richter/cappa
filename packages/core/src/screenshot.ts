@@ -19,6 +19,7 @@ import {
   type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
 import type { LogConsoleEvents } from "./consoleEvents";
+import { type CropSetting, measureContentClip, resolveCrop } from "./crop";
 import { ScreenshotFileSystem } from "./filesystem";
 import { sanitizeScreenshotFilename } from "./paths";
 import type { RunLogLevel } from "./runner/types";
@@ -150,6 +151,8 @@ class ScreenshotTool {
   headless: boolean;
   viewport: { width: number; height: number };
   fullPage: boolean;
+  /** Default content crop; a screenshot's own `crop` overrides it. */
+  crop: CropSetting;
   outputDir: string;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
@@ -181,6 +184,7 @@ class ScreenshotTool {
     headless?: boolean;
     viewport?: { width: number; height: number };
     fullPage?: boolean;
+    crop?: CropSetting;
     outputDir?: string;
     diff?: DiffOptions;
     retries?: number;
@@ -192,6 +196,7 @@ class ScreenshotTool {
     this.headless = options.headless !== false; // Default to headless
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.fullPage = options.fullPage ?? true;
+    this.crop = options.crop ?? false;
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
@@ -427,29 +432,7 @@ class ScreenshotTool {
       // Ensure parent directories exist before taking screenshot
       await this.filesystem.ensureParentDir(filepath);
 
-      // Take screenshot
-      const screenshotOptions = {
-        path: filepath,
-        fullPage: options.fullPage ?? this.fullPage,
-        type: "png" as const,
-        timeout: 60000,
-        mask: options.mask,
-        omitBackground: options.omitBackground,
-        scale: "css" as const,
-        animations: "disabled",
-        caret: "hide",
-      } satisfies PageScreenshotOptions;
-
-      await this.withViewport(page, options.viewport, async () => {
-        if (options.delay) {
-          this.logger.debug(
-            `Waiting ${options.delay}ms before taking screenshot`,
-          );
-          await page.waitForTimeout(options.delay);
-        }
-
-        await page.screenshot(screenshotOptions);
-      });
+      await this.shoot(page, options, filepath);
 
       this.logger.success(`Screenshot saved: ${filepath}`);
 
@@ -461,6 +444,55 @@ class ScreenshotTool {
       );
       throw error;
     }
+  }
+
+  /**
+   * Take one screenshot with `options`, under its viewport and after its
+   * delay, cropped to the page's content when `crop` asks for it.
+   *
+   * The crop is measured right before the shot, after the delay, so it sees
+   * the same render the screenshot does — and every retry measures afresh.
+   */
+  private async shoot(
+    page: Page,
+    options: ScreenshotSettings,
+    filepath?: string,
+  ): Promise<Buffer> {
+    const fullPage = options.fullPage ?? this.fullPage;
+    const crop = resolveCrop(options.crop ?? this.crop);
+
+    return this.withViewport(page, options.viewport, async () => {
+      if (options.delay) {
+        this.logger.debug(
+          `Waiting ${options.delay}ms before taking screenshot`,
+        );
+        await page.waitForTimeout(options.delay);
+      }
+
+      const clip = crop
+        ? await measureContentClip(page, crop, fullPage)
+        : undefined;
+      if (crop && !clip) {
+        this.logger.debug(
+          `Nothing painted inside "${crop.root}" to crop to; taking the uncropped screenshot`,
+        );
+      }
+
+      const screenshotOptions = {
+        path: filepath,
+        fullPage,
+        clip,
+        type: "png" as const,
+        timeout: 60000,
+        mask: options.mask,
+        omitBackground: options.omitBackground,
+        scale: "css" as const,
+        animations: "disabled",
+        caret: "hide",
+      } satisfies PageScreenshotOptions;
+
+      return page.screenshot(screenshotOptions);
+    });
   }
 
   /**
@@ -516,33 +548,7 @@ class ScreenshotTool {
 
     try {
       // Take screenshot without saving to file
-      const screenshotOptions = {
-        fullPage: options.fullPage ?? this.fullPage,
-        type: "png" as const,
-        timeout: 60000,
-        mask: options.mask,
-        omitBackground: options.omitBackground,
-        scale: "css" as const,
-        animations: "disabled",
-        caret: "hide",
-      } satisfies PageScreenshotOptions;
-
-      const buffer = await this.withViewport(
-        page,
-        options.viewport,
-        async () => {
-          if (options.delay) {
-            this.logger.debug(
-              `Waiting ${options.delay}ms before taking screenshot`,
-            );
-            await page.waitForTimeout(options.delay);
-          }
-
-          return page.screenshot(screenshotOptions);
-        },
-      );
-
-      return buffer;
+      return await this.shoot(page, options);
     } catch (error) {
       this.logger.error(
         `Error taking screenshot of ${page.url()}:`,
@@ -576,6 +582,7 @@ class ScreenshotTool {
 
       const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage ?? this.fullPage,
+        crop: options.crop,
         mask: options.mask,
         omitBackground: options.omitBackground,
         delay: options.delay,
@@ -639,7 +646,10 @@ class ScreenshotTool {
         }
       }
 
-      // different sizes diff image
+      // Size changes are diffed on a padded canvas, so the diff written above
+      // already shows where the images diverge. The placeholder is only for a
+      // comparison that produced no diff image at all (e.g. the padded images
+      // matched because only fully transparent rows were added).
       if (
         retryScreenshot.comparisonResult !== null &&
         typeof retryScreenshot.comparisonResult === "object" &&
@@ -648,13 +658,15 @@ class ScreenshotTool {
       ) {
         this.logger.warn(`Screenshot has different sizes than reference image`);
 
-        const diffFilename = options.diffImageFilename || filename;
-        diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
-        const diffBuffer = await createDiffSizePngImage(200, 200);
+        if (!diffImagePath) {
+          const diffFilename = options.diffImageFilename || filename;
+          diffImagePath = this.filesystem.getDiffFilePath(diffFilename);
+          const diffBuffer = await createDiffSizePngImage(200, 200);
 
-        await this.filesystem.writeDiffFile(diffFilename, diffBuffer);
+          await this.filesystem.writeDiffFile(diffFilename, diffBuffer);
 
-        this.logger.debug(`Diff Size image saved: ${diffImagePath}`);
+          this.logger.debug(`Diff Size image saved: ${diffImagePath}`);
+        }
       }
 
       return {
@@ -726,9 +738,7 @@ class ScreenshotTool {
         } else {
           const summary =
             "numDiffPixels" in comparisonResult
-              ? comparisonResult.differentSizes
-                ? "different image sizes"
-                : `${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`
+              ? `${comparisonResult.differentSizes ? "different image sizes, " : ""}${comparisonResult.numDiffPixels} pixels different (${comparisonResult.percentDifference.toFixed(2)}%)`
               : `gmsd score ${comparisonResult.gmsd.toFixed(4)}`;
 
           this.logger.warn(

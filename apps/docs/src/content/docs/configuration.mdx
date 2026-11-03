@@ -87,6 +87,55 @@ Whether to take a full page screenshot. If `false`, the viewport will be used.
 
 If a height is defined, this setting will supersede the viewport height.
 
+### screenshot.crop
+
+- **type**: `boolean | { root?: string; padding?: number }`
+- **default**: `false`
+
+Crop each screenshot to the content actually painted on the page, instead of capturing the whole
+viewport (or page, with `fullPage`).
+
+```ts
+export default defineConfig({
+  screenshot: {
+    viewport: { width: 1280, height: 800 },
+    crop: true, // or { root: '#app', padding: 4 }
+  },
+});
+```
+
+A small component rendered into a 1920px wide viewport is mostly empty canvas, and that canvas
+dilutes every number a diff reports: one changed word is about 0.01% of a 1920×1080 capture, but
+several percent of the component. With `crop`, screenshots, diff images and
+[`diff.maxDiffPercentage`](#diffmaxdiffpercentage) are about the content.
+
+The viewport is still the size the page is laid out at, so media queries and percentage widths
+behave exactly as before. It becomes the most a screenshot can cover, not the size it always has.
+
+What counts as content is what is *painted*, not element boxes:
+
+- text (by its line boxes), images, SVGs, canvases and form controls
+- any element with a visible background, border, outline or box-shadow (shadows by their reach)
+- anything inside the root, including portals such as popovers and dialogs rendered into `body`
+
+A full-width wrapper `div` with nothing of its own to draw does not stretch the crop; a wrapper
+with a background colour does. Hidden and fully transparent subtrees are ignored, and descendants
+of an element with `overflow: hidden` are clipped to it.
+
+- `root` — CSS selector of the element whose content is measured (default `body`). Its own
+  background and border are not counted, only what is inside it.
+- `padding` — space kept around the content, in CSS pixels (default `8`), for paint that has no box
+  of its own, such as text shadows or pseudo-elements.
+
+When nothing is painted (or `root` matches nothing), the uncropped screenshot is taken.
+
+:::note
+Turning `crop` on changes the size of every screenshot, so existing baselines all show as changed
+once. Capture and approve them in one go.
+:::
+
+Plugins can override `crop` per plugin, per story / page and per variant.
+
 ## diff
 
 Diff configuration sets global comparison settings for screenshots.
@@ -150,7 +199,16 @@ The maximum number of different pixels before the comparison fails.
 The maximum percentage of different pixels before the comparison fails. This is a relative value,
 so it is affected by the size of the images. A 100px image with a 10% difference is 10 pixels different,
 but a 1000px image with a 10% difference is 100 pixels different. On very large full page screenshots
-this can mean that small changes still slip through.
+this can mean that small changes still slip through. Cropping to content with
+[`screenshot.crop`](#screenshotcrop) keeps the percentage about the content rather than the canvas.
+
+#### Screenshots that changed size
+
+Two screenshots of different sizes are compared on a canvas padded to the larger width and height,
+both anchored top-left. Each image is padded with its own background (the most common colour on the
+edge being extended), so only real content in the grown area counts: a list that gained one item
+diffs as that item, and the diff image shows where. A size change never passes, whatever the
+thresholds — the change of size is itself the finding.
 
 ### diff.interpret
 

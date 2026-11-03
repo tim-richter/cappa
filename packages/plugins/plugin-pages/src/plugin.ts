@@ -122,6 +122,7 @@ export const cappaPluginPages: Plugin<PagesPluginOptions> = (options) => {
 
         const screenshotSettings = {
           fullPage: mergedOptions.fullPage,
+          crop: mergedOptions.crop,
           delay: mergedOptions.delay,
           omitBackground: mergedOptions.omitBackground,
           viewport: mergedOptions.viewport ?? screenshotTool.viewport,

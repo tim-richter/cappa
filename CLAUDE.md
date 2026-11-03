@@ -47,7 +47,8 @@ The foundational library. Core exports:
 - `ScreenshotFileSystem` — manages `actual/`, `expected/`, and `diff/` directories inside `outputDir`
 - `defineConfig` — type helper for `cappa.config.ts`
 - `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
-- `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`)
+- `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`). Both compare different-size images on a canvas padded to the larger size (`features/png/canvas.ts`, each image padded with its own edge colour); a size change never passes
+- `measureContentClip` / `resolveCrop` — content crop (`src/crop.ts`): measures painted ink in the page and returns a Playwright `clip`
 - `runAgentCheck` / `deriveVerdict` / `renderJudgmentTiles` — agent review (`src/agent/`): heuristic verdicts from the diff interpretation, judgment requests with region crops, verdicts tied to an image fingerprint
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
@@ -125,7 +126,8 @@ export default defineConfig({
   },
   screenshot: {
     fullPage: true,
-    viewport: { width: 1920, height: 1080 },
+    viewport: { width: 1920, height: 1080 }, // layout size; with crop, the most a shot covers
+    crop: false,                 // true | { root, padding } — crop to painted content (src/crop.ts)
   },
   review: { theme: 'light' },    // 'light' | 'dark'
   plugins: [cappaPluginStorybook({ url: 'http://localhost:6006' })],

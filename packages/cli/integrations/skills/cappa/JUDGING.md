@@ -41,9 +41,12 @@ For each pending entry, in its `judgment` directory:
    entries too. `locator.png` is a thumbnail with every region outlined and numbered;
    `regions.png` stacks one `#n expected | #n actual` row per region, in `regions[]` order, with
    context around each change.
-3. When the image dimensions changed there are no regions: read `overview.png` (expected and actual
-   scaled side by side, at the same scale) instead. Page height changes are usually intended
-   content changes; confirm that the content delta matches a code change.
+3. When the image dimensions changed (headline starts with `dimensions changed;`, or is
+   `image dimensions changed`), also read `overview.png`: expected and actual whole, side by side,
+   at the same scale. Regions are then located on a canvas padded to the larger size, anchored
+   top-left — in a crop, area only one image covers is empty. With no regions, only the size
+   changed (whitespace grew or shrank). Size changes are usually intended content changes;
+   confirm that the content delta matches a code change.
 4. Only open `paths.expected` / `paths.actual` / `paths.diff` (full size) when a change clearly
    continues outside its crop.
 5. You have the source code — use it. A diff that lines up with a change in the working tree or a

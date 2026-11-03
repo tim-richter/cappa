@@ -45,10 +45,26 @@ test("return Config when config is set with defineConfig", async () => {
     onFail: undefined,
     screenshot: {
       fullPage: true,
+      crop: false,
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
   });
+});
+
+test("respects screenshot.crop override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    plugins: [],
+    screenshot: { crop: true },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.screenshot.crop).toBe(true);
 });
 
 test("respects screenshot.fullPage override", async () => {
@@ -175,6 +191,7 @@ test("return Config when config is a function", async () => {
     onFail: undefined,
     screenshot: {
       fullPage: true,
+      crop: false,
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
@@ -214,6 +231,7 @@ test("return Config when config is a promise", async () => {
     onFail: undefined,
     screenshot: {
       fullPage: true,
+      crop: false,
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
@@ -265,6 +283,7 @@ test("passes environment variables to config functions", async () => {
     onFail: undefined,
     screenshot: {
       fullPage: true,
+      crop: false,
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },

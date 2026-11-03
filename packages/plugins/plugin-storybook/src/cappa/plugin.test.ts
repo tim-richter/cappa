@@ -764,6 +764,58 @@ describe("console logging configuration", () => {
       locale: "en",
     });
   });
+
+  const captureWithParameters = async (
+    pluginCrop: unknown,
+    parameters: Record<string, unknown>,
+  ) => {
+    const plugin = cappaPluginStorybook({
+      storybookUrl: "http://localhost:6006",
+      ...(pluginCrop === undefined ? {} : { crop: pluginCrop as any }),
+    });
+
+    const page = createPage() as any;
+    page.goto = vi.fn(async () => {
+      await page.exposeFunction.mock.calls[0][1](story.id, parameters);
+    });
+
+    const screenshotTool = createScreenshotTool();
+    const context = (await plugin.initPage?.(page, screenshotTool as any)) ?? {
+      latchMap: new Map(),
+    };
+
+    await plugin.execute(createTask(), page, screenshotTool as any, context);
+
+    const [, , , baseOptions, variantsWithUrls] = (
+      screenshotTool.captureWithVariants as any
+    ).mock.calls[0];
+    return { baseOptions, variantsWithUrls };
+  };
+
+  it("leaves crop to the global setting when neither plugin nor story sets it", async () => {
+    const { baseOptions } = await captureWithParameters(undefined, {});
+
+    expect(baseOptions.crop).toBeUndefined();
+  });
+
+  it("applies the plugin-level crop to every story", async () => {
+    const { baseOptions } = await captureWithParameters({ padding: 4 }, {});
+
+    expect(baseOptions.crop).toEqual({ padding: 4 });
+  });
+
+  it("lets a story's crop override the plugin's, and a variant's the story's", async () => {
+    const { baseOptions, variantsWithUrls } = await captureWithParameters(
+      true,
+      {
+        crop: false,
+        variants: [{ id: "cropped", options: { crop: { padding: 0 } } }],
+      },
+    );
+
+    expect(baseOptions.crop).toBe(false);
+    expect(variantsWithUrls[0].options.crop).toEqual({ padding: 0 });
+  });
 });
 
 describe("connection timeout", () => {

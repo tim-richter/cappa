@@ -273,6 +273,32 @@ describe("cappaPluginPages", () => {
       expect(screenshotSettings.fullPage).toBe(false);
     });
 
+    it("passes crop through, per-page over defaults", async () => {
+      const plugin = cappaPluginPages({
+        pages: [],
+        defaults: { crop: true },
+      });
+
+      const run = async (options?: { crop?: unknown }) => {
+        const page = createMockPage();
+        const screenshotTool = createMockScreenshotTool();
+        const data = { url: "https://example.com", name: "test", options };
+        await plugin.execute(
+          { id: "test", url: data.url, data: data as any },
+          page,
+          screenshotTool,
+          {},
+        );
+        return screenshotTool.captureWithVariants.mock.calls[0][3].crop;
+      };
+
+      expect(await run()).toBe(true);
+      expect(await run({ crop: { root: "main", padding: 0 } })).toEqual({
+        root: "main",
+        padding: 0,
+      });
+    });
+
     it("returns error result on failure", async () => {
       const plugin = cappaPluginPages({
         pages: [{ url: "https://example.com", name: "test" }],

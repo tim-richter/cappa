@@ -59,17 +59,23 @@ describe("configToEngineOptions", () => {
     const options = configToEngineOptions(config({ screenshot: {} }));
 
     expect(options.fullPage).toBe(true);
+    expect(options.crop).toBe(false);
     expect(options.viewport).toEqual({ width: 1920, height: 1080 });
   });
 
   it("prefers explicit screenshot settings over the defaults", () => {
     const options = configToEngineOptions(
       config({
-        screenshot: { fullPage: false, viewport: { width: 800, height: 600 } },
+        screenshot: {
+          fullPage: false,
+          viewport: { width: 800, height: 600 },
+          crop: { padding: 2 },
+        },
       }),
     );
 
     expect(options.fullPage).toBe(false);
+    expect(options.crop).toEqual({ padding: 2 });
     expect(options.viewport).toEqual({ width: 800, height: 600 });
   });
 

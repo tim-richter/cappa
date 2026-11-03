@@ -124,14 +124,21 @@ copy, and keep `.agents/skills` in sync for other agents.
    | --- | --- | --- |
    | `regression-likely` | Structural change (content added, removed or replaced) at medium or high severity | Check against the code, then fix |
    | `intentional-likely` | Confident recolour, or content shifted/restyled with structure intact | Approve if intended |
-   | `noise-likely` | Rendering noise, or a sub-perceptual (< 0.01 %) low-severity change | Mask or approve |
-   | `ambiguous` | Anything else, including changed image dimensions | Judged by the agent |
+   | `noise-likely` | Rendering noise, or a sub-perceptual (at most 25 pixels) low-severity change | Mask or approve |
+   | `ambiguous` | Anything else, including a size change with no located regions | Judged by the agent |
+
+   "Sub-perceptual" is an absolute pixel count, not a share of the image, so the same change gets
+   the same label whether the screenshot is a tight crop or a full 1920×1080 viewport. Screenshots
+   whose dimensions changed are analysed on a canvas padded to the larger size: their regions are
+   located like any other, the headline starts with `dimensions changed;`, and they are never
+   labelled `noise-likely`.
 
 3. **Judge** — for each `ambiguous` change, Cappa writes a judgment request the agent reads instead
    of the full screenshots:
    - `locator.png` — a thumbnail with every changed region outlined and numbered
    - `regions.png` — one `expected | actual` row per region, cropped with context
-   - `overview.png` — expected and actual side by side, when the dimensions changed
+   - `overview.png` — expected and actual whole, side by side, when the dimensions changed (in
+     addition to the two above when regions were found)
    - `request.json` — regions, heuristic label, interpretation summary and paths
 
    The agent records its verdict with `cappa agent judge` and
@@ -246,6 +253,7 @@ only valid for the screenshots on the machine that made them.
 └── judgments/<screenshot name>/
     ├── request.json
     ├── locator.png
-    ├── regions.png      # or overview.png
+    ├── regions.png
+    ├── overview.png     # only when the dimensions changed
     └── verdict.json     # written by `cappa agent judge`
 ```

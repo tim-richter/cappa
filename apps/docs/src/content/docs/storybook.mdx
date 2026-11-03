@@ -37,6 +37,10 @@ You can add additional plugin options to filter the stories that are captured:
 
 - **`includeStories`** – Optional predicate `(story) => boolean`. If provided, only stories for which it returns `true` are included. The argument is a `StoryFilterContext` with `id`, `title`, `name`, and `filePath` (the path `"title/name"`, e.g. `"Button/Primary"`).
 - **`excludeStories`** – Optional predicate `(story) => boolean`. If provided, stories for which it returns `true` are excluded (applied after `includeStories`).
+- **`crop`** – Crop every story to the content it renders (`true` or `{ padding }`), overriding
+  [`screenshot.crop`](/configuration#screenshotcrop). Recommended for component libraries: a button
+  captured at 1920px wide is mostly empty canvas, which skews every diff percentage. Stories and
+  variants can override it with their own `crop` parameter.
 - **`defaultViewport`** – Override the default Playwright viewport when a story does not supply its
   own settings.
 - **`storybook`** – Render options applied to every story URL: `viewMode`, `args`, `globals`,
@@ -176,6 +180,7 @@ under `parameters.cappa`.
 | `skip` | Skip capturing the story. | `false` |
 | `delay` | Wait (in ms) before taking the screenshot. Cappa emits a debug log before waiting when debug logs are enabled. | `null` (no delay) |
 | `fullPage` | Capture the full page instead of the viewport. Inherits from global `screenshot.fullPage` in `cappa.config.ts` when not set. | `true` |
+| `crop` | Crop to what the story renders instead of the whole viewport: `true`, `false` or `{ padding }`. See [`screenshot.crop`](/configuration#screenshotcrop). | Plugin `crop`, then global `screenshot.crop` |
 | `mask` | Array of selectors to blur or hide in the screenshot. | `[]` |
 | `omitBackground` | Capture the page with a transparent background. | `false` |
 | `viewport` | Override the viewport size for the story. | Playwright default |

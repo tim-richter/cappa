@@ -81,8 +81,16 @@ const RESTYLE_TYPES = new Set(["color-change", "shift"]);
 const NOISE_TYPES = new Set(["rendering-noise"]);
 const ELEVATED_SEVERITY = new Set(["medium", "high"]);
 
-/** Below this share of the image, a low-severity change is not perceptible. */
-export const SUB_PERCEPTUAL_PERCENT = 0.01;
+/**
+ * At or below this many differing pixels, a low-severity change is not
+ * perceptible.
+ *
+ * An absolute count rather than a share of the image: a share depends on how
+ * much empty canvas surrounds the content, so the same changed glyph would be
+ * noise in a 1920x1080 capture and a regression in a tight crop of the
+ * component. The pixels that changed are the same either way.
+ */
+export const SUB_PERCEPTUAL_PIXELS = 25;
 
 /** Mean region confidence above which a pure recolour is trusted. */
 const RECOLOR_CONFIDENCE = 0.7;
@@ -92,7 +100,11 @@ export type VerdictInput = {
   percentDifference?: number;
   numDiffPixels?: number;
   interpretation?: InterpretResult;
-  /** Expected and actual have different dimensions. */
+  /**
+   * Expected and actual have different dimensions. Pixel counts and the
+   * interpretation then describe a comparison on a canvas padded to the
+   * larger size.
+   */
   differentSizes?: boolean;
 };
 
@@ -136,9 +148,15 @@ const meanConfidence = (regions: readonly ChangeRegion[]): number =>
  * dozens of screenshots without opening any of them.
  */
 export const buildHeadline = (input: VerdictInput): string => {
-  if (input.differentSizes) return "image dimensions changed";
-
   const interpretation = input.interpretation;
+  const hasRegions = (interpretation?.regions.length ?? 0) > 0;
+
+  if (input.differentSizes) {
+    return hasRegions
+      ? `dimensions changed; ${buildHeadline({ ...input, differentSizes: false })}`
+      : "image dimensions changed";
+  }
+
   const percent = input.percentDifference ?? interpretation?.diffPercentage;
 
   if (!interpretation || interpretation.regions.length === 0) {
@@ -175,36 +193,63 @@ const verdict = (
  */
 export const deriveVerdict = (input: VerdictInput): Verdict => {
   const headline = buildHeadline(input);
+  const interpretation = input.interpretation;
+  const hasRegions = (interpretation?.regions.length ?? 0) > 0;
 
-  if (input.differentSizes) {
+  if (input.differentSizes && (!interpretation || !hasRegions)) {
     return verdict("ambiguous", headline, [
       "expected and actual have different dimensions — content likely grew or shrank",
       "could be an intended content change or a broken layout",
     ]);
   }
 
-  const interpretation = input.interpretation;
-  if (!interpretation || interpretation.regions.length === 0) {
+  if (!interpretation || !hasRegions) {
     return verdict("ambiguous", headline, [
       "pixels differ but no change regions were found",
     ]);
   }
 
+  // Grown or shrunk content is never noise, however few pixels it took, so a
+  // size change skips the noise rules and is classified by its regions alone.
+  const classified = classifyRegions(
+    input,
+    interpretation,
+    headline,
+    !input.differentSizes,
+  );
+  if (!input.differentSizes) return classified;
+
+  return {
+    ...classified,
+    rationale: [
+      "expected and actual have different dimensions — compared on a canvas padded to the larger size",
+      ...classified.rationale,
+    ],
+  };
+};
+
+const classifyRegions = (
+  input: VerdictInput,
+  interpretation: InterpretResult,
+  headline: string,
+  allowNoise: boolean,
+): Verdict => {
   const regions = interpretation.regions;
   const types = regions.map((region) => normalizeChangeType(region.changeType));
   const severity = normalizeSeverity(interpretation.severity);
   const percent = input.percentDifference ?? interpretation.diffPercentage;
+  const pixels = input.numDiffPixels ?? interpretation.diffCount;
   const counts = countByType(regions);
 
-  if (types.every((type) => NOISE_TYPES.has(type))) {
+  if (allowNoise && types.every((type) => NOISE_TYPES.has(type))) {
     return verdict("noise-likely", headline, [
       "every region is classified as rendering noise",
     ]);
   }
 
-  if (percent < SUB_PERCEPTUAL_PERCENT && severity === "low") {
+  if (allowNoise && pixels <= SUB_PERCEPTUAL_PIXELS && severity === "low") {
     return verdict("noise-likely", headline, [
-      `less than ${SUB_PERCEPTUAL_PERCENT}% of the image differs (${formatPercent(percent)}) at low severity`,
+      `${pixels.toLocaleString("en-US")} ${pixels === 1 ? "pixel differs" : "pixels differ"} (at most ${SUB_PERCEPTUAL_PIXELS}) at low severity`,
       "sub-perceptual change",
     ]);
   }

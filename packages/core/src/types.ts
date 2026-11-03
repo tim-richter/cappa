@@ -2,6 +2,7 @@ import type { InterpretResult } from "@blazediff/interpret-native";
 import type { Locator } from "playwright-core";
 import type { VerdictAction, VerdictLabel } from "./agent/verdict";
 import type { LogConsoleEvents } from "./consoleEvents";
+import type { CropSetting } from "./crop";
 import type { Plugin, PluginDef } from "./plugin";
 
 export type PossiblePromise<T> = Promise<T> | T;
@@ -235,9 +236,26 @@ export type UserConfig = {
     fullPage?: boolean;
     /**
      * Default viewport size for screenshots.
+     *
+     * With `crop`, this is the size the page is laid out at — the most a
+     * screenshot can cover, not the size it always has.
      * @default { width: 1920, height: 1080 }
      */
     viewport?: Viewport;
+    /**
+     * Crop screenshots to the content actually painted on the page instead
+     * of capturing the whole viewport (or page).
+     *
+     * A small component on a 1920px wide viewport is mostly empty canvas,
+     * which dilutes every percentage a diff reports: a changed word is 0.01%
+     * of the viewport but several percent of the component. Cropping keeps
+     * screenshots, diffs and thresholds about the content.
+     *
+     * `true` measures `body` with 8px of padding; pass an object to change
+     * either. Plugins and per-screenshot options can override it.
+     * @default false
+     */
+    crop?: CropSetting;
   };
   /**
    * Configuration for the review UI.
@@ -273,6 +291,11 @@ export type Viewport = { width: number; height: number };
 
 export type ScreenshotSettings = {
   fullPage?: boolean;
+  /**
+   * Crop to the content painted on the page — see `UserConfig.screenshot.crop`.
+   * Overrides the global setting for this screenshot.
+   */
+  crop?: CropSetting;
   delay?: number;
   skip?: boolean;
   mask?: Locator[];

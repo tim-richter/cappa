@@ -75,12 +75,66 @@ describe("deriveVerdict", () => {
   it("labels sub-perceptual low-severity changes as noise", () => {
     const verdict = deriveVerdict({
       percentDifference: 0.004,
+      numDiffPixels: 12,
       interpretation: interpretation([region("content-change")], {
         severity: "Low",
       }),
     });
     expect(verdict.label).toBe("noise-likely");
     expect(verdict.headline).toBe("1 content-change @ top-left (0.004%, low)");
+    expect(verdict.rationale[0]).toBe(
+      "12 pixels differ (at most 25) at low severity",
+    );
+  });
+
+  it("judges sub-perceptual changes by pixels, not by share of the canvas", () => {
+    // ~100 px is one changed glyph: a sliver of a 1920x1080 capture, but no
+    // less visible for it.
+    const verdict = deriveVerdict({
+      percentDifference: 0.005,
+      numDiffPixels: 100,
+      interpretation: interpretation([region("content-change")], {
+        severity: "low",
+      }),
+    });
+    expect(verdict.label).toBe("ambiguous");
+  });
+
+  it("falls back to the interpretation's pixel count", () => {
+    const verdict = deriveVerdict({
+      interpretation: interpretation([region("content-change")], {
+        severity: "low",
+        diffCount: 8,
+        diffPercentage: 2,
+      }),
+    });
+    expect(verdict.label).toBe("noise-likely");
+  });
+
+  it("classifies a size change by its regions", () => {
+    const verdict = deriveVerdict({
+      differentSizes: true,
+      percentDifference: 20,
+      interpretation: interpretation([region("addition")], {
+        severity: "high",
+      }),
+    });
+    expect(verdict.label).toBe("regression-likely");
+    expect(verdict.headline).toBe(
+      "dimensions changed; 1 addition @ top-left (20.00%, high)",
+    );
+    expect(verdict.rationale[0]).toContain("different dimensions");
+  });
+
+  it("never labels a size change as noise", () => {
+    const verdict = deriveVerdict({
+      differentSizes: true,
+      numDiffPixels: 3,
+      interpretation: interpretation([region("rendering-noise")], {
+        severity: "low",
+      }),
+    });
+    expect(verdict.label).toBe("ambiguous");
   });
 
   it("labels structural changes at elevated severity as regressions", () => {

@@ -32,6 +32,27 @@ async function createSolidColorPNG(
   return png.toBuffer();
 }
 
+/** White, with one black rectangle at `[x, y, width, height]`. */
+async function createRectPNG(
+  width: number,
+  height: number,
+  [rx, ry, rw, rh]: [number, number, number, number],
+): Promise<Buffer> {
+  const png = CappaPNG.create(width, height);
+  png.data.fill(255);
+
+  for (let y = ry; y < ry + rh; y++) {
+    for (let x = rx; x < rx + rw; x++) {
+      const idx = (width * y + x) << 2;
+      png.data[idx] = 0;
+      png.data[idx + 1] = 0;
+      png.data[idx + 2] = 0;
+    }
+  }
+
+  return png.toBuffer();
+}
+
 async function createGradientPNG(
   width: number,
   height: number,
@@ -188,17 +209,79 @@ describe("compare", () => {
       );
     });
 
-    it("should throw error for mismatched dimensions", async () => {
-      const largeImage = await createSolidColorPNG(100, 100, [255, 0, 0, 255]);
-      const smallImage = await createSolidColorPNG(50, 50, [255, 0, 0, 255]);
+    it("compares mismatched dimensions on a shared, padded canvas", async () => {
+      // White, with a black square the smaller image has no room for.
+      const large = await createRectPNG(100, 100, [60, 60, 20, 20]);
+      const small = await createSolidColorPNG(50, 50, [255, 255, 255, 255]);
 
-      const result = await compareImages(largeImage, smallImage);
+      const result = await compareImages(large, small, true);
+
+      expect(result.differentSizes).toBe(true);
+      expect(result.dimensions).toEqual({
+        expected: { width: 100, height: 100 },
+        actual: { width: 50, height: 50 },
+      });
+      // The smaller image is padded with its own white background, so only
+      // the square — real content — differs, not the whole uncovered area.
+      expect(result.totalPixels).toBe(100 * 100);
+      expect(result.numDiffPixels).toBe(20 * 20);
+      expect(result.percentDifference).toBeCloseTo(4, 5);
+      expect(result.passed).toBe(false);
+
+      expect(result.diffBuffer).toBeDefined();
+      const diff = await CappaPNG.load(result.diffBuffer as Buffer);
+      expect([diff.width, diff.height]).toEqual([100, 100]);
+      expect(diff.metadata["cappa.diff.algorithm"]).toBe("pixel");
+    });
+
+    it("pads both axes independently when one image is wider and the other taller", async () => {
+      const wide = await createRectPNG(40, 10, [30, 0, 10, 10]);
+      const tall = await createRectPNG(10, 40, [0, 30, 10, 10]);
+
+      const result = await compareImages(wide, tall);
+
+      expect(result.differentSizes).toBe(true);
+      expect(result.totalPixels).toBe(40 * 40);
+      expect(result.numDiffPixels).toBe(2 * 10 * 10);
+    });
+
+    it("never passes a size change, even when only background was added", async () => {
+      const taller = await createSolidColorPNG(20, 21, [255, 0, 0, 255]);
+      const shorter = await createSolidColorPNG(20, 20, [255, 0, 0, 255]);
+
+      const result = await compareImages(taller, shorter, true, {
+        maxDiffPercentage: 50,
+        maxDiffPixels: 1000,
+      });
 
       expect(result.differentSizes).toBe(true);
       expect(result.numDiffPixels).toBe(0);
-      expect(result.totalPixels).toBe(0);
-      expect(result.percentDifference).toBe(0);
       expect(result.passed).toBe(false);
+
+      // blazediff draws nothing for a match; the size change still gets a
+      // diff, with the area only one image covers tinted.
+      const diff = await CappaPNG.load(result.diffBuffer as Buffer);
+      expect([diff.width, diff.height]).toEqual([20, 21]);
+      const pixel = (x: number, y: number) => [
+        ...diff.data.subarray((y * 20 + x) * 4, (y * 20 + x) * 4 + 3),
+      ];
+      expect(pixel(5, 20)[0]).toBeGreaterThan(pixel(5, 20)[1] as number);
+      expect(pixel(5, 5)[0]).toBe(pixel(5, 5)[1]);
+    });
+
+    it("interprets content in grown area as an addition", async () => {
+      const expected = await createSolidColorPNG(60, 30, [255, 255, 255, 255]);
+      const actual = await createRectPNG(60, 60, [10, 40, 40, 10]);
+
+      const result = await compareImages(expected, actual, true, {
+        interpret: true,
+      });
+
+      expect(result.differentSizes).toBe(true);
+      const regions = result.interpretation?.regions ?? [];
+      expect(regions.length).toBeGreaterThan(0);
+      expect(regions[0]?.changeType.toLowerCase()).toContain("addition");
+      expect(regions[0]?.position).toContain("bottom");
     });
 
     it("should handle custom compare options", async () => {

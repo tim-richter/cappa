@@ -80,6 +80,7 @@ Supported defaults (and per‑page overrides) are:
 | Option | Type | Description |
 | --- | --- | --- |
 | `fullPage` | `boolean` | Capture the full scrollable page. |
+| `crop` | `boolean \| { root?: string; padding?: number }` | Crop to the content the page paints, or to what one element (`root`) paints. See [`screenshot.crop`](/configuration#screenshotcrop). |
 | `delay` | `number` | Milliseconds to wait before taking the screenshot. |
 | `mask` | `string[]` | CSS selectors to hide or blur in the screenshot. |
 | `omitBackground` | `boolean` | Render the page with a transparent background. |
