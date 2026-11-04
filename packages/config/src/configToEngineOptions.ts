@@ -30,6 +30,7 @@ export function configToEngineOptions(
     concurrency: config.concurrency,
     logConsoleEvents: config.logConsoleEvents,
     fullPage: config.screenshot?.fullPage ?? true,
+    crop: config.screenshot?.crop ?? false,
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
     connectionTimeout: config.connectionTimeout,
     webServer: config.webServer,

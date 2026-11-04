@@ -151,7 +151,7 @@ describe("runAgentCheck", () => {
     expect(entry?.pending).toBe(false);
   });
 
-  it("renders an overview instead of tiles when dimensions differ", async () => {
+  it("renders only an overview when the size changed but no content did", async () => {
     await changed(
       "grown",
       await png(200, 100, BASE),
@@ -166,6 +166,39 @@ describe("runAgentCheck", () => {
     expect(entry?.judgment?.regions).toBeUndefined();
     const overview = await sharp(entry?.judgment?.overview).metadata();
     expect(overview.height).toBe(160 + 18);
+  });
+
+  it("locates regions on a padded canvas when content grew", async () => {
+    await changed(
+      "grown-content",
+      await png(200, 100, BASE),
+      await png(
+        200,
+        160,
+        `${BASE}<rect x="20" y="110" width="120" height="30" fill="#000"/>`,
+      ),
+    );
+
+    const report = await runAgentCheck({ outputDir, judge: "all" });
+    const [entry] = report.entries;
+
+    expect(entry?.dimensions).toEqual({
+      expected: { width: 200, height: 100 },
+      actual: { width: 200, height: 160 },
+    });
+    expect(entry?.regions?.length).toBeGreaterThan(0);
+    // Canvas coordinates are the actual image's own: the new block is below
+    // everything the expected image covered.
+    const [first] = entry?.regions ?? [];
+    expect(first?.bbox.y).toBeGreaterThanOrEqual(90);
+    expect(entry?.heuristic?.headline).toMatch(/^dimensions changed; /);
+    expect(entry?.heuristic?.label).not.toBe("noise-likely");
+    expect(entry?.heuristic?.rationale[0]).toContain("different dimensions");
+
+    // Both the whole-image overview and per-region tiles.
+    expect(entry?.judgment?.overview).toBeDefined();
+    expect(entry?.judgment?.locator).toBeDefined();
+    expect(entry?.judgment?.regions).toBeDefined();
   });
 
   it("applies a written verdict on the next check", async () => {
@@ -359,6 +392,30 @@ describe("review folded into collectScreenshots", () => {
     await fsp.utimes(path.join(outputDir, "actual/grown.png"), later, later);
 
     expect(await reviewOf("grown")).toBeUndefined();
+  });
+
+  it("keeps the verdict for images written in the same millisecond as the check", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    // The report's time is an ISO string, whole milliseconds; file times are
+    // not. An image written 0.5ms into the check's millisecond is not newer
+    // than the check.
+    const checkedAt = new Date("2026-01-01T00:00:00.000Z");
+    const sameMillisecond = (checkedAt.getTime() + 0.5) / 1000;
+    for (const dir of ["expected", "actual"]) {
+      await fsp.utimes(
+        path.join(outputDir, dir, "grown.png"),
+        sameMillisecond,
+        sameMillisecond,
+      );
+    }
+
+    await runAgentCheck({ outputDir, now: () => checkedAt });
+
+    expect(await reviewOf("grown")).toBeDefined();
   });
 
   it("ignores a corrupt report", async () => {

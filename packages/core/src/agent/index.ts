@@ -42,7 +42,7 @@ export {
   JUDGED_LABELS,
   type JudgedLabel,
   normalizeChangeType,
-  SUB_PERCEPTUAL_PERCENT,
+  SUB_PERCEPTUAL_PIXELS,
   VERDICT_LABELS,
   type Verdict,
   type VerdictAction,

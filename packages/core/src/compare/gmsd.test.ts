@@ -116,4 +116,20 @@ describe("compareImages", () => {
       "cappa.diff.c": "170",
     });
   });
+
+  it("scores different sizes on a padded canvas and never passes", async () => {
+    const large = await createGradientPNG(100, 120);
+    const small = await createGradientPNG(100, 100);
+
+    const result = await compareImagesGMSD(large, small, true, {
+      threshold: 10,
+    });
+
+    expect(result.differentSizes).toBe(true);
+    expect(Number.isFinite(result.gmsd)).toBe(true);
+    expect(result.passed).toBe(false);
+    expect(result.diffBuffer).toBeDefined();
+    const diff = await CappaPNG.load(result.diffBuffer as Buffer);
+    expect([diff.width, diff.height]).toEqual([100, 120]);
+  });
 });

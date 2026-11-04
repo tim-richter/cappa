@@ -123,4 +123,57 @@ describe("PNG", () => {
 
     expect(reloaded.metadata).toEqual({ commit: "abc123" });
   });
+
+  describe("edgeColor", () => {
+    it("is the most common colour on the right column and bottom row", () => {
+      const png = CappaPNG.create(3, 3);
+      png.data.fill(255);
+      // A dark pixel in the middle and one on an edge do not outvote the
+      // white background.
+      png.data.set([0, 0, 0, 255], (1 * 3 + 1) * 4);
+      png.data.set([0, 0, 0, 255], (2 * 3 + 2) * 4);
+
+      expect(png.edgeColor()).toEqual([255, 255, 255, 255]);
+    });
+  });
+
+  describe("padTo", () => {
+    const solid = (width: number, height: number) => {
+      const png = CappaPNG.create(width, height);
+      png.data.fill(255);
+      return png;
+    };
+
+    it("anchors the image top-left on a transparent canvas", () => {
+      const padded = solid(2, 1).padTo(3, 2);
+
+      expect(padded.width).toBe(3);
+      expect(padded.height).toBe(2);
+      const pixel = (x: number, y: number) => [
+        ...padded.data.subarray((y * 3 + x) * 4, (y * 3 + x) * 4 + 4),
+      ];
+      expect(pixel(0, 0)).toEqual([255, 255, 255, 255]);
+      expect(pixel(1, 0)).toEqual([255, 255, 255, 255]);
+      expect(pixel(2, 0)).toEqual([0, 0, 0, 0]);
+      expect(pixel(0, 1)).toEqual([0, 0, 0, 0]);
+    });
+
+    it("returns an independent copy when the size is unchanged", () => {
+      const source = solid(2, 2);
+      const padded = source.padTo(2, 2);
+
+      padded.data[0] = 0;
+      expect(source.data[0]).toBe(255);
+    });
+
+    it("fills the added area with the given colour", () => {
+      const padded = solid(1, 1).padTo(2, 1, [10, 20, 30, 255]);
+
+      expect([...padded.data.subarray(4, 8)]).toEqual([10, 20, 30, 255]);
+    });
+
+    it("refuses to shrink", () => {
+      expect(() => solid(4, 4).padTo(3, 4)).toThrow(/smaller/);
+    });
+  });
 });

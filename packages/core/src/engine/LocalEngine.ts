@@ -1,5 +1,6 @@
 import { getLogger } from "@cappa/logger";
 import type { LogConsoleEvents } from "../consoleEvents";
+import type { CropSetting } from "../crop";
 import { ScreenshotFileSystem } from "../filesystem";
 import type { PluginTask } from "../plugin";
 import { CaptureRunner } from "../runner/CaptureRunner";
@@ -50,6 +51,7 @@ export type LocalEngineOptions = {
   concurrency?: number;
   logConsoleEvents?: LogConsoleEvents;
   fullPage?: boolean;
+  crop?: CropSetting;
   viewport?: Viewport;
   connectionTimeout?: number;
   /**
@@ -186,6 +188,7 @@ export class LocalEngine implements CaptureEngine {
       concurrency: this.options.concurrency,
       logConsoleEvents: this.options.logConsoleEvents,
       fullPage: this.options.fullPage ?? true,
+      crop: this.options.crop ?? false,
       viewport: this.options.viewport ?? { width: 1920, height: 1080 },
       connectionTimeout: this.options.connectionTimeout,
     });

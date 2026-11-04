@@ -1,4 +1,4 @@
-import type { DiffOptions, Viewport } from "@cappa/core";
+import type { CropSetting, DiffOptions, Viewport } from "@cappa/core";
 
 /**
  * Waiting strategy configuration for page screenshots.
@@ -32,6 +32,12 @@ export interface PageScreenshotOptions {
    * Whether to capture the full scrollable page.
    */
   fullPage?: boolean;
+  /**
+   * Crop the screenshot to the content the page paints. `true` measures
+   * `body` with 8px of padding; `{ root: "main", padding: 0 }` measures one
+   * element instead. Overrides `screenshot.crop` in the cappa config.
+   */
+  crop?: CropSetting;
   /**
    * Delay in milliseconds before taking the screenshot.
    */

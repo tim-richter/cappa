@@ -647,3 +647,68 @@ describe("stale diffs", () => {
     }
   });
 });
+
+describe("size-change diffs", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.mocked(pixelCompare.createDiffSizePngImage).mockReset();
+  });
+
+  const sizeChange = (diffBuffer?: Buffer) => ({
+    numDiffPixels: 50,
+    totalPixels: 200,
+    percentDifference: 25,
+    passed: false,
+    differentSizes: true,
+    diffBuffer,
+  });
+
+  const run = async (
+    comparisonResult: ReturnType<typeof sizeChange>,
+    test: (tool: ScreenshotTool) => Promise<void>,
+  ) => {
+    const outputDir = await fsp.mkdtemp(path.join(os.tmpdir(), "cappa-size-"));
+    try {
+      const tool = new ScreenshotTool({ outputDir });
+      tool.browser = {} as any;
+      vi.spyOn(tool, "retryScreenshot").mockResolvedValue({
+        screenshotPath: Buffer.from("actual"),
+        comparisonResult,
+        passed: false,
+      });
+      await tool.takeScreenshotWithComparison(
+        { url: () => "about:blank" } as any,
+        "button.png",
+        Buffer.from("expected"),
+        { saveDiffImage: true },
+      );
+      await test(tool);
+    } finally {
+      await fsp.rm(outputDir, { recursive: true, force: true });
+    }
+  };
+
+  it("writes the padded-canvas diff instead of a placeholder", async () => {
+    await run(sizeChange(Buffer.from("real-diff")), async (tool) => {
+      const written = await fsp.readFile(
+        tool.filesystem.getDiffFilePath("button.png"),
+        "utf8",
+      );
+      expect(written).toBe("real-diff");
+      expect(pixelCompare.createDiffSizePngImage).not.toHaveBeenCalled();
+    });
+  });
+
+  it("falls back to the placeholder when no diff image was produced", async () => {
+    vi.mocked(pixelCompare.createDiffSizePngImage).mockResolvedValue(
+      Buffer.from("placeholder"),
+    );
+    await run(sizeChange(), async (tool) => {
+      const written = await fsp.readFile(
+        tool.filesystem.getDiffFilePath("button.png"),
+        "utf8",
+      );
+      expect(written).toBe("placeholder");
+    });
+  });
+});

@@ -1,5 +1,6 @@
 import {
   attachConsoleLogging,
+  type CropSetting,
   type Plugin,
   type ScreenshotCaptureExtras,
   type ScreenshotVariantWithUrl,
@@ -117,6 +118,16 @@ export interface StorybookPluginOptions {
   waitForSelector?: string;
   waitForTimeout?: number;
   storybook?: StorybookRenderOptions;
+  /**
+   * Crop every story's screenshot to the content it renders instead of the
+   * whole viewport — see `screenshot.crop` in the cappa config, which this
+   * overrides for this plugin. A story or variant can override it in turn
+   * with its own `crop` parameter.
+   *
+   * The viewport stays what the story is laid out at, so responsive styles
+   * are unaffected; it becomes the most a screenshot can cover.
+   */
+  crop?: CropSetting;
   /**
    * Globs, relative to the working directory, that watch mode should watch on
    * top of the project sources it watches anyway.
@@ -439,6 +450,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
 
         const baseOptions = {
           fullPage: storyParameters?.fullPage,
+          crop: storyParameters?.crop ?? options?.crop,
           delay: storyParameters?.delay,
           omitBackground: storyParameters?.omitBackground,
           skip: storyParameters?.skip,

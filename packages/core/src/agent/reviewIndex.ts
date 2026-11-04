@@ -77,9 +77,15 @@ export const readAgentReviewIndex = async (
   return { createdAt, reviews };
 };
 
+/**
+ * A file's modification time at the report's precision: `createdAt` is an ISO
+ * string, so whole milliseconds, while `mtimeMs` carries a fraction. Compared
+ * unrounded, an image written in the same millisecond the check started would
+ * read as newer than the check and drop a verdict made about it.
+ */
 const modifiedAt = async (file: string): Promise<number> => {
   try {
-    return (await fsp.stat(file)).mtimeMs;
+    return Math.floor((await fsp.stat(file)).mtimeMs);
   } catch {
     return Number.POSITIVE_INFINITY;
   }

@@ -11,6 +11,12 @@ export interface CompareResult {
   diffBuffer?: Buffer; // PNG buffer of the diff image
   passed: boolean; // Whether the comparison passed based on threshold
   error?: string; // Error message if the comparison failed
+  /**
+   * Whether the images have different sizes. Both are then scored on a canvas
+   * padded to the larger width and height (anchored top-left, each with its
+   * own edge colour), and the comparison never passes.
+   */
+  differentSizes?: boolean;
 }
 
 const compare = (
@@ -39,13 +45,23 @@ export async function compareImagesGMSD(
   options: DiffConfigGMSD = {},
 ): Promise<CompareResult> {
   // Load both PNGs in parallel with sharp for better performance
-  const [png1, png2] = await Promise.all([loadPNG(image1), loadPNG(image2)]);
+  const [loaded1, loaded2] = await Promise.all([
+    loadPNG(image1),
+    loadPNG(image2),
+  ]);
 
-  const { width, height } = png1;
-
-  if (width !== png2.width || height !== png2.height) {
-    return { gmsd: Infinity, passed: false };
-  }
+  // A size change is still scored, on a shared canvas, so it gets a diff image
+  // showing where the images diverge rather than a bare `Infinity`.
+  const differentSizes =
+    loaded1.width !== loaded2.width || loaded1.height !== loaded2.height;
+  const width = Math.max(loaded1.width, loaded2.width);
+  const height = Math.max(loaded1.height, loaded2.height);
+  const png1 = differentSizes
+    ? loaded1.padTo(width, height, loaded1.edgeColor())
+    : loaded1;
+  const png2 = differentSizes
+    ? loaded2.padTo(width, height, loaded2.edgeColor())
+    : loaded2;
 
   const diff = withDiff ? PNG.create(width, height) : undefined;
 
@@ -59,6 +75,10 @@ export async function compareImagesGMSD(
     const diffBuffer = diff
       ? await annotateDiffImage(diff, options).toBuffer()
       : undefined;
+
+    if (differentSizes) {
+      return { gmsd, diffBuffer, passed: false, differentSizes: true };
+    }
 
     return {
       gmsd,

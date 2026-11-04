@@ -48,6 +48,75 @@ export class PNG {
     return new PNG(info.width, info.height, data, sourcePath, metadata);
   }
 
+  /**
+   * A copy of this image on a `width` × `height` canvas, anchored top-left,
+   * with the added area filled with `fill` (RGBA, transparent by default).
+   *
+   * This is how two screenshots of different sizes are given a shared
+   * coordinate space: a component that grew keeps its pixels where they were.
+   */
+  padTo(
+    width: number,
+    height: number,
+    fill: readonly [number, number, number, number] = [0, 0, 0, 0],
+  ): PNG {
+    if (width < this.width_ || height < this.height_) {
+      throw new Error(
+        `Cannot pad a ${this.width_}x${this.height_} image to a smaller ${width}x${height} canvas`,
+      );
+    }
+
+    if (width === this.width_ && height === this.height_) {
+      return new PNG(width, height, Buffer.from(this.data_));
+    }
+
+    const data = Buffer.alloc(width * height * 4);
+    const pixel = Buffer.from(fill);
+    for (let offset = 0; offset < data.length; offset += 4) {
+      pixel.copy(data, offset);
+    }
+
+    const rowBytes = this.width_ * 4;
+    for (let y = 0; y < this.height_; y++) {
+      this.data_.copy(data, y * width * 4, y * rowBytes, (y + 1) * rowBytes);
+    }
+
+    return new PNG(width, height, data);
+  }
+
+  /**
+   * The most common colour along the right column and the bottom row — the
+   * edges a top-left anchored {@link padTo} extends. For a screenshot that is
+   * its background, which is what the area it never covered should read as.
+   */
+  edgeColor(): [number, number, number, number] {
+    const counts = new Map<number, number>();
+    let best = 0;
+    let bestCount = 0;
+
+    const count = (x: number, y: number) => {
+      const value = this.data_.readUInt32BE((y * this.width_ + x) * 4);
+      const next = (counts.get(value) ?? 0) + 1;
+      counts.set(value, next);
+      if (next > bestCount) {
+        best = value;
+        bestCount = next;
+      }
+    };
+
+    if (this.width_ === 0 || this.height_ === 0) return [0, 0, 0, 0];
+
+    for (let y = 0; y < this.height_; y++) count(this.width_ - 1, y);
+    for (let x = 0; x < this.width_ - 1; x++) count(x, this.height_ - 1);
+
+    return [
+      (best >>> 24) & 0xff,
+      (best >>> 16) & 0xff,
+      (best >>> 8) & 0xff,
+      best & 0xff,
+    ];
+  }
+
   get width(): number {
     return this.width_;
   }

@@ -1,4 +1,4 @@
-import type { DiffOptions } from "@cappa/core";
+import type { CropSetting, DiffOptions } from "@cappa/core";
 
 export interface StorybookRenderOptions {
   viewMode?: "story" | "docs";
@@ -13,6 +13,12 @@ export type DiffOptionsStorybook = DiffOptions;
 
 export interface ScreenshotVariantOverrideStorybook {
   fullPage?: boolean;
+  /**
+   * Crop the screenshot to what the story renders instead of the whole
+   * viewport. `true` crops with 8px of padding; `{ padding }` changes it.
+   * Overrides the plugin's and the config's `crop`.
+   */
+  crop?: CropSetting;
   delay?: number;
   skip?: boolean;
   mask?: string[];

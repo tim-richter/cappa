@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import fsp from "node:fs/promises";
+import os from "node:os";
 import path from "node:path";
 import {
   type ChangeRegion,
@@ -7,6 +8,7 @@ import {
   interpret,
 } from "@blazediff/interpret-native";
 import sharp from "sharp";
+import { writeCommonCanvas } from "../features/png/canvas";
 import { mapWithConcurrency } from "../mapWithConcurrency";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
 import type { DiffOptions, Screenshot } from "../types";
@@ -44,7 +46,7 @@ import {
  * judgments/<name>/request.json     what to judge and where the evidence is
  * judgments/<name>/locator.png      thumbnail with every region outlined
  * judgments/<name>/regions.png      [expected | actual] crop per region
- * judgments/<name>/overview.png     instead of the two above when sizes differ
+ * judgments/<name>/overview.png     both images whole, when their sizes differ
  * judgments/<name>/verdict.json     written by the judge
  * ```
  */
@@ -270,6 +272,26 @@ const readSize = async (file: string) => {
   return { width, height };
 };
 
+/**
+ * Whether the diff on disk can be outlined in the compared coordinate space.
+ *
+ * Same-size screenshots always qualify. For a size change, only a diff of the
+ * padded canvas does — one left by an older capture (a fixed-size
+ * placeholder) would be stretched over the regions and misplace them.
+ */
+const diffMatchesCanvas = async (
+  diffPath: string,
+  comparedActual: string,
+  differentSizes: boolean,
+): Promise<boolean> => {
+  if (!differentSizes) return true;
+  const [diff, canvas] = await Promise.all([
+    readSize(diffPath),
+    readSize(comparedActual),
+  ]);
+  return diff.width === canvas.width && diff.height === canvas.height;
+};
+
 const toAgentRegions = (regions: readonly ChangeRegion[]): AgentRegion[] =>
   [...regions]
     .sort((a, b) => b.pixelCount - a.pixelCount)
@@ -320,7 +342,7 @@ const interpretationFor = async (
 
 const JUDGE_INSTRUCTIONS = [
   "Read locator.png and regions.png together. locator.png outlines every region (numbered) on a thumbnail; regions.png stacks one [expected | actual] row per region, in `regions` order.",
-  "Open overview.png when it exists instead — the image dimensions changed, so no regions could be located.",
+  "overview.png exists only when the image dimensions changed: it shows both images whole, side by side. Regions are then located on a canvas padded to the larger size, anchored top-left — in a crop, area that only one image covers is empty.",
   "Only open paths.expected / paths.actual / paths.diff (full size) when a change clearly continues outside its crop.",
   "Write verdict.json next to this file, or run `cappa agent judge <name> --label <label> --headline <text>`.",
 ];
@@ -364,14 +386,67 @@ const analyseChanged = async (
     expectedSize.width !== actualSize.width ||
     expectedSize.height !== actualSize.height;
 
-  const interpretation = differentSizes
-    ? undefined
-    : await interpretationFor(
-        screenshot,
-        expectedPath,
-        actualPath,
-        options.diff,
-      );
+  // Regions only mean something in a coordinate space both images share, so
+  // a size change is analysed on copies padded to a common canvas — the same
+  // canvas the capture's own diff was computed on.
+  const canvasDir = differentSizes
+    ? await fsp.mkdtemp(path.join(os.tmpdir(), "cappa-agent-canvas-"))
+    : undefined;
+  try {
+    const canvas = canvasDir
+      ? await writeCommonCanvas(expectedPath, actualPath, canvasDir)
+      : undefined;
+    return await analyseOnCanvas({
+      screenshot,
+      options,
+      createdAt,
+      paths: { expectedPath, actualPath, diffPath, diffExists },
+      sizes: { expectedSize, actualSize },
+      canvas: canvas
+        ? { expectedPath: canvas.expectedPath, actualPath: canvas.actualPath }
+        : undefined,
+    });
+  } finally {
+    if (canvasDir) await fsp.rm(canvasDir, { recursive: true, force: true });
+  }
+};
+
+const analyseOnCanvas = async ({
+  screenshot,
+  options,
+  createdAt,
+  paths: { expectedPath, actualPath, diffPath, diffExists },
+  sizes: { expectedSize, actualSize },
+  canvas,
+}: {
+  screenshot: Extract<Screenshot, { category: "changed" }>;
+  options: Required<Pick<RunAgentCheckOptions, "outputDir" | "judge">> &
+    RunAgentCheckOptions;
+  createdAt: string;
+  paths: {
+    expectedPath: string;
+    actualPath: string;
+    diffPath: string;
+    diffExists: boolean;
+  };
+  sizes: {
+    expectedSize: { width: number; height: number };
+    actualSize: { width: number; height: number };
+  };
+  /** Padded copies of both images, when their sizes differ. */
+  canvas?: { expectedPath: string; actualPath: string };
+}): Promise<AgentReportEntry> => {
+  const { outputDir } = options;
+  const differentSizes = canvas !== undefined;
+  const comparedExpected = canvas?.expectedPath ?? expectedPath;
+  const comparedActual = canvas?.actualPath ?? actualPath;
+
+  const interpretation = await interpretationFor(
+    screenshot,
+    comparedExpected,
+    comparedActual,
+    options.diff,
+  );
 
   const percentDifference =
     screenshot.diffMeta?.percentDifference ?? interpretation?.diffPercentage;
@@ -445,11 +520,16 @@ const analyseChanged = async (
       actualPath,
       outDir: dir,
     });
-  } else {
+  }
+  if (!differentSizes || regions.length > 0) {
     const tiles = await renderJudgmentTiles({
-      expectedPath,
-      actualPath,
-      diffPath: diffExists ? diffPath : undefined,
+      expectedPath: comparedExpected,
+      actualPath: comparedActual,
+      diffPath:
+        diffExists &&
+        (await diffMatchesCanvas(diffPath, comparedActual, differentSizes))
+          ? diffPath
+          : undefined,
       regions: regions.map((region) => region.bbox),
       outDir: dir,
       maxRegions: options.maxTileRegions,

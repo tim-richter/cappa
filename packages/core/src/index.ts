@@ -12,6 +12,14 @@ import {
   type LogConsoleEvents,
   toConsoleLogLevel,
 } from "./consoleEvents";
+import {
+  type ContentCropOptions,
+  type CropRect,
+  type CropSetting,
+  DEFAULT_CROP_PADDING,
+  measureContentClip,
+  resolveCrop,
+} from "./crop";
 import { LocalEngine, type LocalEngineOptions } from "./engine/LocalEngine";
 import { RunStore, type RunStoreOptions } from "./engine/RunStore";
 import {
@@ -154,10 +162,14 @@ export {
   CONSOLE_LOG_LEVELS,
   type ConfigEnv,
   type ConsoleLogLevel,
+  type ContentCropOptions,
   type CreateFileWatcher,
+  type CropRect,
+  type CropSetting,
   collectScreenshots,
   compareImages,
   compareImagesGMSD,
+  DEFAULT_CROP_PADDING,
   DEFAULT_DEBOUNCE_MS,
   DEFAULT_IGNORED_DIRS,
   DEFAULT_MAX_TASKS,
@@ -191,6 +203,7 @@ export {
   MANIFEST_FILENAME,
   MANIFEST_VERSION,
   mapWithConcurrency,
+  measureContentClip,
   mergeCaptureManifest,
   type NewScreenshot,
   type PassedScreenshot,
@@ -217,6 +230,7 @@ export {
   readCaptureManifest,
   readDiffMeta,
   recordCaptureOrigins,
+  resolveCrop,
   type Screenshot,
   type ScreenshotBucket,
   type ScreenshotCaptureDetails,
