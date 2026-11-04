@@ -1,5 +1,12 @@
 # @cappa/plugin-pages
 
+## 0.4.1
+
+### Patch Changes
+
+- Updated dependencies [1297141]
+  - @cappa/core@0.18.0
+
 ## 0.4.0
 
 ### Minor Changes
