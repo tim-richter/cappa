@@ -394,6 +394,30 @@ describe("review folded into collectScreenshots", () => {
     expect(await reviewOf("grown")).toBeUndefined();
   });
 
+  it("keeps the verdict for images written in the same millisecond as the check", async () => {
+    await changed(
+      "grown",
+      await png(200, 100, BASE),
+      await png(200, 160, BASE),
+    );
+    // The report's time is an ISO string, whole milliseconds; file times are
+    // not. An image written 0.5ms into the check's millisecond is not newer
+    // than the check.
+    const checkedAt = new Date("2026-01-01T00:00:00.000Z");
+    const sameMillisecond = (checkedAt.getTime() + 0.5) / 1000;
+    for (const dir of ["expected", "actual"]) {
+      await fsp.utimes(
+        path.join(outputDir, dir, "grown.png"),
+        sameMillisecond,
+        sameMillisecond,
+      );
+    }
+
+    await runAgentCheck({ outputDir, now: () => checkedAt });
+
+    expect(await reviewOf("grown")).toBeDefined();
+  });
+
   it("ignores a corrupt report", async () => {
     await changed(
       "grown",
