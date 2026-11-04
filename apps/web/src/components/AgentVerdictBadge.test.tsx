@@ -27,25 +27,6 @@ describe("AgentVerdictBadge", () => {
       .toBeInTheDocument();
   });
 
-  it("marks a heuristic verdict that still awaits judgment", async () => {
-    const screen = await render(
-      <AgentVerdictBadge
-        review={{
-          ...mockAgentReview,
-          label: "ambiguous",
-          source: "heuristic",
-          pending: true,
-        }}
-      />,
-    );
-
-    await expect
-      .element(
-        screen.getByLabelText("Ambiguous · Heuristic · awaiting judgment"),
-      )
-      .toBeVisible();
-  });
-
   it("shows an unknown label as-is instead of dropping it", async () => {
     const screen = await render(
       <AgentVerdictBadge

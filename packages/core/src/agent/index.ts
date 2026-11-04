@@ -12,8 +12,6 @@ export {
   type AppliedVerdict,
   clearJudgment,
   fingerprintImages,
-  JUDGE_MODES,
-  type JudgeMode,
   type JudgmentPaths,
   judgmentDir,
   type ParsedAgentVerdict,
@@ -35,17 +33,12 @@ export {
 } from "./tiles";
 export {
   ACTION_BY_LABEL,
-  buildHeadline,
-  deriveVerdict,
-  isJudgedLabel,
+  type ChangeInput,
+  describeChange,
   isVerdictLabel,
-  JUDGED_LABELS,
-  type JudgedLabel,
   normalizeChangeType,
-  SUB_PERCEPTUAL_PIXELS,
   VERDICT_LABELS,
   type Verdict,
   type VerdictAction,
-  type VerdictInput,
   type VerdictLabel,
 } from "./verdict";

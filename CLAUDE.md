@@ -49,7 +49,7 @@ The foundational library. Core exports:
 - `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`). Both compare different-size images on a canvas padded to the larger size (`features/png/canvas.ts`, each image padded with its own edge colour); a size change never passes
 - `measureContentClip` / `resolveCrop` — content crop (`src/crop.ts`): measures painted ink in the page and returns a Playwright `clip`
-- `runAgentCheck` / `deriveVerdict` / `renderJudgmentTiles` — agent review (`src/agent/`): heuristic verdicts from the diff interpretation, judgment requests with region crops, verdicts tied to an image fingerprint
+- `runAgentCheck` / `describeChange` / `renderJudgmentTiles` — agent review (`src/agent/`): a judgment request with region crops for every changed screenshot (no heuristic labels — only a judge labels a change), verdicts tied to an image fingerprint
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
 Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `playwright-core ^1.55`.
@@ -62,7 +62,7 @@ The published CLI binary (`cappa`). Commands:
 - `review` — opens the review UI (starts `@cappa/server`)
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
-- `agent check|judge|approve|init` — visual review for coding agents: heuristic verdicts, judgment requests with region crops, exact-name approval, skill install for Claude Code / Agent Skills / OpenCode (sources in `packages/cli/integrations/`; `{{cappa}}` is replaced with the project's runner at install)
+- `agent check|judge|approve|init` — visual review for coding agents: judgment requests with region crops for every change, exact-name approval, skill install for Claude Code / Agent Skills / OpenCode (sources in `packages/cli/integrations/`; `{{cappa}}` is replaced with the project's runner at install)
 - `init` — scaffolds `cappa.config.ts` in the current directory
 
 Config is loaded from `cappa.config.ts` in CWD via **jiti** (supports TypeScript without compilation).
@@ -159,7 +159,7 @@ everywhere: a screenshot with no entry simply has no `taskId`, and nothing may f
 to `name`.
 
 `collectScreenshots` folds in `.cappa-agent/report.json` the same way: a changed screenshot gets
-`review` (the last `cappa agent check` verdict) only while both its images are older than that
+`review` (the judge's verdict applied by the last `cappa agent check`) only while both its images are older than that
 check, so the review UI never shows a verdict about pixels that have since been re-captured.
 
 ## Development Workflows

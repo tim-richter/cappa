@@ -73,7 +73,7 @@ beforeEach(async () => {
   process.exitCode = undefined;
   delete process.env.CI;
 
-  // `grown` changed size (ambiguous), `new-one` has no baseline.
+  // `grown` changed size, `new-one` has no baseline.
   await write("expected", "grown", await png(60, "#333366"));
   await write("actual", "grown", await png(90, "#333366"));
   await write("diff", "grown", await png(90, "#333366"));
@@ -99,7 +99,7 @@ describe("isCi", () => {
 
 describe("agent check", () => {
   it("prints the slim report and fails while anything differs", async () => {
-    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentCheck({ json: true });
 
     const report = output();
     expect(report).toMatchObject({
@@ -118,7 +118,7 @@ describe("agent check", () => {
   it("reports errors as JSON", async () => {
     getConfigMock.mockRejectedValueOnce(new Error("no config"));
 
-    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentCheck({ json: true });
 
     expect(output()).toEqual({ error: "no config" });
     expect(process.exitCode).toBe(1);
@@ -127,7 +127,7 @@ describe("agent check", () => {
 
 describe("agent judge", () => {
   it("records a verdict that the next check applies", async () => {
-    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentCheck({ json: true });
     stdout.mockClear();
 
     await agentJudge(["grown"], {
@@ -138,10 +138,11 @@ describe("agent judge", () => {
     expect(output().written[0].name).toBe("grown");
     stdout.mockClear();
 
-    await agentCheck({ json: true, judge: "ambiguous" });
-    expect(output().results[0].verdict).toMatchObject({
+    await agentCheck({ json: true });
+    expect(output().results[0].verdict).toEqual({
       label: "intentional-likely",
-      source: "agent",
+      headline: "footer added",
+      action: "approve-if-intended",
     });
   });
 
@@ -157,7 +158,7 @@ describe("agent judge", () => {
 
 describe("agent approve", () => {
   it("approves exact names and clears their judgment", async () => {
-    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentCheck({ json: true });
     stdout.mockClear();
 
     await agentApprove(["grown", "new-one"], { json: true });
@@ -180,20 +181,29 @@ describe("agent approve", () => {
     expect(output().error).toMatch(/Nothing to approve for: grow/);
   });
 
-  it("approves by verdict label", async () => {
+  it("approves by a judge's verdict label, never an unjudged change", async () => {
     await write("expected", "recolor", await png(60, "#333366"));
     await write("actual", "recolor", await png(60, "#cc3333"));
     await write("diff", "recolor", await png(60, "#cc3333"));
+    await agentCheck({ json: true });
+    await agentJudge(["recolor"], {
+      json: true,
+      label: "intentional-likely",
+      headline: "brand color updated",
+    });
+    stdout.mockClear();
+    process.exitCode = undefined;
 
     await agentApprove([], { json: true, label: ["intentional-likely"] });
 
+    // `grown` changed too, but nobody judged it.
     expect(output().approved).toEqual([
       { name: "recolor", category: "changed" },
     ]);
   });
 
   it("refuses a regression unless allowed", async () => {
-    await agentCheck({ json: true, judge: "ambiguous" });
+    await agentCheck({ json: true });
     await agentJudge(["grown"], {
       json: true,
       label: "regression-likely",
@@ -238,9 +248,9 @@ describe("describeAgentReport", () => {
     const report = {
       outputDir: "/out",
       totals: {
-        total: 3,
+        total: 4,
         passed: 1,
-        changed: 1,
+        changed: 2,
         new: 1,
         deleted: 0,
         pendingJudgments: 1,
@@ -249,13 +259,19 @@ describe("describeAgentReport", () => {
         {
           name: "card",
           category: "changed",
+          change: "image dimensions changed",
           pending: true,
+        },
+        {
+          name: "button",
+          category: "changed",
+          change: "1 region @ top (0.40%)",
+          pending: false,
           verdict: {
-            label: "ambiguous",
-            headline: "image dimensions changed",
+            label: "regression-likely",
+            headline: "label font grew and wraps",
             rationale: [],
             action: "investigate",
-            source: "heuristic",
           },
         },
         { name: "fresh", category: "new", pending: false, paths: {} },
@@ -264,9 +280,10 @@ describe("describeAgentReport", () => {
 
     const lines = describeAgentReport(report).map(stripVTControlCharacters);
     expect(lines).toEqual([
-      "1/3 passed · 1 changed · 1 new · 0 deleted",
+      "1/4 passed · 2 changed · 1 new · 0 deleted",
       "1 awaiting judgment in /out/.cappa-agent/judgments",
-      "card  ambiguous — image dimensions changed (pending)",
+      "card  awaiting judgment — image dimensions changed",
+      "button  regression-likely — label font grew and wraps",
       "fresh  new",
     ]);
   });

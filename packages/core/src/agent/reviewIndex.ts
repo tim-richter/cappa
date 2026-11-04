@@ -5,7 +5,8 @@ import { AGENT_REPORT_VERSION, agentReportPath } from "./paths";
 import { isVerdictLabel } from "./verdict";
 
 /**
- * The verdicts of the last `cappa agent check`, keyed by screenshot name.
+ * The judges' verdicts applied by the last `cappa agent check`, keyed by
+ * screenshot name. A changed screenshot still awaiting judgment has none.
  *
  * Read on every screenshot listing so the review UI shows them, which is why
  * this reads only `report.json` and never touches the review pipeline.
@@ -50,10 +51,7 @@ export const readAgentReviewIndex = async (
   const reviews = new Map<string, AgentReview>();
   for (const entry of raw.entries) {
     if (typeof entry !== "object" || entry === null) continue;
-    const { name, category, verdict, pending } = entry as Record<
-      string,
-      unknown
-    >;
+    const { name, category, verdict } = entry as Record<string, unknown>;
     if (typeof name !== "string" || category !== "changed") continue;
     if (typeof verdict !== "object" || verdict === null) continue;
 
@@ -67,9 +65,9 @@ export const readAgentReviewIndex = async (
         ? v.rationale.filter((line): line is string => typeof line === "string")
         : [],
       action: v.action as AgentReview["action"],
-      source: v.source === "agent" ? "agent" : "heuristic",
+      source: "agent",
       ...(typeof v.confidence === "number" ? { confidence: v.confidence } : {}),
-      pending: pending === true,
+      pending: false,
       reviewedAt: new Date(createdAt).toISOString(),
     });
   }

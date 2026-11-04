@@ -8,14 +8,16 @@ metadata:
 # cappa
 
 Cappa captures screenshots (Storybook stories, pages) with Playwright and diffs them against
-approved baselines. `cappa agent` turns the diff into something you can judge cheaply: a heuristic
-labels each change, and only the ones it cannot settle are handed to you with small crops.
+approved baselines. `cappa agent` turns the diff into something you can judge cheaply: every
+changed screenshot gets a judgment request with small crops of what changed, and a judge looks at
+each one. Cappa's diff threshold already absorbs sub-pixel rendering, so a `changed` screenshot
+differs by more than the project tolerates — none is dismissed without being looked at.
 
 Run the CLI as `{{cappa}}` from the project root — it already runs in the package holding
 `cappa.config.ts`, so don't `cd` first. The examples below write `cappa` for short.
 
 Sibling files — read on demand:
-- `JUDGING.md` — judging changes when `pendingJudgments > 0`.
+- `JUDGING.md` — judging changes (whenever `pendingJudgments > 0`).
 - `MASKING.md` — silencing non-deterministic UI instead of re-approving it forever.
 
 ## Be terse
@@ -54,36 +56,25 @@ cappa agent check --json
 ```
 Returns `{ reportPath, total, passed, changed, new, deleted, pendingJudgments, results }`.
 `results` lists non-passing screenshots only, each
-`{ name, category, verdict?: { label, headline, action, source }, pending?, judgment? }`.
+`{ name, category, change?, verdict?: { label, headline, action }, pending?, judgment? }`.
 It exits 1 whenever anything is not passing — that is the normal result, not a failure. A real
 failure prints `{ "error": "..." }` instead.
 
-- `category: "changed"` carries a `verdict`. `source: "heuristic"` came from the diff signals;
-  `source: "agent"` is a verdict you (or another judge) wrote.
-- A heuristic label is a guess from pixel signals, not a finding. In particular it calls any
-  medium- or high-severity structural change `regression-likely` — including content that was
-  added or removed on purpose. Before treating a heuristic `regression-likely` as broken, check it
-  against the code; if a deliberate change explains it, judge it (`--judge all`, below) instead of
-  "fixing" the feature.
-- `pending: true` → the heuristic said `ambiguous`; `judgment` is the directory with the evidence.
-  **Read `JUDGING.md`**, judge them, then re-run `cappa agent check --json`.
-- `--judge all` requests a judgment for *every* changed screenshot, not only ambiguous ones, so
-  each gets a `judgment` directory with `locator.png` and `regions.png`. Use it whenever you need
-  to look anyway: you doubt a heuristic label, or the user wants a thorough review. Then judge per
-  `JUDGING.md` like any other pending entry.
-- Requests are sticky: once made, a request stays `pending` through every later check until it
-  gets a verdict, the screenshot is approved, or a re-capture changes its images. After
-  `--judge all`, judge every pending entry — including the ones whose heuristic label you agree
-  with (one `cappa agent judge` call per shared label is enough) — or `pendingJudgments` never
-  reaches 0.
+- Every `changed` screenshot is `pending: true` until a judge records a verdict; `judgment` is the
+  directory with the evidence. **Read `JUDGING.md`**, judge all of them, then re-run
+  `cappa agent check --json` until `pendingJudgments` is 0.
+- `change` says only where and how much changed (`2 regions @ top-left (1.20%)`), never what
+  kind of change it is. Screenshots with the same `change` likely share one cause.
+- A `verdict` is always a judge's, made after looking at the images. It stays applied until the
+  screenshot is approved or a re-capture changes its images; then it is pending again.
 - Judging means reading images. When the `cappa-judge` subagent is installed, it always does the
-  judging, not you — see `JUDGING.md`. Never judge blind.
+  judging, not you — see `JUDGING.md`. Never judge blind, and never label a change from its
+  `change` line, its pixel count or the code diff alone.
 
 ## 3. Report and act
 One line per non-passing screenshot: `<name>: <label> — <headline>`. Then, per label:
 
-- `regression-likely` → something looks broken. If the verdict is the heuristic's
-  (`source: "heuristic"`), confirm it against the code first (see step 2). Point the user at it.
+- `regression-likely` → something looks broken. Point the user at it.
   If they want it fixed (or you were asked to fix regressions), find the cause in the working
   tree (`git diff`, recent commits touching the component), fix the code, re-capture just that
   task with `--filter`, and re-check. Never approve a regression.
@@ -111,6 +102,6 @@ screenshot whose current verdict has that label.
 - Never edit files under `expected/`, `actual/`, `diff/` or `.cappa-agent/` by hand — verdicts
   go through `cappa agent judge`.
 - Never hand-roll crops, image diffs or pixel forensics (ImageMagick, scripts). Cappa's crops are
-  the evidence; if a screenshot has none, `cappa agent check --json --judge all` produces them.
+  the evidence; `cappa agent check --json` writes them for every changed screenshot.
 - In CI (`CI=true`), only `cappa agent check` is allowed; baselines change on developer machines.
 - Re-capturing invalidates verdicts for screenshots whose images changed — that is intended.

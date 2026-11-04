@@ -3,11 +3,15 @@ title: Agent review
 description: Let a coding agent such as Claude Code judge changed screenshots, fix regressions and approve intended changes.
 ---
 
-`cappa agent` turns a failed visual run into something a coding agent can review cheaply. A
-heuristic labels every changed screenshot from its [diff interpretation](/configuration#diffinterpret);
-only the changes it cannot settle are handed to the agent, as small crops of each changed region
-instead of full-page screenshots. The agent writes a verdict, Cappa folds it back in, and the agent
-approves what you confirm — or, because it has your code, fixes what is broken.
+`cappa agent` turns a failed visual run into something a coding agent can review cheaply. Every
+changed screenshot is handed to the agent as small crops of each changed region instead of
+full-page screenshots. The agent looks at each one and writes a verdict, Cappa folds it back in,
+and the agent approves what you confirm — or, because it has your code, fixes what is broken.
+
+Nothing is labelled without being looked at. Cappa's [diff threshold](/configuration) already
+absorbs sub-pixel rendering differences, so a screenshot that reaches `changed` differs by more
+than your project tolerates. Guessing what kind of change it is from pixel statistics labels
+exactly the changes that matter wrongly: a larger font reads as a harmless shift and recolour.
 
 The approach follows [BlazeDiff's agent review](https://www.blazediff.dev/guides/claude-code-visual-review),
 adapted to Cappa's plugins and baselines.
@@ -104,8 +108,8 @@ substitution.
 ### Large reviews
 
 Each judgment comes with two images, so a single judge cannot take hundreds of them. The skill
-gives each judge about 20 screenshots and runs several judges in parallel. Screenshots that share
-a headline stay with the same judge.
+gives each judge about 20 screenshots and runs several judges in parallel. Screenshots with the
+same `change` line stay with the same judge.
 
 ### Two copies of the skill
 
@@ -118,38 +122,31 @@ copy, and keep `.agents/skills` in sync for other agents.
 1. **Capture**: the agent runs `cappa capture --json` (see
    [machine-readable output](/cli#machine-readable-output)). With a `webServer`, that also starts
    and stops the app under test.
-2. **Check** — `cappa agent check --json` labels every changed screenshot:
+2. **Check**: `cappa agent check --json` writes a judgment request for every changed screenshot,
+   which the agent reads instead of the full screenshots:
+   - `locator.png`: a thumbnail with every changed region outlined and numbered
+   - `regions.png`: one `expected | actual` row per region, cropped with context
+   - `overview.png`: expected and actual whole, side by side, when the dimensions changed (in
+     addition to the two above when regions were found)
+   - `request.json`: the regions (position, size, pixel count), the image dimensions and paths
+
+   The request says where pixels differ, never what kind of change it is: no change types, no
+   severity, no suggested label that would prime the judge. Screenshots whose dimensions changed
+   are analysed on a canvas padded to the larger size, so their regions are located like any
+   other.
+3. **Judge**: the agent looks at each change and records a verdict with `cappa agent judge`, then
+   re-runs `cappa agent check`, which applies it:
 
    | Label | Meaning | Next step |
    | --- | --- | --- |
-   | `regression-likely` | Structural change (content added, removed or replaced) at medium or high severity | Check against the code, then fix |
-   | `intentional-likely` | Confident recolour, or content shifted/restyled with structure intact | Approve if intended |
-   | `noise-likely` | Rendering noise, or a sub-perceptual (at most 25 pixels) low-severity change | Mask or approve |
-   | `ambiguous` | Anything else, including a size change with no located regions | Judged by the agent |
+   | `regression-likely` | Broken, clipped, misaligned, resized or reflowed without a code change that explains it | Fix |
+   | `intentional-likely` | A deliberate content or style change that matches the code | Approve if intended |
+   | `noise-likely` | Non-deterministic content (a clock, random data) or a difference invisible to a user | Mask or approve |
 
-   "Sub-perceptual" is an absolute pixel count, not a share of the image, so the same change gets
-   the same label whether the screenshot is a tight crop or a full 1920×1080 viewport. Screenshots
-   whose dimensions changed are analysed on a canvas padded to the larger size: their regions are
-   located like any other, the headline starts with `dimensions changed;`, and they are never
-   labelled `noise-likely`.
-
-3. **Judge** — for each `ambiguous` change, Cappa writes a judgment request the agent reads instead
-   of the full screenshots:
-   - `locator.png` — a thumbnail with every changed region outlined and numbered
-   - `regions.png` — one `expected | actual` row per region, cropped with context
-   - `overview.png` — expected and actual whole, side by side, when the dimensions changed (in
-     addition to the two above when regions were found)
-   - `request.json` — regions, heuristic label, interpretation summary and paths
-
-   The agent records its verdict with `cappa agent judge` and
-   re-runs `cappa agent check`, which applies it. To get the same evidence for changes the
-   heuristic already labelled, the skill runs `cappa agent check --judge all`. The skill does this
-   when a heuristic label looks doubtful, for example a `regression-likely` that a deliberate code
-   change explains. A request stays pending until it gets a verdict, so after `--judge all` the
-   agent judges every change. When the `cappa-judge` subagent is installed, the agent always
-   hands the judging to it, so a judge pinned with `--judge-model` is never bypassed. Without
-   one, an agent whose model cannot read images hands the judgment directories to any subagent
-   that can, rather than working from the raw screenshots.
+   A screenshot stays pending until it has a verdict. When the `cappa-judge` subagent is
+   installed, the agent always hands the judging to it, so a judge pinned with `--judge-model`
+   is never bypassed. Without one, an agent whose model cannot read images hands the judgment
+   directories to any subagent that can, rather than working from the raw screenshots.
 4. **Act** — the agent reports one line per screenshot, asks you to confirm, and approves with
    `cappa agent approve`. A regression can be fixed in code and re-captured with `--filter`.
 
@@ -159,9 +156,8 @@ persist an interpretation, it is computed on demand.
 
 ## In the review UI
 
-`cappa review` shows the verdicts too. Changed screenshots get a verdict badge in the list and
-grid views. A robot icon marks a verdict an agent wrote; a magnifier marks the heuristic's label.
-The detail page shows the headline, the reasons, the confidence and when the check ran. You can
+`cappa review` shows the verdicts too. Judged screenshots get a verdict badge in the list and
+grid views; changed screenshots awaiting judgment have none. The detail page shows the headline, the reasons, the confidence and when the check ran. You can
 look at what the agent concluded, agree or disagree, and approve from the same screen.
 
 A verdict is shown only while it still describes the images on disk. Once a screenshot is
@@ -184,24 +180,20 @@ Prints `{ reportPath, total, passed, changed, new, deleted, pendingJudgments, re
 {
   "name": "example/button/primary",
   "category": "changed",
-  "verdict": {
-    "label": "ambiguous",
-    "headline": "2 regions: 1 content-change, 1 shift @ center (1.20%, medium)",
-    "action": "investigate",
-    "source": "heuristic"
-  },
+  "change": "2 regions @ center (1.20%)",
   "pending": true,
   "judgment": "/abs/screenshots/.cappa-agent/judgments/example/button/primary"
 }
 ```
 
-Headlines are built so the same kind of change produces the same text on every screenshot, which
-lets an agent spot one shared cause — a footer date, a theme toggle — without opening any image.
-The full report, with regions and absolute paths, is written to `reportPath`.
+`change` says only where and how much changed. The same change produces the same text on every
+screenshot, which hints at one shared cause, such as a footer date or a theme toggle, for the judge
+to confirm. Once judged, an entry carries `verdict: { label, headline, action }` instead of
+`pending` and `judgment`. The full report, with regions and absolute paths, is written to
+`reportPath`.
 
 | Option | Description |
 | --- | --- |
-| `--judge <mode>` | `ambiguous` (default) requests judgments for ambiguous changes only; `all` for every changed screenshot; `none` for none. Existing judgments are always kept and applied. |
 | `--max-tile-regions <n>` | Regions rendered into each `regions.png` (default 8). |
 | `--json` | Print the summary as JSON and nothing else. |
 
@@ -229,7 +221,8 @@ cappa agent approve --label intentional-likely --json
 ```
 
 Approves screenshots by **exact** name — unlike `cappa approve --filter`, which matches substrings —
-or every changed screenshot whose current verdict carries a label. Refused when `CI` is set, so
+or every changed screenshot whose current verdict carries a label. A screenshot awaiting judgment
+has no label, so `--label` never approves it. Refused when `CI` is set, so
 baselines only change on developer machines.
 
 It also refuses any screenshot whose current verdict is `regression-likely`. If the change was

@@ -82,7 +82,7 @@ describe("runAgentCheck", () => {
     ).resolves.toBe("*\n");
   });
 
-  it("writes a judgment request with tiles for ambiguous changes", async () => {
+  it("writes a judgment request with tiles for every changed screenshot", async () => {
     await changed(
       "components/card",
       await png(
@@ -97,14 +97,14 @@ describe("runAgentCheck", () => {
       ),
     );
 
-    const report = await runAgentCheck({ outputDir, judge: "all" });
+    const report = await runAgentCheck({ outputDir });
     const [entry] = report.entries;
 
     expect(entry?.category).toBe("changed");
     expect(entry?.regions?.length).toBeGreaterThan(0);
     expect(entry?.regions?.[0]?.index).toBe(1);
     expect(entry?.pending).toBe(true);
-    expect(entry?.verdict?.source).toBe("heuristic");
+    expect(entry?.verdict).toBeUndefined();
     expect(report.totals.pendingJudgments).toBe(1);
 
     const dir = judgmentDir(outputDir, "components/card");
@@ -116,6 +116,7 @@ describe("runAgentCheck", () => {
     expect(request.name).toBe("components/card");
     expect(request.fingerprint).toMatch(/^[0-9a-f]{64}$/);
     expect(request.regions).toEqual(entry?.regions);
+    expect(request.change).toBe(entry?.change);
 
     const locator = await sharp(path.join(dir, "locator.png")).metadata();
     expect(locator.width).toBeLessThanOrEqual(400);
@@ -126,13 +127,16 @@ describe("runAgentCheck", () => {
     expect(slim.results).toEqual([
       expect.objectContaining({
         name: "components/card",
+        change: entry?.change,
         pending: true,
         judgment: dir,
       }),
     ]);
   });
 
-  it("does not request judgments for labelled changes by default", async () => {
+  // A pure recolour is the kind of change a label from diff signals alone
+  // would have waved through as a restyle.
+  it("asks for a judgment even when the change looks like a restyle", async () => {
     await changed(
       "recolor",
       await png(200, 100, BASE),
@@ -146,9 +150,19 @@ describe("runAgentCheck", () => {
     const report = await runAgentCheck({ outputDir });
     const [entry] = report.entries;
 
-    expect(entry?.heuristic?.label).not.toBe("ambiguous");
-    expect(entry?.judgment).toBeUndefined();
-    expect(entry?.pending).toBe(false);
+    expect(entry?.pending).toBe(true);
+    expect(entry?.verdict).toBeUndefined();
+    expect(entry?.judgment?.regions).toBeDefined();
+
+    const request = JSON.parse(
+      await fsp.readFile(entry?.judgment?.request ?? "", "utf8"),
+    );
+    // Nothing that would prime the judge: no label, change type or severity.
+    expect(request).not.toHaveProperty("heuristic");
+    expect(request).not.toHaveProperty("severity");
+    expect(request).not.toHaveProperty("summary");
+    expect(request.regions[0]).not.toHaveProperty("changeType");
+    expect(request.change).toMatch(/^1 region @ /);
   });
 
   it("renders only an overview when the size changed but no content did", async () => {
@@ -161,7 +175,7 @@ describe("runAgentCheck", () => {
     const report = await runAgentCheck({ outputDir });
     const [entry] = report.entries;
 
-    expect(entry?.heuristic?.headline).toBe("image dimensions changed");
+    expect(entry?.change).toBe("image dimensions changed");
     expect(entry?.judgment?.overview).toBeDefined();
     expect(entry?.judgment?.regions).toBeUndefined();
     const overview = await sharp(entry?.judgment?.overview).metadata();
@@ -179,7 +193,7 @@ describe("runAgentCheck", () => {
       ),
     );
 
-    const report = await runAgentCheck({ outputDir, judge: "all" });
+    const report = await runAgentCheck({ outputDir });
     const [entry] = report.entries;
 
     expect(entry?.dimensions).toEqual({
@@ -191,9 +205,7 @@ describe("runAgentCheck", () => {
     // everything the expected image covered.
     const [first] = entry?.regions ?? [];
     expect(first?.bbox.y).toBeGreaterThanOrEqual(90);
-    expect(entry?.heuristic?.headline).toMatch(/^dimensions changed; /);
-    expect(entry?.heuristic?.label).not.toBe("noise-likely");
-    expect(entry?.heuristic?.rationale[0]).toContain("different dimensions");
+    expect(entry?.change).toMatch(/^dimensions changed; /);
 
     // Both the whole-image overview and per-region tiles.
     expect(entry?.judgment?.overview).toBeDefined();
@@ -222,32 +234,17 @@ describe("runAgentCheck", () => {
       headline: "new section added below the card",
       rationale: [],
       action: "approve-if-intended",
-      source: "agent",
       confidence: 0.8,
     });
-  });
-
-  it("keeps verdicts from --judge all on a later default check", async () => {
-    await changed(
-      "recolor",
-      await png(200, 100, BASE),
-      await png(
-        200,
-        100,
-        '<rect x="20" y="20" width="100" height="40" fill="#cc3333"/>',
-      ),
-    );
-    await runAgentCheck({ outputDir, judge: "all" });
-    await writeAgentVerdict(outputDir, "recolor", {
-      label: "regression-likely",
-      headline: "brand color lost",
-    });
-
-    const report = await runAgentCheck({ outputDir, judge: "none" });
-
-    expect(report.entries[0]?.verdict).toMatchObject({
-      label: "regression-likely",
-      source: "agent",
+    expect(toSlimAgentReport(report).results[0]).toEqual({
+      name: "grown",
+      category: "changed",
+      change: "image dimensions changed",
+      verdict: {
+        label: "intentional-likely",
+        headline: "new section added below the card",
+        action: "approve-if-intended",
+      },
     });
   });
 
@@ -267,7 +264,7 @@ describe("runAgentCheck", () => {
     const report = await runAgentCheck({ outputDir });
 
     expect(report.entries[0]?.pending).toBe(true);
-    expect(report.entries[0]?.verdict?.source).toBe("heuristic");
+    expect(report.entries[0]?.verdict).toBeUndefined();
     await expect(
       fsp.access(path.join(judgmentDir(outputDir, "grown"), "verdict.json")),
     ).rejects.toThrow();
@@ -333,25 +330,25 @@ describe("review folded into collectScreenshots", () => {
     return screenshot?.category === "changed" ? screenshot.review : undefined;
   };
 
-  it("carries the last check's verdict on changed screenshots", async () => {
+  /** Request a judgment, judge it, and apply the verdict with a second check. */
+  const judge = async (name: string, now?: () => Date) => {
+    await runAgentCheck({ outputDir });
+    await writeAgentVerdict(outputDir, name, {
+      label: "intentional-likely",
+      headline: "new footer",
+    });
+    return runAgentCheck({ outputDir, now });
+  };
+
+  it("carries nothing while a changed screenshot awaits judgment", async () => {
     await changed(
       "grown",
       await png(200, 100, BASE),
       await png(200, 160, BASE),
     );
+    await runAgentCheck({ outputDir });
+
     expect(await reviewOf("grown")).toBeUndefined();
-
-    const report = await runAgentCheck({ outputDir });
-
-    expect(await reviewOf("grown")).toEqual({
-      label: "ambiguous",
-      headline: "image dimensions changed",
-      rationale: expect.any(Array),
-      action: "investigate",
-      source: "heuristic",
-      pending: true,
-      reviewedAt: report.createdAt,
-    });
   });
 
   it("carries a judge's verdict once a check applied it", async () => {
@@ -367,14 +364,17 @@ describe("review folded into collectScreenshots", () => {
       rationale: ["matches the footer change"],
       confidence: 0.7,
     });
-    await runAgentCheck({ outputDir });
+    const report = await runAgentCheck({ outputDir });
 
-    expect(await reviewOf("grown")).toMatchObject({
+    expect(await reviewOf("grown")).toEqual({
       label: "intentional-likely",
+      headline: "new footer",
+      action: "approve-if-intended",
       source: "agent",
       confidence: 0.7,
       pending: false,
       rationale: ["matches the footer change"],
+      reviewedAt: report.createdAt,
     });
   });
 
@@ -384,7 +384,7 @@ describe("review folded into collectScreenshots", () => {
       await png(200, 100, BASE),
       await png(200, 160, BASE),
     );
-    await runAgentCheck({ outputDir });
+    await judge("grown");
     expect(await reviewOf("grown")).toBeDefined();
 
     // A capture after the check: the actual image is newer than the report.
@@ -413,7 +413,7 @@ describe("review folded into collectScreenshots", () => {
       );
     }
 
-    await runAgentCheck({ outputDir, now: () => checkedAt });
+    await judge("grown", () => checkedAt);
 
     expect(await reviewOf("grown")).toBeDefined();
   });
@@ -424,7 +424,7 @@ describe("review folded into collectScreenshots", () => {
       await png(200, 100, BASE),
       await png(200, 160, BASE),
     );
-    await runAgentCheck({ outputDir });
+    await judge("grown");
     await fsp.writeFile(agentReportPath(outputDir), "{not json");
 
     expect(await reviewOf("grown")).toBeUndefined();

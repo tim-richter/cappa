@@ -30,7 +30,6 @@ describe("splitCommand", () => {
 describe("judgeCommandRefusal", () => {
   it("allows the judge's cappa commands with the project's runner", () => {
     allowed(`${runner} agent check --json`);
-    allowed(`${runner} agent check --judge all --json`);
     allowed(
       `${runner} agent judge a b --label noise-likely --headline "Clock | ticks" --rationale "x; y" --json`,
     );

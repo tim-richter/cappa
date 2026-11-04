@@ -1,7 +1,8 @@
 # cappa — judging changes
 
-Used when `cappa agent check --json` reports `pendingJudgments > 0`: the heuristic labelled those
-changes `ambiguous` and is deferring to you — or you asked for every change with `--judge all`.
+Used when `cappa agent check --json` reports `pendingJudgments > 0`: every changed screenshot
+waits for a judge, and nothing has labelled it before you look. Cappa's diff threshold already
+filters sub-pixel rendering, so assume each change is real until the images show otherwise.
 
 ## Who judges
 If the `cappa-judge` subagent is installed (`cappa agent init` adds it for Claude Code and
@@ -21,22 +22,24 @@ hand the `judgment` directories to any subagent whose model can. Never substitut
 tooling (no ImageMagick, no manual crops, no pixel statistics) and never judge blind.
 
 ## Judge everything that is pending
-A request stays pending through every later check until it has a verdict. After `--judge all`
-that includes changes whose heuristic label you agree with — record those too (one call per
-shared label), or `pendingJudgments` never reaches 0.
+A request stays pending through every later check until it has a verdict, so `pendingJudgments`
+only reaches 0 when every changed screenshot is judged. Several screenshots with one shared cause
+take one `cappa agent judge` call.
 
 ## Look for one shared cause first
-Before opening anything, group the pending `results[]` by `verdict.headline`. Headlines are built so
-that the same kind of change produces the same text — `1 content-change @ bottom-right (0.02%, low)`
-across many screenshots is almost certainly one shared element (footer date, version badge,
-theme toggle, a shared component everyone renders). Open one or two from the group to confirm,
-then fix or mask it once at the source (`MASKING.md`) instead of writing N identical verdicts.
+Before opening anything, group the pending `results[]` by `change`. It is built so that the same
+change produces the same text — `1 region @ bottom-right (0.02%)` across many screenshots is
+likely one shared element (footer date, version badge, theme toggle, a shared component everyone
+renders). Open two or three from the group to confirm they really show the same change, then fix
+or mask it once at the source (`MASKING.md`) instead of writing N identical verdicts. A matching
+`change` line is a hint, not evidence: judge every screenshot you have not confirmed.
 
 ## Judge each remaining change
 For each pending entry, in its `judgment` directory:
 
-1. Read `request.json`: `regions[]` (bbox, pixelCount, changeType, position — largest first),
-   `heuristic`, `summary`, and `paths`.
+1. Read `request.json`: `change`, `regions[]` (bbox, pixelCount, position, shape — largest
+   first), `dimensions` and `paths`. It says where pixels differ, not what kind of change it is —
+   that is for you to see.
 2. **Read `locator.png` and `regions.png` together, in one parallel batch** — and batch across
    entries too. `locator.png` is a thumbnail with every region outlined and numbered;
    `regions.png` stacks one `#n expected | #n actual` row per region, in `regions[]` order, with
@@ -47,18 +50,25 @@ For each pending entry, in its `judgment` directory:
    top-left — in a crop, area only one image covers is empty. With no regions, only the size
    changed (whitespace grew or shrank). Size changes are usually intended content changes;
    confirm that the content delta matches a code change.
-4. Only open `paths.expected` / `paths.actual` / `paths.diff` (full size) when a change clearly
+4. Compare sizes and positions, not just content. A font that is larger, smaller or bolder,
+   text that wraps or truncates differently, and padding, gaps or alignment that moved are easy
+   to dismiss as rendering noise in a crop — check glyph heights, line counts and edges against
+   each other in the `expected | actual` pair.
+5. Only open `paths.expected` / `paths.actual` / `paths.diff` (full size) when a change clearly
    continues outside its crop.
-5. You have the source code — use it. A diff that lines up with a change in the working tree or a
-   recent commit is evidence of intent; one with no code change behind it is evidence of noise
-   or a regression elsewhere. The heuristic's label is one more signal, not the answer: it calls
-   structural changes `regression-likely` even when they were made on purpose.
+6. Then use the source code. A change that lines up with a change in the working tree or a recent
+   commit is evidence of intent — but only for what that code change should do: a button
+   restyle that also shrinks the heading next to it is a regression. A change with no code
+   change behind it is a regression elsewhere or non-deterministic content. Never let the code
+   diff stand in for looking.
 
 Labels:
 - `regression-likely` — broken, missing, clipped, overlapping, misaligned, wrong data, truncated
   text, or an unintended side effect of an unrelated change.
 - `intentional-likely` — a deliberate content or style change consistent with the code.
-- `noise-likely` — anti-aliasing, sub-pixel text rendering, non-deterministic content.
+- `noise-likely` — non-deterministic content (clock, random data, animation frame) or rendering
+  differences you can see are invisible to a user. Rare: the diff threshold already filters
+  sub-pixel rendering, so do not reach for this label because a change is small.
 
 ## Record the verdict
 With `cappa agent judge` — it validates the verdict, and takes several names for one shared

@@ -21,16 +21,18 @@ import {
 import { renderJudgmentTiles, renderOverview } from "./tiles";
 import {
   ACTION_BY_LABEL,
-  deriveVerdict,
-  isJudgedLabel,
-  type JudgedLabel,
-  normalizeChangeType,
+  describeChange,
+  isVerdictLabel,
   type Verdict,
+  type VerdictLabel,
 } from "./verdict";
 
 /**
  * Agent review: turn the screenshots on disk into something a coding agent
  * can judge cheaply, and fold its judgments back in.
+ *
+ * Every changed screenshot gets a judgment request. Nothing is labelled from
+ * diff signals alone — see `VERDICT_LABELS` for why.
  *
  * Nothing here captures. It reads `actual/`, `expected/` and `diff/` as the
  * last `cappa capture` left them, so it is safe to run repeatedly — a re-run
@@ -60,19 +62,6 @@ const JUDGMENT_FILES = [
   "overview.png",
 ];
 
-/**
- * Which changed screenshots get a judgment request.
- *
- * - `ambiguous`: only those the heuristic could not label (default)
- * - `all`: every changed screenshot, for a full second opinion
- * - `none`: heuristic labels only, no new requests
- *
- * Judgments that already exist are kept and applied in every mode.
- */
-export type JudgeMode = "ambiguous" | "all" | "none";
-
-export const JUDGE_MODES: readonly JudgeMode[] = ["ambiguous", "all", "none"];
-
 export type AgentRegion = {
   /** 1-based, matching the numbers in `locator.png` and rows in `regions.png`. */
   index: number;
@@ -81,13 +70,10 @@ export type AgentRegion = {
   percentage: number;
   position: string;
   shape: string;
-  changeType: string;
-  confidence: number;
 };
 
+/** A judge's verdict, as applied to a screenshot. */
 export type AppliedVerdict = Verdict & {
-  /** Whether the label came from the heuristic or from a judge. */
-  source: "heuristic" | "agent";
   confidence?: number;
 };
 
@@ -113,14 +99,16 @@ export type AgentReportEntry = {
     expected: { width: number; height: number };
     actual: { width: number; height: number };
   };
-  severity?: string;
-  summary?: string;
+  /**
+   * Where and how much it changed, e.g. `2 regions @ top-left (1.20%)`. The
+   * same change on different screenshots reads the same, so it groups them.
+   */
+  change?: string;
   /** Largest first. */
   regions?: AgentRegion[];
-  heuristic?: Verdict;
-  /** The judge's verdict when there is a current one, else the heuristic's. */
+  /** The judge's verdict, once one was written about these images. */
   verdict?: AppliedVerdict;
-  /** A judgment was requested and no valid verdict has been written yet. */
+  /** A changed screenshot without a valid verdict yet. */
   pending: boolean;
   judgment?: JudgmentPaths;
   /** Why a `verdict.json` that exists was ignored. */
@@ -132,7 +120,6 @@ export type AgentReport = {
   createdAt: string;
   outputDir: string;
   reportPath: string;
-  judge: JudgeMode;
   totals: {
     total: number;
     passed: number;
@@ -203,7 +190,7 @@ export const fingerprintImages = async (
 export type ParsedAgentVerdict =
   | {
       ok: true;
-      label: JudgedLabel;
+      label: VerdictLabel;
       headline: string;
       rationale: string[];
       confidence?: number;
@@ -228,7 +215,7 @@ export const parseAgentVerdict = (raw: unknown): ParsedAgentVerdict => {
       : outer;
 
   const label = inner.label;
-  if (!isJudgedLabel(label)) {
+  if (!isVerdictLabel(label)) {
     return {
       ok: false,
       error: `label must be one of regression-likely, intentional-likely, noise-likely (got ${JSON.stringify(label)})`,
@@ -307,8 +294,6 @@ const toAgentRegions = (regions: readonly ChangeRegion[]): AgentRegion[] =>
       percentage: region.percentage,
       position: region.position,
       shape: region.shape,
-      changeType: normalizeChangeType(region.changeType),
-      confidence: region.confidence,
     }));
 
 /**
@@ -341,8 +326,10 @@ const interpretationFor = async (
 };
 
 const JUDGE_INSTRUCTIONS = [
+  "Every changed screenshot differs beyond the project's diff threshold, so sub-pixel rendering is already filtered out: look at each change before labelling it.",
   "Read locator.png and regions.png together. locator.png outlines every region (numbered) on a thumbnail; regions.png stacks one [expected | actual] row per region, in `regions` order.",
   "overview.png exists only when the image dimensions changed: it shows both images whole, side by side. Regions are then located on a canvas padded to the larger size, anchored top-left — in a crop, area that only one image covers is empty.",
+  "Compare sizes, not just content: text that is larger, smaller, bolder or reflowed, and spacing, alignment or wrapping that moved, are regressions unless a code change explains them.",
   "Only open paths.expected / paths.actual / paths.diff (full size) when a change clearly continues outside its crop.",
   "Write verdict.json next to this file, or run `cappa agent judge <name> --label <label> --headline <text>`.",
 ];
@@ -358,7 +345,6 @@ export type RunAgentCheckOptions = {
   outputDir: string;
   /** The project's diff config — its threshold is reused for interpretation. */
   diff?: DiffOptions;
-  judge?: JudgeMode;
   /** Regions rendered into `regions.png` per screenshot. Default 8. */
   maxTileRegions?: number;
   /** Screenshots analysed in parallel. Default 4. */
@@ -368,7 +354,7 @@ export type RunAgentCheckOptions = {
 
 const analyseChanged = async (
   screenshot: Extract<Screenshot, { category: "changed" }>,
-  options: Required<Pick<RunAgentCheckOptions, "outputDir" | "judge">> &
+  options: Required<Pick<RunAgentCheckOptions, "outputDir">> &
     RunAgentCheckOptions,
   createdAt: string,
 ): Promise<AgentReportEntry> => {
@@ -420,7 +406,7 @@ const analyseOnCanvas = async ({
   canvas,
 }: {
   screenshot: Extract<Screenshot, { category: "changed" }>;
-  options: Required<Pick<RunAgentCheckOptions, "outputDir" | "judge">> &
+  options: Required<Pick<RunAgentCheckOptions, "outputDir">> &
     RunAgentCheckOptions;
   createdAt: string;
   paths: {
@@ -454,7 +440,7 @@ const analyseOnCanvas = async ({
     screenshot.diffMeta?.numDiffPixels ?? interpretation?.diffCount;
   const regions = toAgentRegions(interpretation?.regions ?? []);
 
-  const heuristic = deriveVerdict({
+  const change = describeChange({
     percentDifference,
     numDiffPixels,
     interpretation,
@@ -475,26 +461,14 @@ const analyseOnCanvas = async ({
     percentDifference,
     numDiffPixels,
     dimensions: { expected: expectedSize, actual: actualSize },
-    severity: interpretation?.severity?.toLowerCase(),
-    summary: interpretation?.summary,
+    change,
     regions,
-    heuristic,
-    verdict: { ...heuristic, source: "heuristic" },
-    pending: false,
+    pending: true,
   };
 
   const dir = judgmentDir(outputDir, screenshot.name);
   const requestPath = path.join(dir, REQUEST_FILE);
   const verdictPath = path.join(dir, VERDICT_FILE);
-
-  // A judgment that already exists is kept whatever the mode: a verdict the
-  // judge wrote after `--judge all` must survive the next plain check rather
-  // than be pruned because the heuristic happened to have an opinion too.
-  const wantsJudgment =
-    options.judge === "all" ||
-    (options.judge === "ambiguous" && heuristic.label === "ambiguous") ||
-    (await exists(requestPath));
-  if (!wantsJudgment) return entry;
 
   const fingerprint = await fingerprintImages(expectedPath, actualPath);
 
@@ -548,12 +522,10 @@ const analyseOnCanvas = async ({
     createdAt,
     instructions: JUDGE_INSTRUCTIONS,
     verdictSchema: VERDICT_SCHEMA,
-    heuristic,
+    change,
     percentDifference,
     numDiffPixels,
     dimensions: entry.dimensions,
-    severity: entry.severity,
-    summary: entry.summary,
     regions,
     paths: {
       locator: judgment.locator,
@@ -566,24 +538,20 @@ const analyseOnCanvas = async ({
     },
   });
 
-  if (!(await exists(verdictPath))) {
-    entry.pending = true;
-    return entry;
-  }
+  if (!(await exists(verdictPath))) return entry;
 
   const parsed = parseAgentVerdict(await readJson(verdictPath));
   if (!parsed.ok) {
-    entry.pending = true;
     entry.verdictError = parsed.error;
     return entry;
   }
 
+  entry.pending = false;
   entry.verdict = {
     label: parsed.label,
     headline: parsed.headline,
     rationale: parsed.rationale,
     action: ACTION_BY_LABEL[parsed.label],
-    source: "agent",
     ...(parsed.confidence !== undefined
       ? { confidence: parsed.confidence }
       : {}),
@@ -646,15 +614,14 @@ const pruneJudgments = async (
 };
 
 /**
- * Analyse every non-passing screenshot, write judgment requests for the ones
- * that need a judge, apply any verdicts already written, and persist the
- * full report to `<outputDir>/.cappa-agent/report.json`.
+ * Analyse every non-passing screenshot, write a judgment request for every
+ * changed one, apply any verdicts already written, and persist the full
+ * report to `<outputDir>/.cappa-agent/report.json`.
  */
 export const runAgentCheck = async (
   options: RunAgentCheckOptions,
 ): Promise<AgentReport> => {
   const outputDir = path.resolve(options.outputDir);
-  const judge = options.judge ?? "ambiguous";
   const createdAt = (options.now?.() ?? new Date()).toISOString();
 
   const screenshots = await collectScreenshots(outputDir);
@@ -673,7 +640,7 @@ export const runAgentCheck = async (
     options.concurrency ?? 4,
     changed,
     (screenshot) =>
-      analyseChanged(screenshot, { ...options, outputDir, judge }, createdAt),
+      analyseChanged(screenshot, { ...options, outputDir }, createdAt),
   );
 
   await pruneJudgments(
@@ -719,7 +686,6 @@ export const runAgentCheck = async (
     createdAt,
     outputDir,
     reportPath: agentReportPath(outputDir),
-    judge,
     totals: {
       total: screenshots.length,
       passed: count("passed"),
@@ -757,7 +723,8 @@ export type SlimAgentReport = {
   results: Array<{
     name: string;
     category: AgentReportEntry["category"];
-    verdict?: Pick<AppliedVerdict, "label" | "headline" | "action" | "source">;
+    change?: string;
+    verdict?: Pick<AppliedVerdict, "label" | "headline" | "action">;
     pending?: true;
     /** Judgment directory, present while a verdict is pending. */
     judgment?: string;
@@ -776,13 +743,13 @@ export const toSlimAgentReport = (report: AgentReport): SlimAgentReport => ({
   results: report.entries.map((entry) => ({
     name: entry.name,
     category: entry.category,
+    ...(entry.change ? { change: entry.change } : {}),
     ...(entry.verdict
       ? {
           verdict: {
             label: entry.verdict.label,
             headline: entry.verdict.headline,
             action: entry.verdict.action,
-            source: entry.verdict.source,
           },
         }
       : {}),
@@ -795,7 +762,7 @@ export const toSlimAgentReport = (report: AgentReport): SlimAgentReport => ({
 });
 
 export type AgentVerdictInput = {
-  label: JudgedLabel;
+  label: VerdictLabel;
   headline: string;
   rationale?: string[];
   confidence?: number;
@@ -813,7 +780,7 @@ export const writeAgentVerdict = async (
   const dir = judgmentDir(outputDir, name);
   if (!(await exists(path.join(dir, REQUEST_FILE)))) {
     throw new Error(
-      `No judgment request for "${name}" — run \`cappa agent check\` first (use --judge all to request one for any changed screenshot).`,
+      `No judgment request for "${name}" — run \`cappa agent check\` first; only changed screenshots get one.`,
     );
   }
 

@@ -1,8 +1,5 @@
 import type { AgentReview } from "@cappa/protocol";
-import {
-  AgentVerdictBadge,
-  verdictSource,
-} from "@/components/AgentVerdictBadge";
+import { AgentVerdictBadge } from "@/components/AgentVerdictBadge";
 
 const formatTime = (iso: string) => {
   const date = new Date(iso);
@@ -10,7 +7,7 @@ const formatTime = (iso: string) => {
 };
 
 /**
- * What `cappa agent check` concluded about this screenshot: the label, its
+ * What the agent's judge concluded about this screenshot: the label, its
  * one-line headline and the reasons behind it, so a reviewer can agree or
  * disagree without re-deriving the judgment from the pixels.
  */
@@ -36,18 +33,11 @@ export function AgentReviewSummary({ review }: { review: AgentReview }) {
       )}
 
       <p className="mt-2 text-xs text-muted-foreground">
-        {verdictSource(review)}
+        Judged by agent
         {review.confidence !== undefined &&
           ` · ${Math.round(review.confidence * 100)}% confidence`}
         {" · "}
         checked {formatTime(review.reviewedAt)}
-        {review.pending && (
-          <>
-            {" · "}
-            awaiting judgment — run{" "}
-            <code className="font-mono">cappa agent judge</code>
-          </>
-        )}
       </p>
     </section>
   );

@@ -9,7 +9,7 @@ import path from "node:path";
 export const AGENT_DIRNAME = ".cappa-agent";
 
 /** Bumped only if `request.json` or `report.json` change incompatibly. */
-export const AGENT_REPORT_VERSION = 1;
+export const AGENT_REPORT_VERSION = 2;
 
 export const agentDir = (outputDir: string): string =>
   path.resolve(outputDir, AGENT_DIRNAME);

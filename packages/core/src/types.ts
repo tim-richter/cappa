@@ -347,20 +347,23 @@ export interface DiffMetadata {
 }
 
 /**
- * The verdict `cappa agent check` reached for a changed screenshot, as the
- * review UI shows it.
+ * A judge's verdict on a changed screenshot, as applied by the last
+ * `cappa agent check` and shown in the review UI.
  */
 export interface AgentReview {
   label: VerdictLabel;
   headline: string;
   rationale: string[];
   action: VerdictAction;
-  /** `heuristic` from the diff signals; `agent` from a judge's verdict. */
-  source: "heuristic" | "agent";
+  /**
+   * Always `agent`: only a judge labels a change. The wire format also
+   * allows `heuristic`, which engines before 0.18 sent.
+   */
+  source: "agent";
   /** 0-1, when the judge gave one. */
   confidence?: number;
-  /** A judgment was requested and no verdict had been written yet. */
-  pending: boolean;
+  /** Always false: a screenshot awaiting judgment carries no review. */
+  pending: false;
   /** When the check that produced this ran (ISO 8601). */
   reviewedAt: string;
 }
@@ -376,8 +379,8 @@ export type ChangedScreenshot = {
    */
   diffMeta?: DiffMetadata;
   /**
-   * The last `cappa agent check` verdict. Absent when no check has run, or
-   * when either image changed since — a verdict about other pixels is not one
+   * The judge's verdict from the last `cappa agent check`. Absent when it is
+   * not judged yet, or when either image changed since — a verdict about other pixels is not one
    * worth showing.
    */
   review?: AgentReview;

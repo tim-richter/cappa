@@ -210,8 +210,8 @@ describe("protocol schemas accept what core produces", () => {
         diffMeta: { numDiffPixels: 10, percentDifference: 1.5 },
         review: {
           label: "regression-likely",
-          headline: "1 deletion @ top (1.50%, high)",
-          rationale: ["high severity with structural changes (1 deletion)"],
+          headline: "Submit button label is truncated",
+          rationale: ["'Submit' renders as 'Subm'"],
           action: "investigate",
           source: "agent",
           confidence: 0.9,

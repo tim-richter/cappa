@@ -37,7 +37,7 @@ export const diffMetadataSchema = z.object({
 export type DiffMetadata = z.infer<typeof diffMetadataSchema>;
 
 /**
- * The verdict `cappa agent check` reached for a changed screenshot.
+ * A judge's verdict on a changed screenshot, as `cappa agent check` applied it.
  *
  * Unlike the interpretation this is cappa's own shape, so it is described
  * rather than carried opaquely. `label` and `action` stay plain strings on the
@@ -49,6 +49,8 @@ export const agentReviewSchema = z.object({
   headline: z.string(),
   rationale: z.array(z.string()),
   action: z.string(),
+  // Engines since 0.18 only send `agent`; older ones also sent `heuristic`
+  // labels guessed from diff signals, so the wire format still accepts it.
   source: z.enum(["heuristic", "agent"]),
   confidence: z.number().optional(),
   pending: z.boolean(),

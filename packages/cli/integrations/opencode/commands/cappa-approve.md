@@ -12,7 +12,9 @@ Current verdicts:
    verdicts and stop — ask which ones.
 2. Match what was asked against `results[]`: names must match exactly. A label
    (`intentional-likely`, `noise-likely`) means every changed screenshot with that verdict.
-3. Do not approve a `regression-likely` screenshot or a `deleted` one (approving a deletion removes
+3. A changed screenshot still `pending` has not been looked at: offer to judge it first
+   (`/cappa-review`), and approve it only if the request names it explicitly.
+   Do not approve a `regression-likely` screenshot or a `deleted` one (approving a deletion removes
    its baseline) unless the request names it explicitly — if it does not, list it and ask.
    `cappa agent approve` refuses `regression-likely` on its own; only when the user explicitly
    confirmed that regression, add `--allow-regression`.

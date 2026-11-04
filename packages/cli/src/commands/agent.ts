@@ -3,15 +3,11 @@ import {
   type AgentReport,
   clearJudgment,
   collectScreenshots,
-  isJudgedLabel,
-  JUDGE_MODES,
-  JUDGED_LABELS,
-  type JudgedLabel,
-  type JudgeMode,
-  readAgentReport,
+  isVerdictLabel,
   runAgentCheck,
   ScreenshotFileSystem,
   toSlimAgentReport,
+  VERDICT_LABELS,
   type VerdictLabel,
   writeAgentVerdict,
 } from "@cappa/core";
@@ -71,7 +67,6 @@ const LABEL_COLORS: Record<VerdictLabel, (text: string) => string> = {
   "regression-likely": chalk.red,
   "intentional-likely": chalk.green,
   "noise-likely": chalk.gray,
-  ambiguous: chalk.yellow,
 };
 
 /** Human-readable lines for a report — what `--json` prints, for people. */
@@ -89,18 +84,20 @@ export const describeAgentReport = (report: AgentReport): string[] => {
   }
 
   for (const entry of report.entries) {
-    if (entry.category !== "changed" || !entry.verdict) {
+    if (entry.category !== "changed") {
       lines.push(`${chalk.bold(entry.name)}  ${chalk.dim(entry.category)}`);
       continue;
     }
-    const { label, headline, source } = entry.verdict;
-    const tags = [
-      source === "agent" ? "judged" : undefined,
-      entry.pending ? "pending" : undefined,
-    ].filter(Boolean);
-    lines.push(
-      `${chalk.bold(entry.name)}  ${LABEL_COLORS[label](label)} — ${headline}${tags.length > 0 ? chalk.dim(` (${tags.join(", ")})`) : ""}`,
-    );
+    if (entry.verdict) {
+      const { label, headline } = entry.verdict;
+      lines.push(
+        `${chalk.bold(entry.name)}  ${LABEL_COLORS[label](label)} — ${headline}`,
+      );
+    } else {
+      lines.push(
+        `${chalk.bold(entry.name)}  ${chalk.yellow("awaiting judgment")} — ${entry.change ?? "changed"}`,
+      );
+    }
     if (entry.verdictError) {
       lines.push(chalk.red(`  verdict.json ignored: ${entry.verdictError}`));
     }
@@ -110,7 +107,6 @@ export const describeAgentReport = (report: AgentReport): string[] => {
 };
 
 type CheckOptions = JsonOption & {
-  judge: JudgeMode;
   maxTileRegions?: number;
 };
 
@@ -121,7 +117,6 @@ export const agentCheck = (options: CheckOptions) =>
     const report = await runAgentCheck({
       outputDir: config.outputDir,
       diff: config.diff,
-      judge: options.judge,
       maxTileRegions: options.maxTileRegions,
     });
 
@@ -140,7 +135,7 @@ export const agentCheck = (options: CheckOptions) =>
   });
 
 type JudgeOptions = JsonOption & {
-  label: JudgedLabel;
+  label: VerdictLabel;
   headline: string;
   rationale?: string[];
   confidence?: number;
@@ -171,7 +166,7 @@ export const agentJudge = (names: string[], options: JudgeOptions) =>
   });
 
 type ApproveOptions = JsonOption & {
-  label?: JudgedLabel[];
+  label?: VerdictLabel[];
   allowRegression?: boolean;
 };
 
@@ -201,20 +196,18 @@ export const agentApprove = (names: string[], options: ApproveOptions) =>
       );
     }
 
-    // Re-check rather than trusting the last report: approving off a label
-    // the screenshots no longer carry is exactly the mistake to prevent, and
-    // a changed screenshot's current verdict is what the regression guard
-    // below needs.
+    // Re-check rather than trusting the last report: approving off a verdict
+    // about images that have since been re-captured is exactly the mistake
+    // to prevent, and a changed screenshot's current verdict is what the
+    // regression guard below needs.
     const verdicts = new Map<string, VerdictLabel>();
     const needsCheck =
       !!options.label?.length ||
       names.some((name) => byName.get(name)?.category === "changed");
     if (needsCheck) {
-      const previous = await readAgentReport(config.outputDir);
       const report = await runAgentCheck({
         outputDir: config.outputDir,
         diff: config.diff,
-        judge: previous?.judge ?? "ambiguous",
       });
       for (const entry of report.entries) {
         if (entry.category === "changed" && entry.verdict) {
@@ -238,7 +231,7 @@ export const agentApprove = (names: string[], options: ApproveOptions) =>
       .map((s) => s.name);
     if (regressions.length > 0 && !options.allowRegression) {
       throw new Error(
-        `Refusing to approve regression-likely: ${regressions.join(", ")} — if the change is intended, judge it (\`cappa agent check --judge all\`, then \`cappa agent judge <name> --label intentional-likely\`), or pass --allow-regression.`,
+        `Refusing to approve regression-likely: ${regressions.join(", ")} — if the change is intended, judge it again (\`cappa agent judge <name> --label intentional-likely\`), or pass --allow-regression.`,
       );
     }
 
@@ -403,16 +396,16 @@ const parseChoice =
     return value as T;
   };
 
-const parseLabel = (value: string): JudgedLabel => {
-  if (!isJudgedLabel(value)) {
+const parseLabel = (value: string): VerdictLabel => {
+  if (!isVerdictLabel(value)) {
     throw new InvalidArgumentError(
-      `label must be one of: ${JUDGED_LABELS.join(", ")}`,
+      `label must be one of: ${VERDICT_LABELS.join(", ")}`,
     );
   }
   return value;
 };
 
-const collectLabel = (value: string, previous: JudgedLabel[] = []) => [
+const collectLabel = (value: string, previous: VerdictLabel[] = []) => [
   ...previous,
   parseLabel(value),
 ];
@@ -437,19 +430,13 @@ export const registerAgentCommand = (program: Command): void => {
   const agent = program
     .command("agent")
     .description(
-      "Visual review for coding agents: label changes, hand ambiguous ones to an agent, approve",
+      "Visual review for coding agents: hand every change to a judge, record verdicts, approve",
     );
 
   agent
     .command("check")
     .description(
-      "Label every changed screenshot and write judgment requests for an agent (does not capture)",
-    )
-    .option(
-      "--judge <mode>",
-      `which changes get a judgment request: ${JUDGE_MODES.join(", ")}`,
-      parseChoice(JUDGE_MODES, "--judge"),
-      "ambiguous",
+      "Write a judgment request for every changed screenshot and apply verdicts already recorded (does not capture)",
     )
     .option(
       "--max-tile-regions <count>",
@@ -463,7 +450,7 @@ export const registerAgentCommand = (program: Command): void => {
     .command("judge")
     .description("Record a verdict for screenshots with a judgment request")
     .argument("<names...>", "screenshot names, exactly as reported")
-    .requiredOption("--label <label>", JUDGED_LABELS.join(" | "), parseLabel)
+    .requiredOption("--label <label>", VERDICT_LABELS.join(" | "), parseLabel)
     .requiredOption("--headline <text>", "one line describing the change")
     .option("--rationale <text...>", "reasons for the verdict")
     .option("--confidence <number>", "0 to 1", parseConfidence)
