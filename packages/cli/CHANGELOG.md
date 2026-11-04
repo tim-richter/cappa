@@ -1,5 +1,18 @@
 # @cappa/cli
 
+## 0.17.1
+
+### Patch Changes
+
+- b913c60: The agent skill's `JUDGING.md` now describes size changes. They come with regions located on a padded canvas plus `overview.png`, instead of an overview alone.
+- Updated dependencies [b913c60]
+- Updated dependencies [b913c60]
+- Updated dependencies [b913c60]
+  - @cappa/core@0.17.0
+  - @cappa/config@0.3.0
+  - @cappa/server@0.10.2
+  - @cappa/client@0.10.0
+
 ## 0.17.0
 
 ### Minor Changes

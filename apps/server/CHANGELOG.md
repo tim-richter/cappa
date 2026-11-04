@@ -1,5 +1,15 @@
 # @cappa/server
 
+## 0.10.2
+
+### Patch Changes
+
+- Updated dependencies [b913c60]
+- Updated dependencies [b913c60]
+- Updated dependencies [b913c60]
+  - @cappa/core@0.17.0
+  - @cappa/protocol@0.10.0
+
 ## 0.10.1
 
 ### Patch Changes
