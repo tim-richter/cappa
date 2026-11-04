@@ -1,5 +1,27 @@
 # @cappa/core
 
+## 0.17.0
+
+### Minor Changes
+
+- b913c60: New `screenshot.crop` option crops screenshots to the content actually painted on the page instead of capturing the whole viewport. A small component on a 1920px viewport is mostly empty canvas, which dilutes every diff percentage: one changed word is ~0.01% of the viewport but several percent of the component. The viewport stays the layout size, so responsive styles are unaffected; it becomes the most a screenshot can cover.
+  
+  - `crop: true` measures `body` with 8px of padding; `{ root, padding }` changes either.
+  - Content is what is painted: text, images, SVGs, form controls, and elements with a visible background, border, outline or box-shadow. Full-width wrappers with nothing of their own to draw do not stretch the crop. Portals rendered into `body` (popovers, dialogs) are included, and hidden subtrees and overflow-clipped descendants are not.
+  - `@cappa/plugin-storybook` takes `crop` at plugin level, as a story parameter and per variant. `@cappa/plugin-pages` takes it in `defaults` and per page.
+  - `ScreenshotSettings.crop` and `measureContentClip` are exported from `@cappa/core` for custom plugins.
+  
+  Turning `crop` on changes the size of every screenshot, so existing baselines show as changed once.
+- b913c60: Screenshots whose size changed are now actually diffed. Before, a size mismatch returned no pixel count, a 200×200 red placeholder as the diff image, and no regions for agent review. Both images are now compared on a canvas padded to the larger width and height, anchored top-left, with each image padded with its own edge background. Only real content in the grown area counts, so a list that gained an item diffs as that item. A size change still never passes.
+  
+  - Pixel and GMSD comparisons return a real diff image for size changes. Pixel results also carry `dimensions` and, with `diff.interpret`, an interpretation.
+  - `cappa agent check` locates regions for size changes and renders `locator.png` and `regions.png` next to `overview.png`. The headline starts with `dimensions changed;`, and a size change is never labelled `noise-likely`.
+  - The `noise-likely` sub-perceptual rule now uses an absolute pixel count (`SUB_PERCEPTUAL_PIXELS = 25`) instead of a share of the image, so the same change gets the same label in a tight crop and in a 1920×1080 capture. `SUB_PERCEPTUAL_PERCENT` is replaced by `SUB_PERCEPTUAL_PIXELS`.
+
+### Patch Changes
+
+- b913c60: A screenshot whose images were written in the same millisecond `cappa agent check` started no longer loses its verdict in the review UI. The report's timestamp has whole-millisecond precision and file times have sub-millisecond precision, so such images used to count as newer than the check.
+
 ## 0.16.0
 
 ### Minor Changes
