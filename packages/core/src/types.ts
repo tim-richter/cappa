@@ -3,6 +3,7 @@ import type { Locator } from "playwright-core";
 import type { VerdictAction, VerdictLabel } from "./agent/verdict";
 import type { LogConsoleEvents } from "./consoleEvents";
 import type { CropSetting } from "./crop";
+import type { BrowserConfig } from "./playwright";
 import type { Plugin, PluginDef } from "./plugin";
 
 export type PossiblePromise<T> = Promise<T> | T;
@@ -257,6 +258,21 @@ export type UserConfig = {
      */
     crop?: CropSetting;
   };
+  /**
+   * The browser screenshots are taken in. Shaped like Vitest browser mode's
+   * `browser` block.
+   *
+   * @example
+   * import { playwright } from "@cappa/core/playwright";
+   *
+   * browser: {
+   *   provider: playwright({
+   *     // unset → cappa launches a local browser
+   *     connectOptions: { wsEndpoint: process.env.CAPPA_BROWSER_WS },
+   *   }),
+   * }
+   */
+  browser?: BrowserConfig;
   /**
    * Configuration for the review UI.
    */

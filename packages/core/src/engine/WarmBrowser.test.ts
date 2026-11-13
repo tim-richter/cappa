@@ -48,6 +48,24 @@ describe("WarmBrowser", () => {
     expect(warm.isWarm).toBe(true);
   });
 
+  it("starts a fresh browser when the warm one disconnected", async () => {
+    const { warm, tools } = createWarm();
+
+    const first = await warm.acquire();
+    warm.release();
+    // A remote Playwright server restarted while the browser sat warm.
+    first.disconnected = true;
+    (first as FakeTool).close.mockRejectedValue(new Error("Target closed"));
+
+    const second = await warm.acquire();
+
+    expect(second).not.toBe(first);
+    expect(tools).toHaveLength(2);
+    expect(first.close).toHaveBeenCalledOnce();
+    expect(first.recycleContexts).not.toHaveBeenCalled();
+    expect(second.init).toHaveBeenCalledOnce();
+  });
+
   it("reuses the same browser across runs", async () => {
     const { warm, tools } = createWarm();
 

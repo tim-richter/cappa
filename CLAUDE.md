@@ -50,6 +50,7 @@ The foundational library. Core exports:
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`). Both compare different-size images on a canvas padded to the larger size (`features/png/canvas.ts`, each image padded with its own edge colour); a size change never passes
 - `measureContentClip` / `resolveCrop` — content crop (`src/crop.ts`): measures painted ink in the page and returns a Playwright `clip`
 - `runAgentCheck` / `describeChange` / `renderJudgmentTiles` — agent review (`src/agent/`): a judgment request with region crops for every changed screenshot (no heuristic labels — only a judge labels a change), verdicts tied to an image fingerprint
+- `playwright` / `resolveBrowserConfig` — the `browser.provider` factory and its defaults/validation (`src/playwright.ts`, also the `@cappa/core/playwright` subpath)
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
 Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `playwright-core ^1.55`.
@@ -130,6 +131,14 @@ export default defineConfig({
     crop: false,                 // true | { root, padding } — crop to painted content (src/crop.ts)
   },
   review: { theme: 'light' },    // 'light' | 'dark'
+  browser: {                     // Vitest-browser-mode shape (src/playwright.ts)
+    provider: playwright({       // from '@cappa/core/playwright'
+      connectOptions: { wsEndpoint: process.env.CAPPA_BROWSER_WS }, // set → connect(), unset → launch()
+      contextOptions: {},        // merged over reducedMotion/deviceScaleFactor; viewport stays in screenshot
+    }),
+    headless: true,
+    instances: [{ browser: 'chromium' }], // exactly one entry for now
+  },
   plugins: [cappaPluginStorybook({ url: 'http://localhost:6006' })],
   onFail: async (failingScreenshots) => { /* upload, notify, etc. */ },
 });

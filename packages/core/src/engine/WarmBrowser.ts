@@ -67,6 +67,19 @@ export class WarmBrowser {
       this.cancelIdleTimer();
       this.inUse = true;
 
+      if (this.tool?.disconnected === true) {
+        // The browser went away while warm — typically a remote Playwright
+        // server whose container restarted. Handing it out would fail the run
+        // on its first page, so start over with a fresh one.
+        const dead = this.tool;
+        this.tool = null;
+        try {
+          await dead.close();
+        } catch {
+          // Already gone; nothing left to tear down.
+        }
+      }
+
       if (this.tool) {
         // Reused browser: give the run a clean set of contexts.
         await this.tool.recycleContexts();

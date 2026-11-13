@@ -1,5 +1,5 @@
 import path from "node:path";
-import { defineConfig } from "@cappa/core";
+import { defineConfig, playwright } from "@cappa/core";
 import { expect, test, vi } from "vitest";
 import { getConfig } from "./getConfig";
 import type { ConfigResult } from "./loadConfig";
@@ -49,6 +49,11 @@ test("return Config when config is set with defineConfig", async () => {
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
+    browser: {
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
   });
 });
 
@@ -195,6 +200,11 @@ test("return Config when config is a function", async () => {
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
+    browser: {
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
   });
 });
 
@@ -235,6 +245,11 @@ test("return Config when config is a promise", async () => {
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
+    browser: {
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
   });
 });
 
@@ -287,6 +302,11 @@ test("passes environment variables to config functions", async () => {
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
+    browser: {
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
   });
 
   if (originalNodeEnv === undefined) {
@@ -419,4 +439,40 @@ test("rejects a webServer without a url", async () => {
   await expect(
     getConfig({ config: config as any, filepath: "./cappa.config.ts" }),
   ).rejects.toThrow(/webServer\.url/);
+});
+
+test("resolves the browser block with its defaults", async () => {
+  const cappaUserConfig = await getConfig({
+    config: defineConfig({
+      browser: {
+        provider: playwright({
+          connectOptions: { wsEndpoint: "ws://localhost:3000/" },
+        }),
+        headless: false,
+      },
+    }),
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.browser).toEqual({
+    provider: {
+      name: "playwright",
+      options: { connectOptions: { wsEndpoint: "ws://localhost:3000/" } },
+    },
+    headless: false,
+    instances: [{ browser: "chromium" }],
+  });
+});
+
+test("rejects more than one browser instance", async () => {
+  await expect(
+    getConfig({
+      config: defineConfig({
+        browser: {
+          instances: [{ browser: "chromium" }, { browser: "firefox" }] as never,
+        },
+      }),
+      filepath: "./cappa.config.ts",
+    }),
+  ).rejects.toThrow(/exactly one entry/);
 });

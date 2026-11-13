@@ -2,9 +2,19 @@ import fsp from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { initLogger } from "@cappa/logger";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import { chromium, firefox } from "playwright-core";
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 import * as pixelCompare from "./compare/pixel";
-import ScreenshotTool from "./screenshot";
+import { playwright } from "./playwright";
+import ScreenshotTool, { describeConnectError } from "./screenshot";
 
 vi.mock("./compare/pixel", () => ({
   compareImages: vi.fn(),
@@ -710,5 +720,380 @@ describe("size-change diffs", () => {
       );
       expect(written).toBe("placeholder");
     });
+  });
+});
+
+describe("ScreenshotTool browser config", () => {
+  type Listener = () => void;
+
+  /** A browser that records every context it is asked for. */
+  const createFakeBrowser = () => {
+    const listeners: Record<string, Listener[]> = {};
+    const contextOptions: unknown[] = [];
+    const contexts: Array<{ setDefaultTimeout: ReturnType<typeof vi.fn> }> = [];
+
+    const browser = {
+      on: vi.fn((event: string, listener: Listener) => {
+        listeners[event] = [...(listeners[event] ?? []), listener];
+      }),
+      newContext: vi.fn(async (options?: unknown) => {
+        contextOptions.push(options);
+        const context = {
+          close: vi.fn(async () => {}),
+          setDefaultTimeout: vi.fn(),
+          newPage: vi.fn(async () => ({
+            evaluate: vi.fn(async () => "Mozilla/5.0 HeadlessChrome"),
+          })),
+        };
+        contexts.push(context);
+        return context;
+      }),
+      close: vi.fn(async () => {
+        for (const listener of listeners.disconnected ?? []) listener();
+      }),
+      emit: (event: string) => {
+        for (const listener of listeners[event] ?? []) listener();
+      },
+    };
+
+    return { browser, contextOptions, contexts };
+  };
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("derives browserType and headless from the browser config", () => {
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browserType: "webkit",
+      browser: { headless: false, instances: [{ browser: "firefox" }] },
+    });
+
+    expect(tool.browserType).toBe("firefox");
+    expect(tool.headless).toBe(false);
+  });
+
+  it("keeps the legacy browserType and headless options working", () => {
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browserType: "webkit",
+      headless: false,
+    });
+
+    expect(tool.browserConfig).toEqual({
+      provider: { name: "playwright", options: {} },
+      headless: false,
+      instances: [{ browser: "webkit" }],
+    });
+  });
+
+  it("launches with exactly today's options when nothing is configured", async () => {
+    const { browser, contextOptions } = createFakeBrowser();
+    const launch = vi
+      .spyOn(chromium, "launch")
+      .mockResolvedValue(browser as never);
+    const connect = vi.spyOn(chromium, "connect");
+
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    await tool.init();
+
+    expect(launch).toHaveBeenCalledWith({ headless: true });
+    expect(connect).not.toHaveBeenCalled();
+    // [0] is the throwaway context that measures the default user agent.
+    expect(contextOptions[1]).toEqual({
+      reducedMotion: "reduce",
+      deviceScaleFactor: 2,
+      userAgent: "Mozilla/5.0 HeadlessChrome CappaStorybook",
+      viewport: { width: 1920, height: 1080 },
+    });
+  });
+
+  it("passes launchOptions to launch, with browser.headless winning", async () => {
+    const { browser } = createFakeBrowser();
+    const launch = vi
+      .spyOn(firefox, "launch")
+      .mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({
+          launchOptions: { args: ["--foo"], headless: true } as never,
+        }),
+        headless: false,
+        instances: [{ browser: "firefox" }],
+      },
+    });
+    await tool.init();
+
+    expect(launch).toHaveBeenCalledWith({ args: ["--foo"], headless: false });
+  });
+
+  it("connects when wsEndpoint is set, forwarding launch options in a header", async () => {
+    const { browser } = createFakeBrowser();
+    const launch = vi.spyOn(chromium, "launch");
+    const connect = vi
+      .spyOn(chromium, "connect")
+      .mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({
+          launchOptions: { args: ["--font-render-hinting=none"] },
+          connectOptions: {
+            wsEndpoint: "ws://localhost:3000/",
+            exposeNetwork: "<loopback>",
+            timeout: 5_000,
+            headers: { authorization: "Bearer x" },
+          },
+        }),
+      },
+    });
+    await tool.init();
+
+    expect(launch).not.toHaveBeenCalled();
+    expect(connect).toHaveBeenCalledWith("ws://localhost:3000/", {
+      exposeNetwork: "<loopback>",
+      timeout: 5_000,
+      headers: {
+        "x-playwright-launch-options": JSON.stringify({
+          args: ["--font-render-hinting=none"],
+          headless: true,
+        }),
+        authorization: "Bearer x",
+      },
+    });
+  });
+
+  it("lets a configured header override the launch-options header", async () => {
+    const { browser } = createFakeBrowser();
+    const connect = vi
+      .spyOn(chromium, "connect")
+      .mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({
+          connectOptions: {
+            wsEndpoint: "ws://localhost:3000/",
+            headers: { "x-playwright-launch-options": "{}" },
+          },
+        }),
+      },
+    });
+    await tool.init();
+
+    const [, options] = connect.mock.calls[0] as unknown as [
+      string,
+      { headers?: Record<string, string> },
+    ];
+    expect(options.headers).toEqual({
+      "x-playwright-launch-options": "{}",
+    });
+  });
+
+  it("launches locally when wsEndpoint is unset", async () => {
+    const { browser } = createFakeBrowser();
+    const launch = vi
+      .spyOn(chromium, "launch")
+      .mockResolvedValue(browser as never);
+    const connect = vi.spyOn(chromium, "connect");
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({
+          connectOptions: { wsEndpoint: undefined, exposeNetwork: "*" },
+        }),
+      },
+    });
+    await tool.init();
+
+    expect(launch).toHaveBeenCalledOnce();
+    expect(connect).not.toHaveBeenCalled();
+  });
+
+  it("rethrows connection failures with an actionable message", async () => {
+    vi.spyOn(chromium, "connect").mockRejectedValue(
+      new Error("WebSocket error: connect ECONNREFUSED 127.0.0.1:3000"),
+    );
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({
+          connectOptions: { wsEndpoint: "ws://localhost:3000/" },
+        }),
+      },
+    });
+
+    await expect(tool.init()).rejects.toThrow(
+      /^No Playwright server at ws:\/\/localhost:3000\//,
+    );
+  });
+
+  it("merges contextOptions over the defaults, keeping viewport and UA suffix", async () => {
+    const { browser, contextOptions, contexts } = createFakeBrowser();
+    vi.spyOn(chromium, "launch").mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      concurrency: 2,
+      viewport: { width: 800, height: 600 },
+      browser: {
+        provider: playwright({
+          contextOptions: {
+            deviceScaleFactor: 1,
+            colorScheme: "dark",
+            userAgent: "Custom/1.0",
+            viewport: { width: 1, height: 1 },
+          } as never,
+          actionTimeout: 10_000,
+        }),
+      },
+    });
+    await tool.init();
+
+    // A custom user agent is not measured, so no throwaway context.
+    expect(contextOptions).toHaveLength(2);
+    for (const options of contextOptions) {
+      expect(options).toEqual({
+        reducedMotion: "reduce",
+        deviceScaleFactor: 1,
+        colorScheme: "dark",
+        userAgent: "Custom/1.0 CappaStorybook",
+        viewport: { width: 800, height: 600 },
+      });
+    }
+    for (const context of contexts) {
+      expect(context.setDefaultTimeout).toHaveBeenCalledWith(10_000);
+    }
+  });
+
+  it("keeps the context options when recycling contexts", async () => {
+    const { browser, contextOptions } = createFakeBrowser();
+    vi.spyOn(chromium, "launch").mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({
+      outputDir: "/tmp",
+      browser: {
+        provider: playwright({ contextOptions: { locale: "de-DE" } }),
+      },
+    });
+    await tool.init();
+    await tool.recycleContexts();
+
+    expect(contextOptions.at(-1)).toMatchObject({ locale: "de-DE" });
+    expect(contextOptions.at(-1)).toEqual(contextOptions.at(-2));
+  });
+
+  it("sets no default timeout without actionTimeout", async () => {
+    const { browser, contexts } = createFakeBrowser();
+    vi.spyOn(chromium, "launch").mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    await tool.init();
+
+    expect(contexts.at(-1)?.setDefaultTimeout).not.toHaveBeenCalled();
+  });
+
+  it("marks the tool disconnected when the browser goes away", async () => {
+    const { browser } = createFakeBrowser();
+    vi.spyOn(chromium, "launch").mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    await tool.init();
+    expect(tool.disconnected).toBe(false);
+
+    browser.emit("disconnected");
+
+    expect(tool.disconnected).toBe(true);
+  });
+
+  it("does not count its own close as a disconnect", async () => {
+    const { browser } = createFakeBrowser();
+    vi.spyOn(chromium, "launch").mockResolvedValue(browser as never);
+
+    const tool = new ScreenshotTool({ outputDir: "/tmp" });
+    await tool.init();
+    await tool.close();
+
+    expect(browser.close).toHaveBeenCalledOnce();
+    expect(tool.disconnected).toBe(false);
+  });
+});
+
+describe("describeConnectError", () => {
+  const endpoint = "ws://localhost:3000/";
+
+  it("names the matching Docker image on a version mismatch", () => {
+    const raw = new Error(
+      "browserType.connect: Playwright version mismatch:\n  - server version: v1.50\n  - client version: v1.63",
+    );
+
+    const error = describeConnectError(raw, endpoint, "1.63.0");
+
+    expect(error.message).toContain("playwright-core 1.63.0");
+    expect(error.message).toContain(
+      "mcr.microsoft.com/playwright:v1.63.0-noble",
+    );
+    expect(error.message).toContain(raw.message);
+    expect(error.cause).toBe(raw);
+  });
+
+  it("treats a 428 response as a version mismatch", () => {
+    const error = describeConnectError(
+      new Error("Unexpected server response: 428"),
+      endpoint,
+      "1.63.0",
+    );
+
+    expect(error.message).toContain("different Playwright version");
+  });
+
+  it("still explains a mismatch when the client version is unknown", () => {
+    const error = describeConnectError(
+      new Error("Playwright version mismatch"),
+      endpoint,
+      null,
+    );
+
+    expect(error.message).toContain("mcr.microsoft.com/playwright image");
+  });
+
+  it("reports a timeout as a timeout", () => {
+    const error = describeConnectError(
+      new Error("browserType.connect: Timeout 5000ms exceeded."),
+      endpoint,
+      "1.63.0",
+    );
+
+    expect(error.message).toMatch(
+      /^Timed out connecting to the Playwright server at ws:\/\/localhost:3000\//,
+    );
+  });
+
+  it("reports anything else as no server, with a docs link", () => {
+    const error = describeConnectError(
+      new Error("connect ECONNREFUSED 127.0.0.1:3000"),
+      endpoint,
+      "1.63.0",
+    );
+
+    expect(error.message).toMatch(/^No Playwright server at /);
+    expect(error.message).toContain("#connecting-to-a-remote-browser");
+    expect(error.message).toContain("ECONNREFUSED");
+  });
+
+  it("reads the installed playwright-core version by default", () => {
+    const error = describeConnectError(
+      new Error("Playwright version mismatch"),
+      endpoint,
+    );
+
+    expect(error.message).toMatch(/playwright-core \d+\.\d+\.\d+/);
   });
 });

@@ -1,8 +1,10 @@
+import { createRequire } from "node:module";
 import path from "node:path";
 import { getLogger, type Logger } from "@cappa/logger";
 import {
   type Browser,
   type BrowserContext,
+  type BrowserType,
   chromium,
   firefox,
   type Page,
@@ -22,6 +24,12 @@ import type { LogConsoleEvents } from "./consoleEvents";
 import { type CropSetting, measureContentClip, resolveCrop } from "./crop";
 import { ScreenshotFileSystem } from "./filesystem";
 import { sanitizeScreenshotFilename } from "./paths";
+import {
+  type BrowserConfig,
+  type BrowserName,
+  type ResolvedBrowserConfig,
+  resolveBrowserConfig,
+} from "./playwright";
 import type { RunLogLevel } from "./runner/types";
 import type {
   DiffConfig,
@@ -146,9 +154,75 @@ const toSinkLogger = (sink: ScreenshotLogSink): ScreenshotLogger =>
     ]),
   ) as ScreenshotLogger;
 
+const browserMap: Record<BrowserName, BrowserType> = {
+  chromium,
+  firefox,
+  webkit,
+};
+
+/** Where the remote-browser recipe lives; linked from connection errors. */
+const REMOTE_BROWSER_DOCS =
+  "https://tim-richter.github.io/cappa/configuration/#connecting-to-a-remote-browser";
+
+/** The installed `playwright-core` version, or `null` if it cannot be read. */
+const clientPlaywrightVersion = (): string | null => {
+  try {
+    const require = createRequire(import.meta.url);
+    return (require("playwright-core/package.json") as { version: string })
+      .version;
+  } catch {
+    return null;
+  }
+};
+
+/**
+ * Turn a raw `browserType.connect()` failure into something actionable.
+ *
+ * Exported for tests.
+ */
+export const describeConnectError = (
+  error: unknown,
+  wsEndpoint: string,
+  clientVersion: string | null = clientPlaywrightVersion(),
+): Error => {
+  const message = error instanceof Error ? error.message : String(error);
+
+  if (/version mismatch/i.test(message) || /\b428\b/.test(message)) {
+    const image = clientVersion
+      ? `mcr.microsoft.com/playwright:v${clientVersion}-noble`
+      : "the mcr.microsoft.com/playwright image matching your playwright-core";
+    return new Error(
+      `The Playwright server at ${wsEndpoint} runs a different Playwright version than this client${
+        clientVersion ? ` (playwright-core ${clientVersion})` : ""
+      }. Run the server from ${image}.\n\n${message}`,
+      { cause: error },
+    );
+  }
+
+  if (/timeout/i.test(message) && /exceeded/i.test(message)) {
+    return new Error(
+      `Timed out connecting to the Playwright server at ${wsEndpoint}. See ${REMOTE_BROWSER_DOCS}\n\n${message}`,
+      { cause: error },
+    );
+  }
+
+  return new Error(
+    `No Playwright server at ${wsEndpoint}. Start one with \`playwright run-server\`, or unset connectOptions.wsEndpoint to launch a local browser. See ${REMOTE_BROWSER_DOCS}\n\n${message}`,
+    { cause: error },
+  );
+};
+
 class ScreenshotTool {
-  browserType: "chromium" | "firefox" | "webkit";
+  browserType: BrowserName;
   headless: boolean;
+  /** Browser provider, headless mode and instance — see `UserConfig.browser`. */
+  browserConfig: ResolvedBrowserConfig;
+  /**
+   * Set when the browser goes away underneath the tool — a remote browser
+   * server restarting, or a local browser crashing. `WarmBrowser` checks it so
+   * it starts a fresh browser instead of handing out a dead one.
+   */
+  disconnected = false;
   viewport: { width: number; height: number };
   fullPage: boolean;
   /** Default content crop; a screenshot's own `crop` overrides it. */
@@ -180,7 +254,12 @@ class ScreenshotTool {
   private captureSink: ScreenshotCaptureSink | null = null;
 
   constructor(options: {
-    browserType?: "chromium" | "firefox" | "webkit";
+    /**
+     * Provider, headless mode and instance. When given, `browserType` and
+     * `headless` are ignored — they are derived from it.
+     */
+    browser?: BrowserConfig;
+    browserType?: BrowserName;
     headless?: boolean;
     viewport?: { width: number; height: number };
     fullPage?: boolean;
@@ -192,8 +271,14 @@ class ScreenshotTool {
     logConsoleEvents?: LogConsoleEvents;
     connectionTimeout?: number;
   }) {
-    this.browserType = options.browserType || "chromium";
-    this.headless = options.headless !== false; // Default to headless
+    this.browserConfig = resolveBrowserConfig(
+      options.browser ?? {
+        headless: options.headless !== false, // Default to headless
+        instances: [{ browser: options.browserType || "chromium" }],
+      },
+    );
+    this.browserType = this.browserConfig.instances[0].browser;
+    this.headless = this.browserConfig.headless;
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.fullPage = options.fullPage ?? true;
     this.crop = options.crop ?? false;
@@ -273,37 +358,65 @@ class ScreenshotTool {
    * Initialize playwright and page
    */
   async init() {
-    // Launch browser based on type
-    const browserMap = {
-      chromium,
-      firefox,
-      webkit,
-    };
-
-    const browserClass = browserMap[this.browserType];
-    if (!browserClass) {
+    const browserType = browserMap[this.browserType];
+    if (!browserType) {
       throw new Error(`Unsupported browser type: ${this.browserType}`);
     }
 
-    const browser = await browserClass.launch({
-      headless: this.headless,
-    });
+    const { launchOptions, connectOptions, contextOptions } =
+      this.browserConfig.provider.options;
+    const launch = { ...launchOptions, headless: this.headless };
+
+    let browser: Browser;
+    if (connectOptions?.wsEndpoint) {
+      const { wsEndpoint, ...options } = connectOptions;
+      try {
+        browser = await browserType.connect(wsEndpoint, {
+          ...options,
+          headers: {
+            "x-playwright-launch-options": JSON.stringify(launch),
+            ...options.headers,
+          },
+        });
+      } catch (error) {
+        throw describeConnectError(error, wsEndpoint);
+      }
+    } else {
+      browser = await browserType.launch(launch);
+    }
 
     if (!browser)
       throw new Error("Something went wrong with starting the browser.");
 
     this.browser = browser;
+    this.disconnected = false;
+    browser.on("disconnected", () => {
+      // Only the browser this tool currently owns; a stale listener from a
+      // closed browser must not mark its replacement dead.
+      if (this.browser === browser) {
+        this.disconnected = true;
+      }
+    });
 
-    const tempCtx = await browser.newContext();
-    const tempPage = await tempCtx.newPage();
-    this.defaultUserAgent = await tempPage.evaluate(() => navigator.userAgent);
-    await tempCtx.close();
+    // A custom user agent needs no measuring — it is used as given.
+    if (!contextOptions?.userAgent) {
+      const tempCtx = await browser.newContext();
+      const tempPage = await tempCtx.newPage();
+      this.defaultUserAgent = await tempPage.evaluate(
+        () => navigator.userAgent,
+      );
+      await tempCtx.close();
+    }
 
     await this.createContexts();
   }
 
   /**
    * Create the pool of browser contexts and pages.
+   *
+   * `contextOptions` from the provider merge over cappa's defaults; the
+   * viewport and the `CappaStorybook` user-agent suffix always win, because
+   * plugins and `isCappa()` rely on them.
    */
   private async createContexts() {
     const browser = this.browser;
@@ -311,15 +424,24 @@ class ScreenshotTool {
       throw new Error("Browser not initialized");
     }
 
+    const { contextOptions, actionTimeout } =
+      this.browserConfig.provider.options;
+    const { viewport: _ignored, ...extraContextOptions } = (contextOptions ??
+      {}) as NonNullable<typeof contextOptions> & { viewport?: unknown };
+
     // Create N contexts and pages in parallel
     const results = await Promise.all(
       Array.from({ length: this.concurrency }, async () => {
         const context = await browser.newContext({
           reducedMotion: "reduce",
           deviceScaleFactor: 2,
-          userAgent: `${this.defaultUserAgent} CappaStorybook`,
+          ...extraContextOptions,
+          userAgent: `${contextOptions?.userAgent ?? this.defaultUserAgent} CappaStorybook`,
           viewport: this.viewport,
         });
+        if (actionTimeout) {
+          context.setDefaultTimeout(actionTimeout);
+        }
         const page = await context.newPage();
         return { context, page };
       }),
@@ -386,14 +508,17 @@ class ScreenshotTool {
       this.page = null;
     }
 
-    if (this.browser) {
+    const browser = this.browser;
+    if (browser) {
+      // Detach first, so our own close is not reported as a lost browser.
+      this.browser = null;
       try {
-        await this.browser.close();
+        await browser.close();
       } catch (error) {
         getLogger().debug("Error closing the browser:", error);
       }
-      this.browser = null;
     }
+    this.disconnected = false;
   }
 
   /**
