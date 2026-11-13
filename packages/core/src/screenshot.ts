@@ -1,3 +1,4 @@
+import { realpathSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { getLogger, type Logger } from "@cappa/logger";
@@ -21,6 +22,10 @@ import {
   type CompareResult as PixelCompareResult,
 } from "./compare/pixel";
 import type { LogConsoleEvents } from "./consoleEvents";
+import {
+  ensurePlaywrightContainer,
+  type PlaywrightContainer,
+} from "./container";
 import { type CropSetting, measureContentClip, resolveCrop } from "./crop";
 import { ScreenshotFileSystem } from "./filesystem";
 import { sanitizeScreenshotFilename } from "./paths";
@@ -29,6 +34,7 @@ import {
   type BrowserName,
   type ResolvedBrowserConfig,
   resolveBrowserConfig,
+  resolveContainerOptions,
 } from "./playwright";
 import type { RunLogLevel } from "./runner/types";
 import type {
@@ -175,6 +181,18 @@ const clientPlaywrightVersion = (): string | null => {
   }
 };
 
+/** The installed `playwright-core` directory, symlinks resolved, or `null`. */
+const clientPlaywrightPackageDir = (): string | null => {
+  try {
+    const require = createRequire(import.meta.url);
+    return realpathSync(
+      path.dirname(require.resolve("playwright-core/package.json")),
+    );
+  } catch {
+    return null;
+  }
+};
+
 /**
  * Turn a raw `browserType.connect()` failure into something actionable.
  *
@@ -184,8 +202,21 @@ export const describeConnectError = (
   error: unknown,
   wsEndpoint: string,
   clientVersion: string | null = clientPlaywrightVersion(),
+  container?: { image: string },
 ): Error => {
   const message = error instanceof Error ? error.message : String(error);
+
+  if (
+    container &&
+    (/version mismatch/i.test(message) || /\b428\b/.test(message))
+  ) {
+    return new Error(
+      `The container image ${container.image} runs a different Playwright version than this client${
+        clientVersion ? ` (playwright-core ${clientVersion})` : ""
+      }. A custom playwright({ container: { image } }) must be built from the official image for the same version — use {version} in the tag.\n\n${message}`,
+      { cause: error },
+    );
+  }
 
   if (/version mismatch/i.test(message) || /\b428\b/.test(message)) {
     const image = clientVersion
@@ -247,6 +278,8 @@ class ScreenshotTool {
   filesystem: ScreenshotFileSystem;
   logConsoleEvents: LogConsoleEvents;
   connectionTimeout: number;
+  /** The container `init()` started or reused, when `container` is on. */
+  container: PlaywrightContainer | null = null;
   private defaultUserAgent = "";
   /** The real logger, kept so `setLogSink(null)` restores the same instance. */
   private readonly baseLogger: ScreenshotLogger;
@@ -367,9 +400,42 @@ class ScreenshotTool {
       this.browserConfig.provider.options;
     const launch = { ...launchOptions, headless: this.headless };
 
+    const container = resolveContainerOptions(
+      this.browserConfig.provider.options.container,
+    );
+    let connect = connectOptions?.wsEndpoint
+      ? { ...connectOptions, wsEndpoint: connectOptions.wsEndpoint }
+      : null;
+    if (connect && container) {
+      this.logger.debug(
+        `connectOptions.wsEndpoint is set (${connect.wsEndpoint}); not starting a container.`,
+      );
+    } else if (container) {
+      const version = clientPlaywrightVersion();
+      const packageDir = clientPlaywrightPackageDir();
+      if (!version || !packageDir) {
+        throw new Error(
+          "playwright({ container }) needs the installed playwright-core, but its package.json could not be read.",
+        );
+      }
+      this.container = await ensurePlaywrightContainer({
+        ...container,
+        version,
+        packageDir,
+        log: (message) => this.logger.info(message),
+      });
+      connect = {
+        // The container is cappa's own, on this machine: let it reach the
+        // dev server on localhost unless the config says otherwise.
+        exposeNetwork: "<loopback>",
+        ...connectOptions,
+        wsEndpoint: this.container.wsEndpoint,
+      };
+    }
+
     let browser: Browser;
-    if (connectOptions?.wsEndpoint) {
-      const { wsEndpoint, ...options } = connectOptions;
+    if (connect) {
+      const { wsEndpoint, ...options } = connect;
       try {
         browser = await browserType.connect(wsEndpoint, {
           ...options,
@@ -379,7 +445,12 @@ class ScreenshotTool {
           },
         });
       } catch (error) {
-        throw describeConnectError(error, wsEndpoint);
+        throw describeConnectError(
+          error,
+          wsEndpoint,
+          undefined,
+          this.container ?? undefined,
+        );
       }
     } else {
       browser = await browserType.launch(launch);
@@ -519,6 +590,21 @@ class ScreenshotTool {
       }
     }
     this.disconnected = false;
+
+    const container = this.container;
+    this.container = null;
+    const options = resolveContainerOptions(
+      this.browserConfig.provider.options.container,
+    );
+    // Only remove a container this tool started: a reused one belongs to
+    // whichever run is still connected to it.
+    if (container && options && !options.keepAlive && !container.reused) {
+      try {
+        await container.stop();
+      } catch (error) {
+        getLogger().debug("Error removing the Playwright container:", error);
+      }
+    }
   }
 
   /**

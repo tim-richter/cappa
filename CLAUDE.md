@@ -51,6 +51,7 @@ The foundational library. Core exports:
 - `measureContentClip` / `resolveCrop` — content crop (`src/crop.ts`): measures painted ink in the page and returns a Playwright `clip`
 - `runAgentCheck` / `describeChange` / `renderJudgmentTiles` — agent review (`src/agent/`): a judgment request with region crops for every changed screenshot (no heuristic labels — only a judge labels a change), verdicts tied to an image fingerprint
 - `playwright` / `resolveBrowserConfig` — the `browser.provider` factory and its defaults/validation (`src/playwright.ts`, also the `@cappa/core/playwright` subpath)
+- `ensurePlaywrightContainer` / `removePlaywrightContainers` — `playwright({ container })` (`src/container.ts`): starts or reuses the official Playwright image through a configurable container CLI (docker/podman/nerdctl), mounting the host's `playwright-core` as the server so versions always match
 - All public types (`UserConfig`, `Plugin`, `PluginDef`, `Screenshot`, etc.)
 
 Build output: `dist/index.mjs` (ESM) and `dist/index.cjs` (CJS). Peer dep: `playwright-core ^1.55`.
@@ -64,6 +65,7 @@ The published CLI binary (`cappa`). Commands:
 - `approve [--filter <name>]` — promotes `actual/` screenshots to `expected/`
 - `status` — shows diff summary
 - `agent check|judge|approve|init` — visual review for coding agents: judgment requests with region crops for every change, exact-name approval, skill install for Claude Code / Agent Skills / OpenCode (sources in `packages/cli/integrations/`; `{{cappa}}` is replaced with the project's runner at install)
+- `browser down [--cli <cli>]` — removes every Playwright container `playwright({ container })` started
 - `init` — scaffolds `cappa.config.ts` in the current directory
 
 Config is loaded from `cappa.config.ts` in CWD via **jiti** (supports TypeScript without compilation).
@@ -134,6 +136,7 @@ export default defineConfig({
   browser: {                     // Vitest-browser-mode shape (src/playwright.ts)
     provider: playwright({       // from '@cappa/core/playwright'
       connectOptions: { wsEndpoint: process.env.CAPPA_BROWSER_WS }, // set → connect(), unset → launch()
+      container: true,           // or { cli: 'podman', image, runArgs, keepAlive } — run the official image for the installed playwright-core (src/container.ts); wsEndpoint wins
       contextOptions: {},        // merged over reducedMotion/deviceScaleFactor; viewport stays in screenshot
     }),
     headless: true,

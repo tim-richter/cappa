@@ -3,6 +3,7 @@ import { Command } from "commander";
 import { version } from "../package.json";
 import { registerAgentCommand } from "./commands/agent";
 import { approve } from "./commands/approve";
+import { registerBrowserCommand } from "./commands/browser";
 import { registerCaptureCommand } from "./commands/capture";
 import { init } from "./commands/init";
 import { review } from "./commands/review";
@@ -92,6 +93,8 @@ program
   .action(status);
 
 registerAgentCommand(program);
+
+registerBrowserCommand(program);
 
 program
   .command("init")
