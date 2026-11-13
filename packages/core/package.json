@@ -22,6 +22,10 @@
       "import": "./dist/index.mjs",
       "require": "./dist/index.cjs"
     },
+    "./playwright": {
+      "import": "./dist/playwright.mjs",
+      "require": "./dist/playwright.cjs"
+    },
     "./package.json": "./package.json"
   },
   "scripts": {

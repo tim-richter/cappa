@@ -1,7 +1,9 @@
 import path from "node:path";
 import {
   type ConfigEnv,
+  type ResolvedBrowserConfig,
   type ResolvedWebServerConfig,
+  resolveBrowserConfig,
   resolveWebServerConfig,
   type UserConfig,
 } from "@cappa/core";
@@ -17,13 +19,15 @@ import { loadConfig } from "./loadConfig";
  * `getConfig` fills all three of its fields, so callers should not have to
  * re-apply defaults that have already been applied. `webServer` is always a
  * list, with relative `cwd`s already resolved against the config's directory.
+ * `browser` has its provider, `headless` and single instance filled in.
  */
 export type ResolvedUserConfig = Required<
-  Omit<UserConfig, "onFail" | "review" | "webServer">
+  Omit<UserConfig, "onFail" | "review" | "webServer" | "browser">
 > &
   Pick<UserConfig, "onFail"> & {
     review: Required<NonNullable<UserConfig["review"]>>;
     webServer: ResolvedWebServerConfig[];
+    browser: ResolvedBrowserConfig;
   };
 
 export type GetConfigOptions = {
@@ -108,6 +112,7 @@ export async function getConfig(
       path.dirname(path.resolve(result.filepath)),
     ),
     onFail: userConfig.onFail,
+    browser: resolveBrowserConfig(userConfig.browser),
     screenshot: {
       fullPage: userConfig.screenshot?.fullPage ?? true,
       crop: userConfig.screenshot?.crop ?? false,

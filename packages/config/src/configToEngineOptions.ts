@@ -1,5 +1,9 @@
 import path from "node:path";
-import type { LocalEngineOptions, RunnablePlugin } from "@cappa/core";
+import {
+  type LocalEngineOptions,
+  type RunnablePlugin,
+  resolveBrowserConfig,
+} from "@cappa/core";
 import type { ResolvedUserConfig } from "./getConfig";
 
 /**
@@ -34,5 +38,8 @@ export function configToEngineOptions(
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
     connectionTimeout: config.connectionTimeout,
     webServer: config.webServer,
+    // Idempotent: `getConfig` already resolved it, but an embedder may hand
+    // over a config that never went through `getConfig`.
+    browser: resolveBrowserConfig(config.browser),
   };
 }

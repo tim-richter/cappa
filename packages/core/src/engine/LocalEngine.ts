@@ -2,6 +2,7 @@ import { getLogger } from "@cappa/logger";
 import type { LogConsoleEvents } from "../consoleEvents";
 import type { CropSetting } from "../crop";
 import { ScreenshotFileSystem } from "../filesystem";
+import type { BrowserConfig } from "../playwright";
 import type { PluginTask } from "../plugin";
 import { CaptureRunner } from "../runner/CaptureRunner";
 import type {
@@ -54,6 +55,8 @@ export type LocalEngineOptions = {
   crop?: CropSetting;
   viewport?: Viewport;
   connectionTimeout?: number;
+  /** Provider, headless mode and instance — see `UserConfig.browser`. */
+  browser?: BrowserConfig;
   /**
    * How long the browser stays warm between runs.
    * @default 300_000 (5 minutes)
@@ -191,6 +194,7 @@ export class LocalEngine implements CaptureEngine {
       crop: this.options.crop ?? false,
       viewport: this.options.viewport ?? { width: 1920, height: 1080 },
       connectionTimeout: this.options.connectionTimeout,
+      browser: this.options.browser,
     });
   }
 

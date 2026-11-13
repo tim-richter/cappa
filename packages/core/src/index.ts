@@ -61,6 +61,16 @@ import {
 } from "./filesystem";
 import { mapWithConcurrency } from "./mapWithConcurrency";
 import { sanitizeScreenshotFilename } from "./paths";
+import {
+  type BrowserConfig,
+  type BrowserInstance,
+  type BrowserName,
+  type BrowserProvider,
+  type PlaywrightProviderOptions,
+  playwright,
+  type ResolvedBrowserConfig,
+  resolveBrowserConfig,
+} from "./playwright";
 import type {
   Plugin,
   PluginDef,
@@ -153,6 +163,10 @@ export {
   type AgentReview,
   type ApproveResult,
   attachConsoleLogging,
+  type BrowserConfig,
+  type BrowserInstance,
+  type BrowserName,
+  type BrowserProvider,
   type CaptureEngine,
   type CaptureManifest,
   CaptureRunner,
@@ -207,6 +221,7 @@ export {
   mergeCaptureManifest,
   type NewScreenshot,
   type PassedScreenshot,
+  type PlaywrightProviderOptions,
   type Plugin,
   type PluginCaptureResult,
   type PluginDef,
@@ -215,6 +230,8 @@ export {
   type PluginTask,
   type PluginWatch,
   type PluginWatchResolve,
+  playwright,
+  type ResolvedBrowserConfig,
   type RunDetail,
   type RunEvent,
   type RunEventListener,
@@ -230,6 +247,7 @@ export {
   readCaptureManifest,
   readDiffMeta,
   recordCaptureOrigins,
+  resolveBrowserConfig,
   resolveCrop,
   type Screenshot,
   type ScreenshotBucket,

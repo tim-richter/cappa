@@ -1,4 +1,5 @@
 import path from "node:path";
+import { playwright, resolveBrowserConfig } from "@cappa/core";
 import { describe, expect, it } from "vitest";
 import { configToEngineOptions } from "./configToEngineOptions";
 import type { ResolvedUserConfig } from "./getConfig";
@@ -15,6 +16,11 @@ const config = (overrides: Partial<ResolvedUserConfig> = {}) =>
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
     connectionTimeout: 20_000,
     webServer: [],
+    browser: {
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    },
     ...overrides,
   }) as ResolvedUserConfig;
 
@@ -114,5 +120,31 @@ describe("configToEngineOptions", () => {
     const options = configToEngineOptions(config());
 
     expect(options.browserIdleTimeoutMs).toBeUndefined();
+  });
+
+  it("passes the browser config through", () => {
+    const browser = resolveBrowserConfig({
+      provider: playwright({
+        connectOptions: { wsEndpoint: "ws://localhost:3000/" },
+        contextOptions: { deviceScaleFactor: 1 },
+      }),
+      headless: false,
+      instances: [{ browser: "firefox" }],
+    });
+    const options = configToEngineOptions(config({ browser }));
+
+    expect(options.browser).toEqual(browser);
+  });
+
+  it("fills browser defaults for a config that skipped getConfig", () => {
+    const options = configToEngineOptions(
+      config({ browser: undefined as never }),
+    );
+
+    expect(options.browser).toEqual({
+      provider: { name: "playwright", options: {} },
+      headless: true,
+      instances: [{ browser: "chromium" }],
+    });
   });
 });

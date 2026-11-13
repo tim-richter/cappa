@@ -502,18 +502,132 @@ onFail: async (screenshots) => {
 
 ## browser
 
-Browser configuration sets different browser settings for playwright.
+The browser screenshots are taken in. The block is shaped like
+[Vitest browser mode's](https://vitest.dev/config/browser/playwright): a `playwright()` provider
+with `launchOptions`, `connectOptions` and `contextOptions`, plus `headless` and `instances` beside
+it. A `connectOptions` block written for Vitest can be pasted here unchanged.
 
-### browser.type
+```ts
+import { defineConfig } from '@cappa/core';
+import { playwright } from '@cappa/core/playwright';
 
-- **type**: `'chromium' | 'firefox' | 'webkit'`
-- **default**: `'chromium'`
+export default defineConfig({
+  browser: {
+    provider: playwright({
+      launchOptions: { args: ['--font-render-hinting=none'] },
+      connectOptions: {
+        wsEndpoint: process.env.CAPPA_BROWSER_WS, // unset → local launch
+        exposeNetwork: '<loopback>',
+      },
+      contextOptions: { deviceScaleFactor: 1, colorScheme: 'light' },
+      actionTimeout: 10_000,
+    }),
+    headless: true,
+    instances: [{ browser: 'chromium' }],
+  },
+});
+```
 
-The browser to use for the screenshots.
+Leaving `browser` out behaves exactly as before: a local headless Chromium. `playwright` is also
+exported from `@cappa/core` itself.
 
 ### browser.headless
 
 - **type**: `boolean`
 - **default**: `true`
 
-Whether to run the browser in headless mode.
+Whether to run the browser in headless mode. Also forwarded to a remote browser server.
+
+### browser.instances
+
+- **type**: `[{ browser: 'chromium' | 'firefox' | 'webkit' }]`
+- **default**: `[{ browser: 'chromium' }]`
+
+Which browser to capture with. Exactly one entry for now — more than one is a config error.
+Capturing with several browsers needs separate `actual/`, `expected/` and `diff/` folders per
+browser; the array shape is there so that can arrive without a breaking config change.
+
+### browser.provider
+
+- **type**: `BrowserProvider`
+- **default**: `playwright()`
+
+The options of `playwright({ … })`:
+
+#### launchOptions
+
+Passed to [`browserType.launch()`](https://playwright.dev/docs/api/class-browsertype#browser-type-launch).
+`headless` is ignored here — use `browser.headless`.
+
+#### connectOptions
+
+Passed to [`browserType.connect()`](https://playwright.dev/docs/api/class-browsertype#browser-type-connect).
+Only used when `wsEndpoint` is set; otherwise cappa launches a local browser. `launchOptions` and
+`headless` are forwarded to the server in the `x-playwright-launch-options` header, which
+`playwright run-server` honours.
+
+#### contextOptions
+
+Passed to [`browser.newContext()`](https://playwright.dev/docs/api/class-browser#browser-new-context),
+merged over cappa's defaults (`reducedMotion: 'reduce'`, `deviceScaleFactor: 2`). Use it for
+`colorScheme`, `locale`, `timezoneId`, `deviceScaleFactor` and friends.
+
+- `viewport` is not accepted — it stays at [`screenshot.viewport`](#screenshotviewport), because
+  plugins and stories override it per capture.
+- A custom `userAgent` keeps cappa's `CappaStorybook` suffix, which the Storybook addon's
+  `isCappa()` relies on.
+
+#### actionTimeout
+
+- **type**: `number`
+- **default**: none
+
+Default timeout, in milliseconds, for actions plugins run on the page
+([`context.setDefaultTimeout()`](https://playwright.dev/docs/api/class-browsercontext#browser-context-set-default-timeout)).
+
+### Connecting to a remote browser
+
+Screenshots differ between macOS and Linux even with the same Chromium build — font
+rasterisation, colour management and the GPU path all change pixels. To make local captures match
+CI, render everywhere in the same place: a Playwright server in the official Docker image, with
+cappa running on the host.
+
+Start the server. The image tag must match the `playwright-core` version cappa uses (check with
+`pnpm why playwright-core`); Playwright refuses a mismatched client, and cappa's error names the
+right image.
+
+```bash
+docker run --rm --init -it -p 3000:3000 --workdir /home/pwuser --user pwuser \
+  mcr.microsoft.com/playwright:v1.63.0-noble \
+  /bin/sh -c "npx -y playwright@1.63.0 run-server --port 3000 --host 0.0.0.0"
+```
+
+Point cappa at it:
+
+```ts
+browser: {
+  provider: playwright({
+    connectOptions: {
+      wsEndpoint: process.env.CAPPA_BROWSER_WS,
+      exposeNetwork: '<loopback>',
+    },
+  }),
+},
+```
+
+```bash
+CAPPA_BROWSER_WS=ws://localhost:3000/ cappa capture
+```
+
+With `CAPPA_BROWSER_WS` unset, the same config launches a local browser — so CI can keep
+launching its own while developers opt into the container.
+
+`exposeNetwork: '<loopback>'` lets the browser in the container reach `localhost` on your machine,
+which is where Storybook or your app runs — requests are tunnelled back through the connection, so
+no `host.docker.internal` rewriting is needed. Cappa does not set it for you (neither does Vitest): a
+remote browser seeing your localhost should be a decision in your config, not a default.
+
+Cappa only connects — starting, pulling and stopping the container is up to you. If the server
+restarts while `cappa review` or watch mode keeps the browser warm, the next run reconnects
+instead of failing. Under [`cappa serve`](/remote-capture), the host's config owns the
+browser, the same way it owns plugins.
