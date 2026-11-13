@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { playwright, resolveBrowserConfig } from "./playwright";
+import {
+  DEFAULT_CONTAINER_IMAGE,
+  playwright,
+  resolveBrowserConfig,
+  resolveContainerOptions,
+} from "./playwright";
 
 describe("playwright()", () => {
   it("wraps its options in a provider", () => {
@@ -72,5 +77,73 @@ describe("resolveBrowserConfig", () => {
         provider: { name: "webdriverio", options: {} } as never,
       }),
     ).toThrow(/unknown provider "webdriverio"/);
+  });
+});
+
+describe("resolveContainerOptions", () => {
+  it("is off when unset or false", () => {
+    expect(resolveContainerOptions(undefined)).toBeNull();
+    expect(resolveContainerOptions(false)).toBeNull();
+  });
+
+  it("fills every default for true", () => {
+    expect(resolveContainerOptions(true, {})).toEqual({
+      cli: "docker",
+      image: DEFAULT_CONTAINER_IMAGE,
+      runArgs: [],
+      keepAlive: true,
+      readyTimeout: 300_000,
+    });
+  });
+
+  it("takes the CLI from CAPPA_CONTAINER_CLI, below the config", () => {
+    expect(
+      resolveContainerOptions(true, { CAPPA_CONTAINER_CLI: "podman" })?.cli,
+    ).toBe("podman");
+    expect(
+      resolveContainerOptions(
+        { cli: "nerdctl" },
+        { CAPPA_CONTAINER_CLI: "podman" },
+      )?.cli,
+    ).toBe("nerdctl");
+  });
+
+  it("keeps what was configured", () => {
+    expect(
+      resolveContainerOptions(
+        {
+          image: "corp/pw:{version}",
+          runArgs: ["--userns=keep-id"],
+          keepAlive: false,
+          readyTimeout: 1_000,
+        },
+        {},
+      ),
+    ).toEqual({
+      cli: "docker",
+      image: "corp/pw:{version}",
+      runArgs: ["--userns=keep-id"],
+      keepAlive: false,
+      readyTimeout: 1_000,
+    });
+  });
+
+  it.each([
+    ["a string", "docker", /boolean or an object/],
+    ["an empty cli", { cli: " " }, /cli must be/],
+    ["an empty image", { image: "" }, /image must be/],
+    ["non-string runArgs", { runArgs: [1] }, /runArgs must be/],
+    ["a non-boolean keepAlive", { keepAlive: "yes" }, /keepAlive must be/],
+    ["a zero readyTimeout", { readyTimeout: 0 }, /readyTimeout must be/],
+  ])("rejects %s", (_label, value, message) => {
+    expect(() => resolveContainerOptions(value as never, {})).toThrow(message);
+  });
+
+  it("is validated by resolveBrowserConfig", () => {
+    expect(() =>
+      resolveBrowserConfig({
+        provider: playwright({ container: { runArgs: "--x" as never } }),
+      }),
+    ).toThrow(/runArgs must be/);
   });
 });

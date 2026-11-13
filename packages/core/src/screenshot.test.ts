@@ -13,12 +13,17 @@ import {
   vi,
 } from "vitest";
 import * as pixelCompare from "./compare/pixel";
+import { ensurePlaywrightContainer } from "./container";
 import { playwright } from "./playwright";
 import ScreenshotTool, { describeConnectError } from "./screenshot";
 
 vi.mock("./compare/pixel", () => ({
   compareImages: vi.fn(),
   createDiffSizePngImage: vi.fn(),
+}));
+
+vi.mock("./container", () => ({
+  ensurePlaywrightContainer: vi.fn(),
 }));
 
 beforeAll(() => {
@@ -933,6 +938,165 @@ describe("ScreenshotTool browser config", () => {
     await expect(tool.init()).rejects.toThrow(
       /^No Playwright server at ws:\/\/localhost:3000\//,
     );
+  });
+
+  describe("container", () => {
+    const fakeContainer = (reused = false) => ({
+      wsEndpoint: "ws://127.0.0.1:49153/",
+      name: "cappa-playwright-v1.63.0-abcd1234",
+      image: "mcr.microsoft.com/playwright:v1.63.0-noble",
+      reused,
+      stop: vi.fn(async () => {}),
+    });
+
+    beforeEach(() => {
+      vi.mocked(ensurePlaywrightContainer).mockReset();
+    });
+
+    it("starts a container for the installed version and connects with loopback exposed", async () => {
+      const { browser } = createFakeBrowser();
+      const container = fakeContainer();
+      vi.mocked(ensurePlaywrightContainer).mockResolvedValue(container);
+      const launch = vi.spyOn(chromium, "launch");
+      const connect = vi
+        .spyOn(chromium, "connect")
+        .mockResolvedValue(browser as never);
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: {
+          provider: playwright({
+            container: { cli: "podman", runArgs: ["--userns=keep-id"] },
+          }),
+        },
+      });
+      await tool.init();
+
+      expect(ensurePlaywrightContainer).toHaveBeenCalledWith(
+        expect.objectContaining({
+          cli: "podman",
+          runArgs: ["--userns=keep-id"],
+          image: "mcr.microsoft.com/playwright:v{version}-noble",
+          version: expect.stringMatching(/^\d+\.\d+\.\d+/),
+          packageDir: expect.stringMatching(/playwright-core$/),
+        }),
+      );
+      expect(launch).not.toHaveBeenCalled();
+      expect(connect).toHaveBeenCalledWith("ws://127.0.0.1:49153/", {
+        exposeNetwork: "<loopback>",
+        headers: {
+          "x-playwright-launch-options": JSON.stringify({ headless: true }),
+        },
+      });
+
+      // keepAlive defaults to true: the container outlives the tool.
+      await tool.close();
+      expect(container.stop).not.toHaveBeenCalled();
+    });
+
+    it("keeps a configured exposeNetwork", async () => {
+      const { browser } = createFakeBrowser();
+      vi.mocked(ensurePlaywrightContainer).mockResolvedValue(fakeContainer());
+      const connect = vi
+        .spyOn(chromium, "connect")
+        .mockResolvedValue(browser as never);
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: {
+          provider: playwright({
+            container: true,
+            connectOptions: { exposeNetwork: "localhost:6006" },
+          }),
+        },
+      });
+      await tool.init();
+
+      expect(connect).toHaveBeenCalledWith(
+        "ws://127.0.0.1:49153/",
+        expect.objectContaining({ exposeNetwork: "localhost:6006" }),
+      );
+    });
+
+    it("lets wsEndpoint win over container", async () => {
+      const { browser } = createFakeBrowser();
+      const connect = vi
+        .spyOn(chromium, "connect")
+        .mockResolvedValue(browser as never);
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: {
+          provider: playwright({
+            container: true,
+            connectOptions: { wsEndpoint: "ws://elsewhere:3000/" },
+          }),
+        },
+      });
+      await tool.init();
+
+      expect(ensurePlaywrightContainer).not.toHaveBeenCalled();
+      expect(connect).toHaveBeenCalledWith(
+        "ws://elsewhere:3000/",
+        expect.not.objectContaining({ exposeNetwork: expect.anything() }),
+      );
+    });
+
+    it("removes the container on close when keepAlive is false", async () => {
+      const { browser } = createFakeBrowser();
+      const container = fakeContainer();
+      vi.mocked(ensurePlaywrightContainer).mockResolvedValue(container);
+      vi.spyOn(chromium, "connect").mockResolvedValue(browser as never);
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: {
+          provider: playwright({ container: { keepAlive: false } }),
+        },
+      });
+      await tool.init();
+      await tool.close();
+
+      expect(container.stop).toHaveBeenCalledOnce();
+      expect(tool.container).toBeNull();
+    });
+
+    it("leaves a reused container alone even when keepAlive is false", async () => {
+      const { browser } = createFakeBrowser();
+      const container = fakeContainer(true);
+      vi.mocked(ensurePlaywrightContainer).mockResolvedValue(container);
+      vi.spyOn(chromium, "connect").mockResolvedValue(browser as never);
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: {
+          provider: playwright({ container: { keepAlive: false } }),
+        },
+      });
+      await tool.init();
+      await tool.close();
+
+      expect(container.stop).not.toHaveBeenCalled();
+    });
+
+    it("blames a custom image for a version mismatch", async () => {
+      vi.mocked(ensurePlaywrightContainer).mockResolvedValue({
+        ...fakeContainer(),
+        image: "corp/pw:latest",
+      });
+      vi.spyOn(chromium, "connect").mockRejectedValue(
+        new Error("428 Precondition Required: Playwright version mismatch"),
+      );
+
+      const tool = new ScreenshotTool({
+        outputDir: "/tmp",
+        browser: { provider: playwright({ container: true }) },
+      });
+
+      await expect(tool.init()).rejects.toThrow(
+        /container image corp\/pw:latest runs a different Playwright version/,
+      );
+    });
   });
 
   it("merges contextOptions over the defaults, keeping viewport and UA suffix", async () => {

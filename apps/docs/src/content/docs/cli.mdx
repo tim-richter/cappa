@@ -284,5 +284,19 @@ cappa agent init
 cappa agent check --json
 ```
 
+## `cappa browser down`
+
+Removes every Playwright container cappa started for
+[`playwright({ container })`](/configuration#container), whatever its version. Containers stay
+running between captures by default (`keepAlive`), so this is how you reclaim them.
+
+```bash
+cappa browser down
+cappa browser down --cli podman
+```
+
+The container CLI comes from `--cli`, else the config's `container.cli`, else
+`CAPPA_CONTAINER_CLI`, else `docker`.
+
 Tip: combine the commands with npm scripts to make common workflows easy to discover for the rest of
 your team.

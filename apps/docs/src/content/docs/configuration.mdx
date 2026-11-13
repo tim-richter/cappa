@@ -566,6 +566,23 @@ Only used when `wsEndpoint` is set; otherwise cappa launches a local browser. `l
 `headless` are forwarded to the server in the `x-playwright-launch-options` header, which
 `playwright run-server` honours.
 
+#### container
+
+- **type**: `boolean | { cli?, image?, runArgs?, keepAlive?, readyTimeout? }`
+- **default**: off
+
+Run the browser in the official Playwright container image for the exact `playwright-core`
+version cappa uses — cappa starts it (or reuses a running one) and connects. See
+[Running the browser in a container](#running-the-browser-in-a-container).
+
+| Option | Default | |
+| --- | --- | --- |
+| `cli` | `CAPPA_CONTAINER_CLI` or `'docker'` | Container CLI: `docker`, `podman`, `nerdctl` — anything with docker's `run`/`inspect`/`port`/`pull`/`logs`/`ps`/`rm`. |
+| `image` | `'mcr.microsoft.com/playwright:v{version}-noble'` | `{version}` is replaced with the `playwright-core` version. |
+| `runArgs` | `[]` | Extra arguments for `<cli> run`, placed before the image. |
+| `keepAlive` | `true` | Leave the container running so the next capture connects instantly. |
+| `readyTimeout` | `300000` | Milliseconds to wait for the server; the first start pulls the image. |
+
 #### contextOptions
 
 Passed to [`browser.newContext()`](https://playwright.dev/docs/api/class-browser#browser-new-context),
@@ -624,10 +641,52 @@ launching its own while developers opt into the container.
 
 `exposeNetwork: '<loopback>'` lets the browser in the container reach `localhost` on your machine,
 which is where Storybook or your app runs — requests are tunnelled back through the connection, so
-no `host.docker.internal` rewriting is needed. Cappa does not set it for you (neither does Vitest): a
-remote browser seeing your localhost should be a decision in your config, not a default.
+no `host.docker.internal` rewriting is needed. Cappa does not set it for a `wsEndpoint` (neither does
+Vitest): a remote browser seeing your localhost should be a decision in your config, not a default.
+The exception is a [container cappa starts itself](#running-the-browser-in-a-container).
 
-Cappa only connects — starting, pulling and stopping the container is up to you. If the server
+With `connectOptions.wsEndpoint`, cappa only connects — starting, pulling and stopping the
+container is up to you; [`container`](#running-the-browser-in-a-container) does that for you. If the server
 restarts while `cappa review` or watch mode keeps the browser warm, the next run reconnects
 instead of failing. Under [`cappa serve`](/remote-capture), the host's config owns the
 browser, the same way it owns plugins.
+
+### Running the browser in a container
+
+`container` does the version matching for you: cappa reads the installed `playwright-core`
+version, runs the official image for it and connects.
+
+```ts
+browser: {
+  provider: playwright({ container: true }),
+},
+```
+
+```bash
+cappa capture   # first run pulls the image (~1.5 GB); later runs reuse the running container
+```
+
+- **Version match is automatic.** The image only supplies the OS, fonts and browsers. The server
+  itself is your own `playwright-core`, mounted read-only into the container, so client and server
+  are always the same version and the container needs no npm or registry access — which also
+  keeps it working behind TLS-intercepting corporate proxies.
+- **Localhost works.** `exposeNetwork` defaults to `'<loopback>'` here, because the container is
+  cappa's own and listens on `127.0.0.1` only — Storybook on `localhost:6006` is reachable without
+  extra config. Set `connectOptions.exposeNetwork` to change it.
+- **`wsEndpoint` wins.** With `connectOptions.wsEndpoint` set (e.g. from `CAPPA_BROWSER_WS`),
+  no container is started.
+- **Podman and friends.** Set `cli: 'podman'` in the config, or `CAPPA_CONTAINER_CLI=podman` to
+  switch for just your machine. `runArgs` passes anything else the CLI needs, e.g.
+  `['--userns=keep-id']`.
+- **Custom fonts.** Build an image `FROM mcr.microsoft.com/playwright:v<version>-noble` with your
+  fonts, tag it per version and set `image: 'registry.example.com/playwright-fonts:{version}'`.
+- **Lifecycle.** The container keeps running after cappa exits (`keepAlive: true`), named
+  `cappa-playwright-v<version>-<hash>`; changing the version, image or `runArgs` starts a new one.
+  Remove them with [`cappa browser down`](/cli#cappa-browser-down), or set `keepAlive: false` to
+  remove the container when cappa closes the browser.
+- **Remote container hosts.** Mounting `playwright-core` needs the container host to see your
+  project directory — true for Docker Desktop, OrbStack, Colima, Podman machine and local
+  engines, not for a `DOCKER_HOST` on another machine. Use `wsEndpoint` for those.
+
+Upgrading Playwright means a newer Chromium, so expect baseline churn on a bump — re-capture and
+approve.
