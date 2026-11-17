@@ -1,3 +1,4 @@
+import http from "node:http";
 import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
@@ -22,7 +23,6 @@ import {
   listenWithFallback,
   PortInUseError,
   registerShutdownHandlers,
-  toDisplayHost,
 } from "./server";
 
 /** A real socket behind the `listen`/`addresses` shape Fastify exposes. */
@@ -81,7 +81,7 @@ describe("listenWithFallback", () => {
     cleanup.push(server.close);
     await expect(
       listenWithFallback(server, { host: "127.0.0.1", port: base }),
-    ).resolves.toBe(base);
+    ).resolves.toEqual({ port: base, companions: [] });
   });
 
   it("moves to the next free port when the requested one is taken", async () => {
@@ -91,7 +91,7 @@ describe("listenWithFallback", () => {
     const server = netListenable();
     cleanup.push(server.close);
     const onPortInUse = vi.fn();
-    const port = await listenWithFallback(server, {
+    const { port } = await listenWithFallback(server, {
       host: "127.0.0.1",
       port: base,
       onPortInUse,
@@ -99,7 +99,10 @@ describe("listenWithFallback", () => {
 
     expect(port).toBe(base + 2);
     expect(server.addresses()[0]?.port).toBe(base + 2);
-    expect(onPortInUse.mock.calls).toEqual([[base], [base + 1]]);
+    expect(onPortInUse.mock.calls).toEqual([
+      [base, "127.0.0.1"],
+      [base + 1, "127.0.0.1"],
+    ]);
   });
 
   it("fails on a taken port with strictPort instead of moving on", async () => {
@@ -159,7 +162,7 @@ describe("listenWithFallback", () => {
     const server = netListenable();
     cleanup.push(server.close);
 
-    const port = await listenWithFallback(server, {
+    const { port } = await listenWithFallback(server, {
       host: "127.0.0.1",
       port: 0,
     });
@@ -169,24 +172,155 @@ describe("listenWithFallback", () => {
   });
 });
 
-describe("toDisplayHost", () => {
-  it("keeps a loopback bind readable", () => {
-    expect(toDisplayHost("127.0.0.1")).toBe("localhost");
-    expect(toDisplayHost("localhost")).toBe("localhost");
+/**
+ * The companion logic does not care which address it holds, and this suite
+ * cannot count on IPv6 (CI containers often lack it). Linux routes all of
+ * 127/8 to loopback, so `127.0.0.2` stands in for `::1` (macOS only has
+ * 127.0.0.1 without an alias, so the suite runs on Linux, as CI does).
+ */
+const STAND_IN = "127.0.0.2";
+const standInAvailable = process.platform === "linux";
+
+const get = (host: string, port: number) =>
+  new Promise<string>((resolve, reject) => {
+    http
+      .get({ host, port, path: "/" }, (res) => {
+        let body = "";
+        res.on("data", (chunk) => {
+          body += chunk;
+        });
+        res.on("end", () => resolve(body));
+      })
+      .on("error", reject);
   });
 
-  it("turns a wildcard bind into something a browser can open", () => {
-    // The printed URL is the only place a generated token ever appears, so a
-    // `http://0.0.0.0:…?token=…` that no browser will load locks the user out
-    // of their own review UI.
-    expect(toDisplayHost("0.0.0.0")).toBe("localhost");
-    expect(toDisplayHost("::")).toBe("localhost");
-    expect(toDisplayHost("[::]")).toBe("localhost");
+describe.runIf(standInAvailable)("listenWithFallback companions", () => {
+  const cleanup: Array<() => Promise<unknown>> = [];
+  afterEach(async () => {
+    await Promise.all(cleanup.splice(0).map((fn) => fn()));
   });
 
-  it("leaves a specific host alone", () => {
-    expect(toDisplayHost("build-host.internal")).toBe("build-host.internal");
-    expect(toDisplayHost("192.168.1.10")).toBe("192.168.1.10");
+  /** An http server with the `listen`/`addresses` shape of Fastify. */
+  const httpListenable = (body: string) => {
+    const server = http.createServer((_req, res) => res.end(body));
+    return {
+      server,
+      listen: ({ port, host }: { port: number; host: string }) =>
+        new Promise<void>((resolve, reject) => {
+          server.once("error", reject);
+          server.listen(port, host, () => {
+            server.off("error", reject);
+            resolve();
+          });
+        }),
+      addresses: () => [server.address() as net.AddressInfo],
+      close: () =>
+        new Promise<void>((resolve) => server.close(() => resolve())),
+    };
+  };
+
+  const occupy = async (host: string, port: number, body: string) => {
+    const foreign = httpListenable(body);
+    await foreign.listen({ host, port });
+    cleanup.push(foreign.close);
+  };
+
+  it("serves the same app on the companion address", async () => {
+    const { base, release } = await occupyPorts(1);
+    await release();
+
+    const app = httpListenable("cappa");
+    cleanup.push(app.close);
+    const result = await listenWithFallback(app, {
+      host: "127.0.0.1",
+      port: base,
+      companions: { hosts: [STAND_IN], target: app.server },
+    });
+
+    expect(result).toEqual({ port: base, companions: [STAND_IN] });
+    await expect(get("127.0.0.1", base)).resolves.toBe("cappa");
+    await expect(get(STAND_IN, base)).resolves.toBe("cappa");
+  });
+
+  it("skips a port whose companion address belongs to someone else", async () => {
+    // The bug: cappa on 127.0.0.1:P, a dev server on [::1]:P, and a printed
+    // `localhost:P` that the browser resolves to the dev server.
+    const { base, release } = await occupyPorts(1);
+    await release();
+    await occupy(STAND_IN, base, "dev server");
+
+    const app = httpListenable("cappa");
+    cleanup.push(app.close);
+    const onPortInUse = vi.fn();
+    const { port } = await listenWithFallback(app, {
+      host: "127.0.0.1",
+      port: base,
+      onPortInUse,
+      companions: { hosts: [STAND_IN], target: app.server },
+    });
+
+    expect(port).toBe(base + 1);
+    expect(onPortInUse).toHaveBeenCalledWith(base, STAND_IN);
+    await expect(get(STAND_IN, base + 1)).resolves.toBe("cappa");
+    // The foreign server keeps its port; cappa never touched it.
+    await expect(get(STAND_IN, base)).resolves.toBe("dev server");
+  });
+
+  it("gives the companion back when the main address is taken", async () => {
+    const { base, release } = await occupyPorts(1);
+    cleanup.push(release);
+
+    const app = httpListenable("cappa");
+    cleanup.push(app.close);
+    await listenWithFallback(app, {
+      host: "127.0.0.1",
+      port: base,
+      companions: { hosts: [STAND_IN], target: app.server },
+    });
+
+    // The companion bound on `base` first, then lost the main address: it
+    // must not be left holding `base` on the stand-in.
+    const probe = httpListenable("probe");
+    await expect(
+      probe.listen({ host: STAND_IN, port: base }),
+    ).resolves.toBeUndefined();
+    await probe.close();
+  });
+
+  it("names the companion address when strict mode refuses its port", async () => {
+    const { base, release } = await occupyPorts(1);
+    await release();
+    await occupy(STAND_IN, base, "dev server");
+
+    const app = httpListenable("cappa");
+    const error = await listenWithFallback(app, {
+      host: "127.0.0.1",
+      port: base,
+      strictPort: true,
+      companions: { hosts: [STAND_IN], target: app.server },
+    }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(PortInUseError);
+    expect(error.message).toContain(`Port ${base} on ${STAND_IN} is in use.`);
+  });
+
+  it("closes companions with the server", async () => {
+    const { base, release } = await occupyPorts(1);
+    await release();
+
+    const app = httpListenable("cappa");
+    await listenWithFallback(app, {
+      host: "127.0.0.1",
+      port: base,
+      companions: { hosts: [STAND_IN], target: app.server },
+    });
+    await app.close();
+
+    await vi.waitFor(() =>
+      expect(get(STAND_IN, base)).rejects.toMatchObject({
+        code: "ECONNREFUSED",
+      }),
+    );
   });
 });
 

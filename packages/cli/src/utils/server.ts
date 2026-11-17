@@ -1,8 +1,18 @@
+import type http from "node:http";
 import path from "node:path";
 import { configToEngineOptions, type ResolvedUserConfig } from "@cappa/config";
 import { LocalEngine } from "@cappa/core";
 import { getLogger } from "@cappa/logger";
-import { createServer, isLoopbackHost } from "@cappa/server";
+import { createServer } from "@cappa/server";
+import {
+  bindCompanion,
+  closeCompanion,
+  localhostCompanions,
+  toBindHost,
+  toDisplayHost,
+} from "./loopback";
+
+export { toDisplayHost };
 
 type Closeable = { close: () => Promise<unknown> };
 
@@ -110,6 +120,35 @@ export class PortInUseError extends Error {
 const isAddressInUse = (error: unknown): boolean =>
   (error as { code?: unknown } | null)?.code === "EADDRINUSE";
 
+/** A bind that failed with `EADDRINUSE`, and where. */
+class AddressTaken extends Error {
+  constructor(
+    readonly host: string,
+    readonly error: unknown,
+  ) {
+    super(`${host} is in use`);
+  }
+}
+
+export type ListenWithFallbackOptions = {
+  host: string;
+  port: number;
+  strictPort?: boolean;
+  maxAttempts?: number;
+  onPortInUse?: (port: number, host: string) => void;
+  /**
+   * Further addresses to hold on the same port, each forwarding to `target`.
+   * A port counts as free only when all of them are — see `loopback.ts`.
+   */
+  companions?: { hosts: string[]; target: http.Server };
+};
+
+export type ListenResult = {
+  port: number;
+  /** The companion addresses actually held (an absent IPv6 is skipped). */
+  companions: string[];
+};
+
 /**
  * Listen on `port`, or the next free port above it.
  *
@@ -117,6 +156,10 @@ const isAddressInUse = (error: unknown): boolean =>
  * `get-port`/`detect-port` do): a probe frees the port again before the server
  * binds it, so two cappa processes started together can both "find" the same
  * port and one of them still crashes. Binding is the only atomic check.
+ *
+ * Companions are bound before the server, because a Fastify instance cannot
+ * listen again once it has been closed: a companion that turns out to be taken
+ * costs nothing to give back, a bound server does.
  *
  * Only `EADDRINUSE` moves on. `EACCES` (a privileged port) or a bad host would
  * fail identically on every port, so they surface as-is.
@@ -126,40 +169,77 @@ const isAddressInUse = (error: unknown): boolean =>
  */
 export async function listenWithFallback(
   server: Listenable,
-  options: {
-    host: string;
-    port: number;
-    strictPort?: boolean;
-    maxAttempts?: number;
-    onPortInUse?: (port: number) => void;
-  },
-): Promise<number> {
-  const { host, port, strictPort = false } = options;
+  options: ListenWithFallbackOptions,
+): Promise<ListenResult> {
+  const { host, port, strictPort = false, companions } = options;
   // Port 0 can never be "in use", and a strict port gets exactly one try.
   const attempts =
     strictPort || port === 0
       ? 1
       : Math.min(options.maxAttempts ?? MAX_PORT_ATTEMPTS, 65_536 - port);
 
+  const companionHosts = companions?.hosts ?? [];
+  const bind = async (address: string, candidate: number) => {
+    if (!companions) return null;
+    try {
+      return await bindCompanion(companions.target, address, candidate);
+    } catch (error) {
+      throw isAddressInUse(error) ? new AddressTaken(address, error) : error;
+    }
+  };
+
   for (let i = 0; i < attempts; i++) {
     const candidate = port + i;
+    const held: Array<{ host: string; server: http.Server }> = [];
     try {
-      await server.listen({ port: candidate, host });
-      return server.addresses?.()[0]?.port ?? candidate;
+      // With port 0 the number is not known until the server has it.
+      if (candidate !== 0) {
+        for (const address of companionHosts) {
+          const companion = await bind(address, candidate);
+          if (companion) held.push({ host: address, server: companion });
+        }
+      }
+
+      try {
+        await server.listen({ port: candidate, host });
+      } catch (error) {
+        throw isAddressInUse(error) ? new AddressTaken(host, error) : error;
+      }
+      const bound = server.addresses?.()[0]?.port ?? candidate;
+
+      if (candidate === 0) {
+        // Best effort: an OS-picked port taken on the other loopback is
+        // vanishingly unlikely, and the server can no longer move.
+        for (const address of companionHosts) {
+          const companion = await bind(address, bound).catch(() => null);
+          if (companion) held.push({ host: address, server: companion });
+        }
+      }
+
+      if (companions && held.length > 0) {
+        companions.target.once("close", () => {
+          for (const companion of held) closeCompanion(companion.server);
+        });
+      }
+
+      return { port: bound, companions: held.map((c) => c.host) };
     } catch (error) {
-      if (!isAddressInUse(error)) {
+      for (const companion of held) closeCompanion(companion.server);
+
+      if (!(error instanceof AddressTaken)) {
         throw error;
       }
-      options.onPortInUse?.(candidate);
+      options.onPortInUse?.(candidate, error.host);
       if (i === attempts - 1) {
+        const where = attempts === 1 ? error.host : host;
         const tried =
           attempts === 1 ? `Port ${port}` : `Ports ${port}–${candidate}`;
         const fix = strictPort
           ? "Drop --strict-port to use the next free one, or pass --port <port>."
           : "Pass --port <port> to pick another.";
         throw new PortInUseError(
-          `${tried} on ${host} ${attempts === 1 ? "is" : "are all"} in use. ${fix}`,
-          { cause: error },
+          `${tried} on ${where} ${attempts === 1 ? "is" : "are all"} in use. ${fix}`,
+          { cause: error.error },
         );
       }
     }
@@ -168,21 +248,6 @@ export async function listenWithFallback(
   // Unreachable: the loop either returns or throws on its last attempt.
   throw new Error(`Could not listen on ${host}:${port}.`);
 }
-
-/** Wildcard binds: addresses to listen on, never addresses to open. */
-const WILDCARD_HOSTS = new Set(["0.0.0.0", "::", "[::]"]);
-
-/**
- * The host to put in the URL a person is expected to click.
- *
- * A wildcard bind is the common way to expose the UI, and printing it verbatim
- * produced `http://0.0.0.0:4801?token=…` — an address no browser will open,
- * handed to a user who then cannot reach their own review UI. `localhost` is
- * reachable on every interface the wildcard covers, so it is the right thing to
- * show; a specific host is printed as given, because that one is meaningful.
- */
-export const toDisplayHost = (host: string): string =>
-  isLoopbackHost(host) || WILDCARD_HOSTS.has(host) ? "localhost" : host;
 
 /**
  * Build an engine, wrap it in a server, and start listening.
@@ -224,12 +289,19 @@ export async function startServer(
 
   let boundPort: number;
   try {
-    boundPort = await listenWithFallback(server, {
-      host,
+    ({ port: boundPort } = await listenWithFallback(server, {
+      host: toBindHost(host),
       port,
       strictPort,
-      onPortInUse: (taken) => logger.debug(`Port ${taken} is in use.`),
-    });
+      onPortInUse: (taken, on) =>
+        logger.debug(`Port ${taken} is in use on ${on}.`),
+      // Hold the other loopback too, or `localhost:<port>` in the printed URL
+      // may reach someone else's server instead of this one.
+      companions: server.server && {
+        hosts: localhostCompanions(host),
+        target: server.server,
+      },
+    }));
   } catch (error) {
     // The engine may already hold a browser and the signal handlers keep the
     // process alive; leave nothing behind for a server that never started.

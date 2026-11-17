@@ -249,6 +249,12 @@ WARN  Port 3000 is in use, using 3001 instead.
 √ Review UI available at http://localhost:3001
 ```
 
+A port only counts as free when it is free on **both** loopback addresses. `localhost` resolves to
+`127.0.0.1` and `::1`, and browsers use whichever answers, so a dev server on `[::1]:3000` would
+otherwise catch clicks on a `localhost:3000` URL that Cappa printed for its own `127.0.0.1:3000`.
+Cappa listens on both addresses so the printed URL always reaches it; on a machine without IPv6
+the `::1` half is skipped.
+
 Binding to anything other than a loopback host exposes control of a browser that reads local
 files, so Cappa requires an access token there and generates one — printed as part of the URL —
 when you do not pass `--token`. `--token` also reads `CAPPA_TOKEN` from the environment, so the
