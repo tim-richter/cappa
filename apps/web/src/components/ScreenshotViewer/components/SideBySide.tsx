@@ -1,4 +1,5 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
+import { getPixelRatios } from "../pixelRatio";
 import { InspectableImage } from "./Inspect";
 
 interface SideBySideProps {
@@ -6,16 +7,34 @@ interface SideBySideProps {
 }
 
 export function SideBySide({ screenshot }: SideBySideProps) {
+  const ratios = getPixelRatios(screenshot);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-full">
-      <Side title="Before" path={screenshot.expectedPath} />
+      <Side
+        title="Before"
+        path={screenshot.expectedPath}
+        pixelRatio={ratios.expected}
+      />
 
-      <Side title="After" path={screenshot.actualPath} />
+      <Side
+        title="After"
+        path={screenshot.actualPath}
+        pixelRatio={ratios.actual}
+      />
     </div>
   );
 }
 
-const Side = ({ title, path }: { title: string; path?: string }) => {
+const Side = ({
+  title,
+  path,
+  pixelRatio,
+}: {
+  title: string;
+  path?: string;
+  pixelRatio: number;
+}) => {
   return (
     <div>
       <h3 className="text-sm font-medium text-muted-foreground uppercase tracking-wide mb-2">
@@ -27,6 +46,7 @@ const Side = ({ title, path }: { title: string; path?: string }) => {
           <InspectableImage
             src={path}
             alt={title}
+            pixelRatio={pixelRatio}
             className="block max-w-full max-h-full object-contain"
           />
         ) : (

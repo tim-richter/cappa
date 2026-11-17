@@ -1,6 +1,7 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { Slider } from "@ui/components/slider";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
+import { getPixelRatios } from "../pixelRatio";
 import { InspectableImage } from "./Inspect";
 
 interface OverlayProps {
@@ -43,6 +44,7 @@ export function Overlay({
           <InspectableImage
             src={screenshot.expectedPath}
             alt="Before"
+            pixelRatio={getPixelRatios(screenshot).expected}
             className="block h-full w-auto max-w-full"
           >
             {/* Overlay image */}

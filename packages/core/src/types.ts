@@ -451,6 +451,14 @@ export type Screenshot = {
   taskId?: string;
   /** Plugin that owns `taskId`. Absent whenever `taskId` is. */
   plugin?: string;
+  /**
+   * Image pixels per CSS pixel of the actual / expected PNG, as stamped at
+   * capture (`screenshot.scale: "device"` → the `deviceScaleFactor`). Absent
+   * means 1. Divide an image's size by it to show it at its CSS size; two
+   * different ratios mean the baseline predates a scale change.
+   */
+  actualPixelRatio?: number;
+  expectedPixelRatio?: number;
 } & (NewScreenshot | DeletedScreenshot | ChangedScreenshot | PassedScreenshot);
 
 export type FailedScreenshot = Screenshot & {

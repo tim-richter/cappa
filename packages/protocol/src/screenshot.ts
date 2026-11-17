@@ -77,6 +77,13 @@ const screenshotBase = {
   /** Plugin that owns `taskId`. Absent whenever `taskId` is. */
   plugin: z.string().optional(),
   /**
+   * Image pixels per CSS pixel of the actual / expected PNG. Absent means 1.
+   * A client shows an image at its size divided by this, and two different
+   * ratios on one screenshot mean the baseline predates a scale change.
+   */
+  actualPixelRatio: z.number().positive().optional(),
+  expectedPixelRatio: z.number().positive().optional(),
+  /**
    * Neighbours in the full, unfiltered list, so the UI can walk every
    * screenshot with the arrow keys regardless of the current filter.
    *

@@ -3,6 +3,8 @@ import { Input } from "@ui/components/input";
 import { cn } from "@ui/lib/utils";
 import { Plus, Trash2, X } from "lucide-react";
 import {
+  type ComponentProps,
+  type CSSProperties,
   createContext,
   type ReactNode,
   type Ref,
@@ -178,6 +180,49 @@ function useInspectedImage() {
 }
 
 /**
+ * The CSS width an image of `size` is shown at: its pixels divided by the
+ * ratio it was captured at, so a 2× screenshot appears at the size the page
+ * had rather than twice that. Undefined (natural size) at 1× or before load.
+ */
+export function cssSizeStyle(
+  size: ImageSize | null,
+  pixelRatio = 1,
+): CSSProperties | undefined {
+  if (!size || pixelRatio === 1) return undefined;
+  return { width: size.width / pixelRatio };
+}
+
+/**
+ * A plain image shown at its CSS size — for the second image a view stacks
+ * on an `InspectableImage`, which needs the same treatment but no regions.
+ */
+export function CssSizedImage({
+  pixelRatio,
+  style,
+  ...props
+}: ComponentProps<"img"> & { pixelRatio?: number }) {
+  const [size, setSize] = useState<ImageSize | null>(null);
+  const measure = (img: HTMLImageElement) => {
+    if (img.naturalWidth && img.naturalHeight) {
+      setSize({ width: img.naturalWidth, height: img.naturalHeight });
+    }
+  };
+
+  return (
+    <img
+      alt=""
+      draggable={false}
+      {...props}
+      ref={(img) => {
+        if (img?.complete && !size) measure(img);
+      }}
+      onLoad={(event) => measure(event.currentTarget)}
+      style={{ ...cssSizeStyle(size, pixelRatio), ...style }}
+    />
+  );
+}
+
+/**
  * The typed regions, drawn over an image of `size`.
  *
  * Renders nothing until the image has reported its size: without it there is no
@@ -244,10 +289,17 @@ export function InspectableImage({
   wrapperClassName,
   wrapperRef,
   ariaHidden,
+  pixelRatio,
   children,
 }: {
   src: string;
   alt: string;
+  /**
+   * Image pixels per CSS pixel the screenshot was captured at; the image is
+   * shown at its size divided by this. Regions stay in image pixels — the
+   * coordinates a diff report gives — since they are placed in percent.
+   */
+  pixelRatio?: number;
   className?: string;
   wrapperClassName?: string;
   wrapperRef?: Ref<HTMLDivElement>;
@@ -271,6 +323,7 @@ export function InspectableImage({
         draggable={false}
         aria-hidden={ariaHidden}
         className={className}
+        style={cssSizeStyle(size, pixelRatio)}
         {...imgProps}
       />
       {children}

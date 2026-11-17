@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import path from "node:path";
+import { readPixelRatio } from "../features/png/pixelRatio";
 import { readDiffMeta } from "../filesystem";
 import type { Screenshot } from "../types";
 
@@ -38,9 +39,11 @@ export const groupScreenshots = async (
 
     // Load the diff metadata sidecar (stats + interpretation) for changed
     // screenshots so it can be surfaced in the review UI and CLI.
-    const diffMeta = diffScreenshot
-      ? await readDiffMeta(diffScreenshot)
-      : undefined;
+    const [diffMeta, actualPixelRatio, expectedPixelRatio] = await Promise.all([
+      diffScreenshot ? readDiffMeta(diffScreenshot) : undefined,
+      readPixelRatio(screenshot),
+      expectedScreenshot ? readPixelRatio(expectedScreenshot) : 1,
+    ]);
 
     screenshotRepresentations.push({
       id: id,
@@ -54,6 +57,7 @@ export const groupScreenshots = async (
         : undefined,
       actualPath: path.relative(outputDir, screenshot),
       ...(diffMeta ? { diffMeta } : {}),
+      ...pixelRatios(actualPixelRatio, expectedPixelRatio),
     } as Screenshot);
   }
 
@@ -76,6 +80,7 @@ export const groupScreenshots = async (
       name: name,
       category: "deleted",
       expectedPath: path.relative(outputDir, expectedScreenshot),
+      ...pixelRatios(1, await readPixelRatio(expectedScreenshot)),
     });
   }
 
@@ -83,6 +88,12 @@ export const groupScreenshots = async (
     return CATEGORY_ORDER[a.category] - CATEGORY_ORDER[b.category];
   });
 };
+
+/** Ratios other than 1 only: absent means 1, which keeps 1× listings as they were. */
+const pixelRatios = (actual: number, expected: number) => ({
+  ...(actual !== 1 ? { actualPixelRatio: actual } : {}),
+  ...(expected !== 1 ? { expectedPixelRatio: expected } : {}),
+});
 
 const buildCategory = (
   expectedScreenshot: string | undefined,

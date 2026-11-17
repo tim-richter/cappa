@@ -175,6 +175,29 @@ so existing baselines all show as changed once. With `'device'`,
 
 Plugins can override `scale` per story / page and per variant.
 
+#### Pixel ratio in the PNG
+
+Every screenshot taken at a ratio other than 1 carries it in the PNG: a `tEXt` chunk keyed
+`cappa:pixelRatio`, plus a standard `pHYs` (DPI) chunk so image viewers that honour it open the
+file at its CSS size. A PNG without it is 1× — which keeps `'css'` screenshots byte-for-byte as
+they were. Because the ratio lives in the file, a baseline keeps it through `cappa approve`, git
+and CI artifacts.
+
+Cappa uses it in three places:
+
+- **Capture** — a baseline captured at another ratio cannot match, so the comparison runs once
+  instead of retrying and fails with
+  `Baseline was captured at 1× pixel ratio, this screenshot at 2×, …`.
+- **`cappa capture` / `cappa status`** — the changed-screenshot report marks it `1× → 2×` and
+  repeats the explanation.
+- **Review UI** — every image is shown at its CSS size (its pixels divided by its ratio), so a 2×
+  capture is not blown up to twice the page's size, and a 1× baseline lines up with a 2× capture
+  in every view. A screenshot whose ratios differ gets a notice saying so. Inspect regions stay in
+  image pixels, the coordinates a diff report gives.
+
+`Screenshot.actualPixelRatio` / `expectedPixelRatio` carry the ratios to `onFail`, the
+`--json` summary and the server API; absent means 1.
+
 ## diff
 
 Diff configuration sets global comparison settings for screenshots.

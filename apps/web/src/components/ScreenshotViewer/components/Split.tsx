@@ -1,6 +1,7 @@
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { InspectableImage } from "./Inspect";
+import { getPixelRatios } from "../pixelRatio";
+import { CssSizedImage, InspectableImage } from "./Inspect";
 
 interface SplitProps {
   screenshot: ChangedScreenshot;
@@ -10,6 +11,7 @@ export const Split = ({ screenshot }: SplitProps) => {
   const [splitPosition, setSplitPosition] = useState(50); // Percentage from left
   const [isDragging, setIsDragging] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+  const ratios = getPixelRatios(screenshot);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     setIsDragging(true);
@@ -65,6 +67,7 @@ export const Split = ({ screenshot }: SplitProps) => {
             <InspectableImage
               src={screenshot.expectedPath}
               alt="Before"
+              pixelRatio={ratios.expected}
               className="block max-w-full h-full"
               wrapperRef={containerRef}
               wrapperClassName="rounded border border-border"
@@ -74,11 +77,11 @@ export const Split = ({ screenshot }: SplitProps) => {
                 className="absolute top-0 left-0 overflow-hidden"
                 style={{ clipPath: `inset(0 ${100 - splitPosition}% 0 0)` }}
               >
-                <img
+                <CssSizedImage
                   src={screenshot.actualPath}
                   alt="After"
+                  pixelRatio={ratios.actual}
                   className="block max-w-full h-full"
-                  draggable={false}
                 />
               </div>
 

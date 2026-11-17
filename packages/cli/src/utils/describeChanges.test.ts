@@ -125,6 +125,43 @@ describe("describeChanges", () => {
     expect(lines[0]).toContain("3.14%");
   });
 
+  it("explains a pixel ratio change between baseline and capture", () => {
+    const screenshots: Screenshot[] = [
+      {
+        id: "1",
+        name: "r",
+        category: "changed",
+        actualPath: "actual/r.png",
+        expectedPath: "expected/r.png",
+        diffPath: "diff/r.png",
+        actualPixelRatio: 2,
+      },
+    ];
+
+    const lines = describeChanges(screenshots);
+
+    expect(lines[0]).toContain("1× → 2×");
+    expect(lines[1]).toContain("Baseline was captured at 1×");
+  });
+
+  it("says nothing about ratios when they agree", () => {
+    const screenshots: Screenshot[] = [
+      {
+        id: "1",
+        name: "r",
+        category: "changed",
+        actualPath: "actual/r.png",
+        expectedPath: "expected/r.png",
+        diffPath: "diff/r.png",
+        actualPixelRatio: 2,
+        expectedPixelRatio: 2,
+      },
+    ];
+
+    expect(describeChanges(screenshots)).toHaveLength(1);
+    expect(describeChanges(screenshots)[0]).not.toContain("×");
+  });
+
   it("lists each interpreted region with its type, position and bounding box", () => {
     const screenshots = [
       changedScreenshot("Button/Primary", {

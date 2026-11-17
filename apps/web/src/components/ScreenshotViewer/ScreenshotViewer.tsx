@@ -35,10 +35,12 @@ import {
 } from "./components/Inspect";
 import { SeverityBadge } from "./components/Interpretation";
 import { Overlay } from "./components/Overlay";
+import { PixelRatioNotice } from "./components/PixelRatioNotice";
 import { SideBySide } from "./components/SideBySide";
 import { Single } from "./components/Single";
 import { Split } from "./components/Split";
 import { Toggle } from "./components/Toggle";
+import { formatPixelRatio, getPixelRatios } from "./pixelRatio";
 import { getInitialViewMode, persistViewMode, type ViewMode } from "./viewMode";
 
 interface ScreenshotComparisonProps {
@@ -87,6 +89,11 @@ export function ScreenshotComparison({
   // live `a` shortcut on screen for as long as that request took, on exactly
   // the servers that refuse them.
   const canApprove = config !== undefined && !config.readOnly;
+  const ratios = getPixelRatios(screenshot);
+  // The ratio this screenshot is shown at: the new capture's, or for a
+  // deleted one the baseline's.
+  const shownRatio =
+    screenshot.category === "deleted" ? ratios.expected : ratios.actual;
 
   const handleViewModeChange = (nextMode: ViewMode) => {
     setViewMode(nextMode);
@@ -197,6 +204,28 @@ export function ScreenshotComparison({
 
               {screenshot.category === "changed" && screenshot.review && (
                 <AgentVerdictBadge review={screenshot.review} />
+              )}
+
+              {(ratios.mismatch || shownRatio !== 1) && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Badge
+                      variant="outline"
+                      className={
+                        ratios.mismatch
+                          ? "cursor-default border-amber-500/60 text-amber-700 dark:text-amber-300"
+                          : "cursor-default"
+                      }
+                    >
+                      {ratios.mismatch
+                        ? `${formatPixelRatio(ratios.expected)} → ${formatPixelRatio(ratios.actual)}`
+                        : formatPixelRatio(shownRatio)}
+                    </Badge>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    Pixel ratio — image pixels per CSS pixel. Shown at CSS size.
+                  </TooltipContent>
+                </Tooltip>
               )}
 
               {screenshot.approved && (
@@ -333,19 +362,29 @@ export function ScreenshotComparison({
       <InspectProvider regions={regions}>
         {/* Comparison Content */}
         <div className="flex-1 overflow-hidden p-6 flex flex-col">
+          {ratios.mismatch && <PixelRatioNotice ratios={ratios} />}
           {screenshot.category === "changed" && screenshot.review && (
             <AgentReviewSummary review={screenshot.review} />
           )}
           {/* Bounded, so a summary above never pushes the h-full views out. */}
           <div className="flex-1 min-h-0">
             {screenshot.category === "new" && (
-              <Single screenshotPath={screenshot.actualPath} />
+              <Single
+                screenshotPath={screenshot.actualPath}
+                pixelRatio={ratios.actual}
+              />
             )}
             {screenshot.category === "deleted" && (
-              <Single screenshotPath={screenshot.expectedPath} />
+              <Single
+                screenshotPath={screenshot.expectedPath}
+                pixelRatio={ratios.expected}
+              />
             )}
             {screenshot.category === "passed" && (
-              <Single screenshotPath={screenshot.actualPath} />
+              <Single
+                screenshotPath={screenshot.actualPath}
+                pixelRatio={ratios.actual}
+              />
             )}
             {screenshot.category === "changed" && (
               <>

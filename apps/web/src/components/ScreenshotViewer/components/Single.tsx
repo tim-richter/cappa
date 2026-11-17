@@ -2,9 +2,11 @@ import { InspectableImage } from "./Inspect";
 
 interface SingleProps {
   screenshotPath?: string;
+  /** Image pixels per CSS pixel; the image is shown at its CSS size. */
+  pixelRatio?: number;
 }
 
-export const Single = ({ screenshotPath }: SingleProps) => {
+export const Single = ({ screenshotPath, pixelRatio }: SingleProps) => {
   return (
     <div>
       <div className="bg-muted rounded-lg p-4 h-full min-h-[400px] flex items-center justify-center overflow-hidden">
@@ -12,6 +14,7 @@ export const Single = ({ screenshotPath }: SingleProps) => {
           <InspectableImage
             src={screenshotPath}
             alt="Screenshot"
+            pixelRatio={pixelRatio}
             className="block max-w-full max-h-full object-contain"
           />
         ) : (

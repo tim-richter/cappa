@@ -1,6 +1,7 @@
 import type { InterpretResult } from "@cappa/core";
 import type { ChangedScreenshot } from "@cappa/protocol";
 import { useState } from "react";
+import { getPixelRatios } from "../pixelRatio";
 import { InspectableImage } from "./Inspect";
 import {
   DiffRegionsOverlay,
@@ -39,6 +40,7 @@ export const Diff = ({ screenshot }: DiffProps) => {
             <InspectableImage
               src={screenshot.diffPath}
               alt="Differences"
+              pixelRatio={getPixelRatios(screenshot).diff}
               className="block max-w-full max-h-full object-contain"
             >
               {interpretation && (

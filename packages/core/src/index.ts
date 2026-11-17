@@ -169,6 +169,13 @@ import type {
 } from "./types";
 
 export * from "./agent";
+export {
+  describePixelRatioMismatch,
+  PIXEL_RATIO_KEY,
+  type PixelRatioPair,
+  readPixelRatio,
+  withPixelRatio,
+} from "./features/png/pixelRatio";
 export * from "./webServer";
 export {
   type AgentReview,
