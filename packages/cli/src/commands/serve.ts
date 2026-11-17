@@ -1,13 +1,15 @@
 import { getConfig } from "@cappa/config";
 import { getLogger } from "@cappa/logger";
 import { isLoopbackHost } from "@cappa/server";
-import { resolveToken, startServer } from "../utils/server";
+import { resolveToken, startServerOrExit } from "../utils/server";
 
 export type ServeOptions = {
   port?: number;
   host?: string;
   readOnly?: boolean;
   token?: string;
+  /** Fail when the port is taken instead of moving to the next free one. */
+  strictPort?: boolean;
   /** Commander sets this to `false` for `--no-ui`. */
   ui?: boolean;
 };
@@ -42,19 +44,20 @@ export const serve = async (options: ServeOptions = {}) => {
     return;
   }
 
-  const { url } = await startServer({
+  const { url, port: boundPort } = await startServerOrExit({
     config,
     host,
     port,
     readOnly,
     token,
+    strictPort: options.strictPort ?? false,
     ui,
   });
 
   // One structured line, then quiet: nothing is watching this the way a human
   // watches `review`, so the output exists to be greppable in a CI log.
   logger.log(
-    `cappa serve listening host=${host} port=${port} ui=${ui} read-only=${readOnly} token=${token ? "yes" : "no"}`,
+    `cappa serve listening host=${host} port=${boundPort} ui=${ui} read-only=${readOnly} token=${token ? "yes" : "no"}`,
   );
 
   if (ui) {

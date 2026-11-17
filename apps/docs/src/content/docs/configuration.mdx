@@ -322,7 +322,10 @@ export default defineConfig({
 - **type**: `number`
 - **default**: `3000`
 
-Port for the review UI server. Set to a different value if port 3000 is already in use.
+Port for the review UI server (`cappa review` and `cappa serve`). If it is taken, Cappa tries the
+next 19 ports and uses the first free one; pass `--strict-port` to fail instead. A port counts as
+free only when it is free on both `127.0.0.1` and `::1`, so the printed `localhost` URL always
+reaches Cappa.
 
 ```ts
 export default defineConfig({

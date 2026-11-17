@@ -181,7 +181,8 @@ cappa serve --read-only                      # serve a report; refuse captures
 
 | Flag | Meaning |
 | --- | --- |
-| `--port <port>` | Port to listen on. Defaults to `review.port`. |
+| `--port <port>` | Port to listen on. Defaults to `review.port`; the next free port if it is taken. |
+| `--strict-port` | Exit with an error if the port is taken instead of moving to the next one. |
 | `--host <host>` | Host to bind. A non-loopback host **requires** a token. |
 | `--token <token>` | Access token required on every `/api/*` request. Falls back to `CAPPA_TOKEN`. |
 | `--read-only` | Refuse capture, approval and every other mutation. |
@@ -195,6 +196,11 @@ a daemon nobody can authenticate against. Off loopback it refuses to start witho
 ERROR  Binding to 0.0.0.0 exposes capture control beyond this machine, so an access token
        is required. Pass --token <token>, or set CAPPA_TOKEN to keep it out of the process list.
 ```
+
+If the port is taken, `serve` moves to the next free one (up to 20 ports on) and the structured
+line reports the port it actually bound — grep `port=` from it rather than assuming. In CI, where a
+`capture --server` points at a fixed address, pass `--strict-port` so a conflict fails the job
+instead of starting the engine somewhere the client is not looking.
 
 `SIGINT` and `SIGTERM` shut the server down cleanly, closing the browser before exiting — a
 `SIGTERM`'d `serve` leaves no orphaned Chromium processes behind.
@@ -229,10 +235,25 @@ re-capture a single screenshot without leaving the page. See [Interactive UI](/i
 
 ```bash
 cappa review --port 4000        # override review.port
+cappa review --strict-port      # fail instead of moving on when the port is taken
 cappa review --read-only        # serve a report with capture and approval disabled
 cappa review --host 0.0.0.0     # expose beyond this machine (requires a token)
 cappa review --token <value>    # supply the token yourself instead of generating one
 ```
+
+If the port is taken — another `cappa review`, a dev server — Cappa moves to the next free port,
+warns, and prints the URL it actually bound:
+
+```
+WARN  Port 3000 is in use, using 3001 instead.
+√ Review UI available at http://localhost:3001
+```
+
+A port only counts as free when it is free on **both** loopback addresses. `localhost` resolves to
+`127.0.0.1` and `::1`, and browsers use whichever answers, so a dev server on `[::1]:3000` would
+otherwise catch clicks on a `localhost:3000` URL that Cappa printed for its own `127.0.0.1:3000`.
+Cappa listens on both addresses so the printed URL always reaches it; on a machine without IPv6
+the `::1` half is skipped.
 
 Binding to anything other than a loopback host exposes control of a browser that reads local
 files, so Cappa requires an access token there and generates one — printed as part of the URL —

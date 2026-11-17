@@ -191,7 +191,8 @@ keeps your selection, so retrying is one click rather than a fresh round of sele
 
 | Flag | Description |
 | --- | --- |
-| `--port <port>` | Port to listen on. Defaults to [`review.port`](/configuration#reviewport). |
+| `--port <port>` | Port to listen on. Defaults to [`review.port`](/configuration#reviewport); the next free port if it is taken. |
+| `--strict-port` | Exit if the port is taken instead of moving to the next free one. |
 | `--host <host>` | Host to bind. Defaults to `127.0.0.1`; anything else requires a token. |
 | `--read-only` | Serve the report without capture, approval or any other mutation. |
 | `--token <token>` | Require this token on every API request. |
