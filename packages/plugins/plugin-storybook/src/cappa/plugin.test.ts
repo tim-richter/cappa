@@ -816,6 +816,19 @@ describe("console logging configuration", () => {
     expect(baseOptions.crop).toBe(false);
     expect(variantsWithUrls[0].options.crop).toEqual({ padding: 0 });
   });
+
+  it("passes a story's scale through, and a variant's over the story's", async () => {
+    const { baseOptions, variantsWithUrls } = await captureWithParameters(
+      undefined,
+      {
+        scale: "device",
+        variants: [{ id: "css", options: { scale: "css" } }],
+      },
+    );
+
+    expect(baseOptions.scale).toBe("device");
+    expect(variantsWithUrls[0].options.scale).toBe("css");
+  });
 });
 
 describe("connection timeout", () => {

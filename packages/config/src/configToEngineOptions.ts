@@ -35,6 +35,7 @@ export function configToEngineOptions(
     logConsoleEvents: config.logConsoleEvents,
     fullPage: config.screenshot?.fullPage ?? true,
     crop: config.screenshot?.crop ?? false,
+    scale: config.screenshot?.scale ?? "css",
     viewport: config.screenshot?.viewport ?? { width: 1920, height: 1080 },
     connectionTimeout: config.connectionTimeout,
     webServer: config.webServer,

@@ -194,3 +194,40 @@ it("attaches diff metadata from the sidecar for changed screenshots", async () =
   }
   expect(changed.diffMeta).toEqual(meta);
 });
+
+it("reads each image's pixel ratio, omitting 1×", async () => {
+  const { default: sharp } = await import("sharp");
+  const { withPixelRatio } = await import("../features/png/pixelRatio");
+  const outputDir = fs.mkdtempSync(path.join(os.tmpdir(), "cappa-ratio-"));
+  const png = await sharp({
+    create: { width: 2, height: 2, channels: 4, background: "#000" },
+  })
+    .png()
+    .toBuffer();
+  const write = (file: string, buffer: Buffer) => {
+    fs.mkdirSync(path.dirname(path.join(outputDir, file)), { recursive: true });
+    fs.writeFileSync(path.join(outputDir, file), buffer);
+    return path.join(outputDir, file);
+  };
+
+  const result = await groupScreenshots(
+    [write("actual/a.png", withPixelRatio(png, 2)), write("actual/b.png", png)],
+    [
+      write("expected/a.png", png),
+      write("expected/b.png", png),
+      write("expected/c.png", withPixelRatio(png, 3)),
+    ],
+    [write("diff/a.png", png)],
+    outputDir,
+  );
+
+  const byName = Object.fromEntries(result.map((s) => [s.name, s]));
+  expect(byName.a).toMatchObject({ actualPixelRatio: 2 });
+  expect(byName.a).not.toHaveProperty("expectedPixelRatio");
+  expect(byName.b).not.toHaveProperty("actualPixelRatio");
+  expect(byName.b).not.toHaveProperty("expectedPixelRatio");
+  expect(byName.c).toMatchObject({
+    category: "deleted",
+    expectedPixelRatio: 3,
+  });
+});

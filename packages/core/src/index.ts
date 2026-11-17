@@ -159,6 +159,7 @@ import type {
   PassedScreenshot,
   Screenshot,
   ScreenshotOptions,
+  ScreenshotScale,
   ScreenshotSettings,
   ScreenshotVariant,
   ScreenshotVariantWithUrl,
@@ -168,6 +169,13 @@ import type {
 } from "./types";
 
 export * from "./agent";
+export {
+  describePixelRatioMismatch,
+  PIXEL_RATIO_KEY,
+  type PixelRatioPair,
+  readPixelRatio,
+  withPixelRatio,
+} from "./features/png/pixelRatio";
 export * from "./webServer";
 export {
   type AgentReview,
@@ -277,6 +285,7 @@ export {
   type ScreenshotOptions,
   type ScreenshotOrigin,
   type ScreenshotQuery,
+  type ScreenshotScale,
   type ScreenshotSettings,
   type ScreenshotStore,
   ScreenshotTool,

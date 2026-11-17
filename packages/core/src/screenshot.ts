@@ -1,4 +1,5 @@
 import { realpathSync } from "node:fs";
+import fsp from "node:fs/promises";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { getLogger, type Logger } from "@cappa/logger";
@@ -27,6 +28,12 @@ import {
   type PlaywrightContainer,
 } from "./container";
 import { type CropSetting, measureContentClip, resolveCrop } from "./crop";
+import {
+  describePixelRatioMismatch,
+  type PixelRatioPair,
+  readPixelRatio,
+  withPixelRatio,
+} from "./features/png/pixelRatio";
 import { ScreenshotFileSystem } from "./filesystem";
 import { sanitizeScreenshotFilename } from "./paths";
 import {
@@ -44,10 +51,17 @@ import type {
   DiffOptionsGMSD,
   DiffOptionsPixel,
   ScreenshotOptions,
+  ScreenshotScale,
   ScreenshotSettings,
   ScreenshotVariant,
   ScreenshotVariantWithUrl,
 } from "./types";
+
+/**
+ * `deviceScaleFactor` for contexts whose `contextOptions` set none. With the
+ * default `scale: "css"` it only changes how the page renders, not the PNG.
+ */
+const DEFAULT_DEVICE_SCALE_FACTOR = 2;
 
 const defaultPixelDiffConfig: DiffOptionsPixel = {
   type: "pixel",
@@ -258,6 +272,8 @@ class ScreenshotTool {
   fullPage: boolean;
   /** Default content crop; a screenshot's own `crop` overrides it. */
   crop: CropSetting;
+  /** Default `scale`; a screenshot's own `scale` overrides it. */
+  scale: ScreenshotScale;
   outputDir: string;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
@@ -297,6 +313,7 @@ class ScreenshotTool {
     viewport?: { width: number; height: number };
     fullPage?: boolean;
     crop?: CropSetting;
+    scale?: ScreenshotScale;
     outputDir?: string;
     diff?: DiffOptions;
     retries?: number;
@@ -315,6 +332,7 @@ class ScreenshotTool {
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.fullPage = options.fullPage ?? true;
     this.crop = options.crop ?? false;
+    this.scale = options.scale ?? "css";
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
@@ -505,7 +523,7 @@ class ScreenshotTool {
       Array.from({ length: this.concurrency }, async () => {
         const context = await browser.newContext({
           reducedMotion: "reduce",
-          deviceScaleFactor: 2,
+          deviceScaleFactor: DEFAULT_DEVICE_SCALE_FACTOR,
           ...extraContextOptions,
           userAgent: `${contextOptions?.userAgent ?? this.defaultUserAgent} CappaStorybook`,
           viewport: this.viewport,
@@ -690,20 +708,39 @@ class ScreenshotTool {
       }
 
       const screenshotOptions = {
-        path: filepath,
         fullPage,
         clip,
         type: "png" as const,
         timeout: 60000,
         mask: options.mask,
         omitBackground: options.omitBackground,
-        scale: "css" as const,
+        scale: options.scale ?? this.scale,
         animations: "disabled",
         caret: "hide",
       } satisfies PageScreenshotOptions;
 
-      return page.screenshot(screenshotOptions);
+      const buffer = withPixelRatio(
+        await page.screenshot(screenshotOptions),
+        this.pixelRatioFor(options),
+      );
+      if (filepath) {
+        await fsp.writeFile(filepath, buffer);
+      }
+      return buffer;
     });
+  }
+
+  /**
+   * Image pixels per CSS pixel for a screenshot taken with `options`: the
+   * context's `deviceScaleFactor` with `scale: "device"`, else 1.
+   *
+   * Stamped into every PNG (see `features/png/pixelRatio.ts`) so a baseline
+   * remembers the ratio it was captured at.
+   */
+  pixelRatioFor(options: Pick<ScreenshotSettings, "scale">): number {
+    if ((options.scale ?? this.scale) !== "device") return 1;
+    const contextOptions = this.browserConfig.provider.options.contextOptions;
+    return contextOptions?.deviceScaleFactor ?? DEFAULT_DEVICE_SCALE_FACTOR;
   }
 
   /**
@@ -782,6 +819,8 @@ class ScreenshotTool {
     screenshotPath: string;
     comparisonResult: PixelCompareResult | GMSDCompareResult;
     diffImagePath?: string;
+    /** Set when the baseline was captured at another pixel ratio. */
+    pixelRatio?: PixelRatioPair;
   }> {
     if (!this.browser) {
       throw new Error("Browser not initialized");
@@ -794,6 +833,7 @@ class ScreenshotTool {
       const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage ?? this.fullPage,
         crop: options.crop,
+        scale: options.scale,
         mask: options.mask,
         omitBackground: options.omitBackground,
         delay: options.delay,
@@ -867,7 +907,11 @@ class ScreenshotTool {
         "differentSizes" in retryScreenshot.comparisonResult &&
         retryScreenshot.comparisonResult.differentSizes
       ) {
-        this.logger.warn(`Screenshot has different sizes than reference image`);
+        if (!retryScreenshot.pixelRatio) {
+          this.logger.warn(
+            `Screenshot has different sizes than reference image`,
+          );
+        }
 
         if (!diffImagePath) {
           const diffFilename = options.diffImageFilename || filename;
@@ -884,6 +928,9 @@ class ScreenshotTool {
         screenshotPath: filepath,
         comparisonResult: retryScreenshot.comparisonResult,
         diffImagePath,
+        ...(retryScreenshot.pixelRatio
+          ? { pixelRatio: retryScreenshot.pixelRatio }
+          : {}),
       };
     } catch (error) {
       this.logger.error(
@@ -902,7 +949,21 @@ class ScreenshotTool {
   ) {
     const diffConfig = this.mergeDiffOptions(diffOverride);
 
-    for (let i = 0; i < this.retries; i++) {
+    // A baseline captured at another pixel ratio differs in size everywhere,
+    // so retrying cannot help: compare once (for the diff image) and say why.
+    const pixelRatio = {
+      expected: await readPixelRatio(referenceImage),
+      actual: this.pixelRatioFor(options),
+    };
+    const ratioMismatch = pixelRatio.expected !== pixelRatio.actual;
+    if (ratioMismatch) {
+      this.logger.error(
+        describePixelRatioMismatch(pixelRatio.expected, pixelRatio.actual),
+      );
+    }
+    const attempts = ratioMismatch ? 1 : this.retries;
+
+    for (let i = 0; i < attempts; i++) {
       try {
         const screenshotBuffer = await this.takeScreenshotBuffer(page, {
           ...options,
@@ -929,14 +990,17 @@ class ScreenshotTool {
               );
 
         // last retry
-        if (i === this.retries - 1 && !comparisonResult.passed) {
-          this.logger.error(
-            `Failed to match screenshot after ${this.retries} retries`,
-          );
+        if (i === attempts - 1 && !comparisonResult.passed) {
+          if (!ratioMismatch) {
+            this.logger.error(
+              `Failed to match screenshot after ${this.retries} retries`,
+            );
+          }
           return {
             screenshotPath: screenshotBuffer,
             comparisonResult,
             passed: false,
+            ...(ratioMismatch ? { pixelRatio } : {}),
           };
         }
 

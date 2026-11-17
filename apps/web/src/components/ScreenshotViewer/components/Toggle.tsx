@@ -2,6 +2,7 @@ import type { ChangedScreenshot } from "@cappa/protocol";
 import { Switch } from "@ui/components/switch";
 import { useUncontrolled } from "@ui/hooks/use-uncontrolled";
 import { cn } from "@ui/lib/utils";
+import { getPixelRatios } from "../pixelRatio";
 import { InspectableImage } from "./Inspect";
 
 export type ToggleSide = "before" | "after";
@@ -49,6 +50,7 @@ export function Toggle({
           <InspectableImage
             src={screenshot.expectedPath}
             alt="Before"
+            pixelRatio={getPixelRatios(screenshot).expected}
             ariaHidden={activeSide !== "before"}
             className={cn(
               "pointer-events-none block max-h-full w-auto max-w-full select-none",

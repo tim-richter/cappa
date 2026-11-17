@@ -1,4 +1,4 @@
-import { normalizeChangeType } from "@cappa/core";
+import { describePixelRatioMismatch, normalizeChangeType } from "@cappa/core";
 import chalk from "chalk";
 import { z } from "zod";
 
@@ -54,6 +54,9 @@ export type ReportableScreenshot = {
     percentDifference?: number;
     interpretation?: unknown;
   };
+  /** Absent means 1. */
+  actualPixelRatio?: number;
+  expectedPixelRatio?: number;
 };
 
 // Compared case-insensitively: `@blazediff/interpret-native` reports `high`
@@ -148,7 +151,14 @@ export const describeChanges = (
       ? parsed.data
       : undefined;
 
+    const expectedRatio = screenshot.expectedPixelRatio ?? 1;
+    const actualRatio = screenshot.actualPixelRatio ?? 1;
+    const ratioChanged = expectedRatio !== actualRatio;
+
     const parts: string[] = [];
+    if (ratioChanged) {
+      parts.push(chalk.yellow(`${expectedRatio}× → ${actualRatio}×`));
+    }
     if (interpretation) {
       parts.push(
         severityColor(interpretation.severity)(
@@ -171,6 +181,12 @@ export const describeChanges = (
         ? `  ${chalk.dim("·")} ${parts.join(chalk.dim(" · "))}`
         : "";
     lines.push(`${chalk.bold(screenshot.name)}${suffix}`);
+
+    if (ratioChanged) {
+      lines.push(
+        `  ${chalk.yellow(describePixelRatioMismatch(expectedRatio, actualRatio))}`,
+      );
+    }
 
     if (interpretation?.summary) {
       lines.push(`  ${chalk.dim(interpretation.summary)}`);

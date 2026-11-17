@@ -116,6 +116,7 @@ export async function getConfig(
     screenshot: {
       fullPage: userConfig.screenshot?.fullPage ?? true,
       crop: userConfig.screenshot?.crop ?? false,
+      scale: userConfig.screenshot?.scale ?? "css",
       viewport: userConfig.screenshot?.viewport ?? {
         width: 1920,
         height: 1080,

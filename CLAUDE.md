@@ -48,6 +48,7 @@ The foundational library. Core exports:
 - `defineConfig` — type helper for `cappa.config.ts`
 - `compareImages` / `imagesMatch` — pixel-diff comparison (via `@blazediff/core-native`)
 - `compareImagesGMSD` / `imagesMatchGMSD` — GMSD perceptual comparison (via `@blazediff/gmsd`). Both compare different-size images on a canvas padded to the larger size (`features/png/canvas.ts`, each image padded with its own edge colour); a size change never passes
+- `withPixelRatio` / `readPixelRatio` — a screenshot's pixel ratio stored in the PNG (`features/png/pixelRatio.ts`: `cappa:pixelRatio` tEXt + `pHYs`, only for ratios ≠ 1). Stamped at capture, read into `Screenshot.actualPixelRatio`/`expectedPixelRatio`; a baseline at another ratio fails without retries
 - `measureContentClip` / `resolveCrop` — content crop (`src/crop.ts`): measures painted ink in the page and returns a Playwright `clip`
 - `runAgentCheck` / `describeChange` / `renderJudgmentTiles` — agent review (`src/agent/`): a judgment request with region crops for every changed screenshot (no heuristic labels — only a judge labels a change), verdicts tied to an image fingerprint
 - `playwright` / `resolveBrowserConfig` — the `browser.provider` factory and its defaults/validation (`src/playwright.ts`, also the `@cappa/core/playwright` subpath)
@@ -131,6 +132,7 @@ export default defineConfig({
     fullPage: true,
     viewport: { width: 1920, height: 1080 }, // layout size; with crop, the most a shot covers
     crop: false,                 // true | { root, padding } — crop to painted content (src/crop.ts)
+    scale: 'css',                // 'device' → PNG is deviceScaleFactor× larger (Playwright's scale)
   },
   review: { theme: 'light' },    // 'light' | 'dark'
   browser: {                     // Vitest-browser-mode shape (src/playwright.ts)

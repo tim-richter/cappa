@@ -1,4 +1,4 @@
-import type { CropSetting, DiffOptions } from "@cappa/core";
+import type { CropSetting, DiffOptions, ScreenshotScale } from "@cappa/core";
 
 export interface StorybookRenderOptions {
   viewMode?: "story" | "docs";
@@ -19,6 +19,11 @@ export interface ScreenshotVariantOverrideStorybook {
    * Overrides the plugin's and the config's `crop`.
    */
   crop?: CropSetting;
+  /**
+   * `"device"` captures at the context's `deviceScaleFactor` instead of one
+   * pixel per CSS pixel. Overrides the config's `screenshot.scale`.
+   */
+  scale?: ScreenshotScale;
   delay?: number;
   skip?: boolean;
   mask?: string[];

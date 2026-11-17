@@ -299,6 +299,29 @@ describe("cappaPluginPages", () => {
       });
     });
 
+    it("passes scale through, per-page over defaults", async () => {
+      const plugin = cappaPluginPages({
+        pages: [],
+        defaults: { scale: "device" },
+      });
+
+      const run = async (options?: { scale?: unknown }) => {
+        const page = createMockPage();
+        const screenshotTool = createMockScreenshotTool();
+        const data = { url: "https://example.com", name: "test", options };
+        await plugin.execute(
+          { id: "test", url: data.url, data: data as any },
+          page,
+          screenshotTool,
+          {},
+        );
+        return screenshotTool.captureWithVariants.mock.calls[0][3].scale;
+      };
+
+      expect(await run()).toBe("device");
+      expect(await run({ scale: "css" })).toBe("css");
+    });
+
     it("returns error result on failure", async () => {
       const plugin = cappaPluginPages({
         pages: [{ url: "https://example.com", name: "test" }],

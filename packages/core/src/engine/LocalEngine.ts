@@ -15,7 +15,12 @@ import type {
 } from "../runner/types";
 import ScreenshotTool from "../screenshot";
 import { collectScreenshots } from "../screenshots/collectScreenshots";
-import type { DiffOptions, Screenshot, Viewport } from "../types";
+import type {
+  DiffOptions,
+  Screenshot,
+  ScreenshotScale,
+  Viewport,
+} from "../types";
 import {
   type ResolvedWebServerConfig,
   WebServerPool,
@@ -53,6 +58,7 @@ export type LocalEngineOptions = {
   logConsoleEvents?: LogConsoleEvents;
   fullPage?: boolean;
   crop?: CropSetting;
+  scale?: ScreenshotScale;
   viewport?: Viewport;
   connectionTimeout?: number;
   /** Provider, headless mode and instance — see `UserConfig.browser`. */
@@ -192,6 +198,7 @@ export class LocalEngine implements CaptureEngine {
       logConsoleEvents: this.options.logConsoleEvents,
       fullPage: this.options.fullPage ?? true,
       crop: this.options.crop ?? false,
+      scale: this.options.scale ?? "css",
       viewport: this.options.viewport ?? { width: 1920, height: 1080 },
       connectionTimeout: this.options.connectionTimeout,
       browser: this.options.browser,
