@@ -1,4 +1,9 @@
-import type { CropSetting, DiffOptions, Viewport } from "@cappa/core";
+import type {
+  CropSetting,
+  DiffOptions,
+  ScreenshotScale,
+  Viewport,
+} from "@cappa/core";
 
 /**
  * Waiting strategy configuration for page screenshots.
@@ -38,6 +43,11 @@ export interface PageScreenshotOptions {
    * element instead. Overrides `screenshot.crop` in the cappa config.
    */
   crop?: CropSetting;
+  /**
+   * `"device"` captures at the context's `deviceScaleFactor` instead of one
+   * pixel per CSS pixel. Overrides `screenshot.scale` in the cappa config.
+   */
+  scale?: ScreenshotScale;
   /**
    * Delay in milliseconds before taking the screenshot.
    */

@@ -257,6 +257,22 @@ export type UserConfig = {
      * @default false
      */
     crop?: CropSetting;
+    /**
+     * How a screenshot's pixels map to the page's — Playwright's `scale`.
+     *
+     * - `"css"`: one image pixel per CSS pixel, whatever the context's
+     *   `deviceScaleFactor`. A 100×40 button is a 100×40 PNG.
+     * - `"device"`: one image pixel per device pixel, so the PNG is
+     *   `deviceScaleFactor` times larger — sharp captures of small components.
+     *   Set `deviceScaleFactor` through `browser.provider`'s `contextOptions`.
+     *
+     * Changing it changes the size of every screenshot, so existing baselines
+     * need re-approving. Pixel-count thresholds (`maxDiffPixels`) grow with
+     * the square of the scale factor; `maxDiffPercentage` does not.
+     * Plugins and per-screenshot options can override it.
+     * @default "css"
+     */
+    scale?: ScreenshotScale;
   };
   /**
    * The browser screenshots are taken in. Shaped like Vitest browser mode's
@@ -305,6 +321,9 @@ export type UserConfig = {
 
 export type Viewport = { width: number; height: number };
 
+/** See `UserConfig.screenshot.scale`. */
+export type ScreenshotScale = "css" | "device";
+
 export type ScreenshotSettings = {
   fullPage?: boolean;
   /**
@@ -317,6 +336,11 @@ export type ScreenshotSettings = {
   mask?: Locator[];
   omitBackground?: boolean;
   viewport?: Viewport;
+  /**
+   * `"css"` or `"device"` pixels — see `UserConfig.screenshot.scale`.
+   * Overrides the global setting for this screenshot.
+   */
+  scale?: ScreenshotScale;
 };
 
 export type ScreenshotVariant = {

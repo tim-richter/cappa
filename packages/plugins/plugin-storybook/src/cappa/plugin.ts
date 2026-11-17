@@ -451,6 +451,7 @@ export const cappaPluginStorybook: Plugin<StorybookPluginOptions> = (
         const baseOptions = {
           fullPage: storyParameters?.fullPage,
           crop: storyParameters?.crop ?? options?.crop,
+          scale: storyParameters?.scale,
           delay: storyParameters?.delay,
           omitBackground: storyParameters?.omitBackground,
           skip: storyParameters?.skip,

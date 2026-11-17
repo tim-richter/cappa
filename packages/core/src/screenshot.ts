@@ -44,6 +44,7 @@ import type {
   DiffOptionsGMSD,
   DiffOptionsPixel,
   ScreenshotOptions,
+  ScreenshotScale,
   ScreenshotSettings,
   ScreenshotVariant,
   ScreenshotVariantWithUrl,
@@ -258,6 +259,8 @@ class ScreenshotTool {
   fullPage: boolean;
   /** Default content crop; a screenshot's own `crop` overrides it. */
   crop: CropSetting;
+  /** Default `scale`; a screenshot's own `scale` overrides it. */
+  scale: ScreenshotScale;
   outputDir: string;
   browser: Browser | null = null;
   context: BrowserContext | null = null;
@@ -297,6 +300,7 @@ class ScreenshotTool {
     viewport?: { width: number; height: number };
     fullPage?: boolean;
     crop?: CropSetting;
+    scale?: ScreenshotScale;
     outputDir?: string;
     diff?: DiffOptions;
     retries?: number;
@@ -315,6 +319,7 @@ class ScreenshotTool {
     this.viewport = options.viewport || { width: 1920, height: 1080 };
     this.fullPage = options.fullPage ?? true;
     this.crop = options.crop ?? false;
+    this.scale = options.scale ?? "css";
     this.outputDir = options.outputDir || "./screenshots";
     this.diff = this.resolveDiffOptions(options.diff);
     this.concurrency = Math.max(1, options.concurrency || 1);
@@ -697,7 +702,7 @@ class ScreenshotTool {
         timeout: 60000,
         mask: options.mask,
         omitBackground: options.omitBackground,
-        scale: "css" as const,
+        scale: options.scale ?? this.scale,
         animations: "disabled",
         caret: "hide",
       } satisfies PageScreenshotOptions;
@@ -794,6 +799,7 @@ class ScreenshotTool {
       const screenshotSettings: ScreenshotSettings = {
         fullPage: options.fullPage ?? this.fullPage,
         crop: options.crop,
+        scale: options.scale,
         mask: options.mask,
         omitBackground: options.omitBackground,
         delay: options.delay,

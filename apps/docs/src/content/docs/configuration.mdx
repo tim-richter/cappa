@@ -136,6 +136,45 @@ once. Capture and approve them in one go.
 
 Plugins can override `crop` per plugin, per story / page and per variant.
 
+### screenshot.scale
+
+- **type**: `'css' | 'device'`
+- **default**: `'css'`
+
+How a screenshot's pixels map to the page's — Playwright's
+[`scale`](https://playwright.dev/docs/api/class-page#page-screenshot-option-scale) option.
+
+- `'css'` — one image pixel per CSS pixel, whatever the browser's `deviceScaleFactor`. A 100×30
+  button is a 100×30 PNG.
+- `'device'` — one image pixel per device pixel, so the PNG is `deviceScaleFactor` times larger.
+  Use it for sharp captures of small components, together with a
+  [`deviceScaleFactor`](#contextoptions):
+
+```ts title="cappa.config.ts"
+import { defineConfig } from '@cappa/core';
+import { playwright } from '@cappa/core/playwright';
+
+export default defineConfig({
+  screenshot: { scale: 'device' },
+  browser: {
+    provider: playwright({ contextOptions: { deviceScaleFactor: 3 } }),
+  },
+});
+```
+
+`deviceScaleFactor` on its own changes how the page renders, not the size of the PNG — with
+`'css'` the render is scaled back down to CSS pixels.
+
+:::note
+Changing `scale` (or `deviceScaleFactor` with `'device'`) changes the size of every screenshot,
+so existing baselines all show as changed once. With `'device'`,
+[`diff.maxDiffPixels`](#diffmaxdiffpixels) counts device pixels — the same visual change is
+`deviceScaleFactor²` times more pixels — while
+[`diff.maxDiffPercentage`](#diffmaxdiffpercentage) is unaffected.
+:::
+
+Plugins can override `scale` per story / page and per variant.
+
 ## diff
 
 Diff configuration sets global comparison settings for screenshots.
@@ -591,6 +630,10 @@ version cappa uses — cappa starts it (or reuses a running one) and connects. S
 Passed to [`browser.newContext()`](https://playwright.dev/docs/api/class-browser#browser-new-context),
 merged over cappa's defaults (`reducedMotion: 'reduce'`, `deviceScaleFactor: 2`). Use it for
 `colorScheme`, `locale`, `timezoneId`, `deviceScaleFactor` and friends.
+
+- `deviceScaleFactor` only changes the PNG's size with
+  [`screenshot.scale: 'device'`](#screenshotscale); with the default `'css'`, screenshots stay
+  one pixel per CSS pixel.
 
 - `viewport` is not accepted — it stays at [`screenshot.viewport`](#screenshotviewport), because
   plugins and stories override it per capture.

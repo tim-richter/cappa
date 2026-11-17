@@ -131,6 +131,7 @@ export default defineConfig({
     fullPage: true,
     viewport: { width: 1920, height: 1080 }, // layout size; with crop, the most a shot covers
     crop: false,                 // true | { root, padding } — crop to painted content (src/crop.ts)
+    scale: 'css',                // 'device' → PNG is deviceScaleFactor× larger (Playwright's scale)
   },
   review: { theme: 'light' },    // 'light' | 'dark'
   browser: {                     // Vitest-browser-mode shape (src/playwright.ts)

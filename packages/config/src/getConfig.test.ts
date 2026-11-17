@@ -46,6 +46,7 @@ test("return Config when config is set with defineConfig", async () => {
     screenshot: {
       fullPage: true,
       crop: false,
+      scale: "css",
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
@@ -70,6 +71,21 @@ test("respects screenshot.crop override", async () => {
   });
 
   expect(cappaUserConfig.screenshot.crop).toBe(true);
+});
+
+test("respects screenshot.scale override", async () => {
+  const config: ConfigResult["config"] = defineConfig({
+    outputDir: "./screenshots",
+    plugins: [],
+    screenshot: { scale: "device" },
+  });
+
+  const cappaUserConfig = await getConfig({
+    config,
+    filepath: "./cappa.config.ts",
+  });
+
+  expect(cappaUserConfig.screenshot.scale).toBe("device");
 });
 
 test("respects screenshot.fullPage override", async () => {
@@ -197,6 +213,7 @@ test("return Config when config is a function", async () => {
     screenshot: {
       fullPage: true,
       crop: false,
+      scale: "css",
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
@@ -242,6 +259,7 @@ test("return Config when config is a promise", async () => {
     screenshot: {
       fullPage: true,
       crop: false,
+      scale: "css",
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
@@ -299,6 +317,7 @@ test("passes environment variables to config functions", async () => {
     screenshot: {
       fullPage: true,
       crop: false,
+      scale: "css",
       viewport: { width: 1920, height: 1080 },
     },
     review: { theme: "light", port: 3000, browserIdleTimeout: 300_000 },
