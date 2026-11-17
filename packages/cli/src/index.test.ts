@@ -1091,6 +1091,74 @@ describe("cappa CLI", () => {
     expect(message).toContain("CAPPA_TOKEN");
   });
 
+  /** The next server's `listen` fails with EADDRINUSE `times` times. */
+  const portTakenFor = (times: number) => {
+    createServerMock.mockImplementationOnce(async () => {
+      const listen = vi.fn();
+      for (let i = 0; i < times; i++) {
+        listen.mockRejectedValueOnce(
+          Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" }),
+        );
+      }
+      listen.mockResolvedValue(undefined);
+      const server = { listen };
+      serverInstances.push(server);
+      return server;
+    });
+  };
+
+  test("review moves to the next free port and prints the real URL", async () => {
+    serveConfig();
+    portTakenFor(2);
+
+    process.argv = ["node", "cappa", "review"];
+    await run();
+
+    expect(
+      serverInstances[0]?.listen.mock.calls.map(([options]) => options.port),
+    ).toEqual([4000, 4001, 4002]);
+    expect(loggerInstance.warn).toHaveBeenCalledWith(
+      "Port 4000 is in use, using 4002 instead.",
+    );
+    expect(loggerInstance.success).toHaveBeenCalledWith(
+      "Review UI available at http://localhost:4002",
+    );
+  });
+
+  test("serve reports the port it actually bound", async () => {
+    serveConfig();
+    portTakenFor(1);
+
+    process.argv = ["node", "cappa", "serve", "--port", "5000"];
+    await run();
+
+    // The structured line is what a CI job greps for the address to hand to
+    // `capture --server`, so it must carry the bound port, not the asked one.
+    expect(loggerInstance.log).toHaveBeenCalledWith(
+      expect.stringContaining("port=5001"),
+    );
+  });
+
+  test.each(["review", "serve"])(
+    "%s --strict-port exits on a taken port instead of moving on",
+    async (command) => {
+      serveConfig();
+      portTakenFor(1);
+      process.exit = vi.fn(() => {
+        throw new Error("process.exit");
+      }) as unknown as typeof process.exit;
+
+      process.argv = ["node", "cappa", command, "--strict-port"];
+      await expect(run()).rejects.toThrow("process.exit");
+
+      expect(serverInstances[0]?.listen).toHaveBeenCalledTimes(1);
+      expect(process.exit).toHaveBeenCalledWith(1);
+      expect(loggerInstance.error).toHaveBeenCalledWith(
+        expect.stringContaining("Port 4000 on 127.0.0.1 is in use."),
+      );
+    },
+  );
+
   test("serve accepts an explicit token off loopback", async () => {
     serveConfig();
 

@@ -2,13 +2,15 @@ import { randomBytes } from "node:crypto";
 import { getConfig } from "@cappa/config";
 import { getLogger } from "@cappa/logger";
 import { isLoopbackHost } from "@cappa/server";
-import { resolveToken, startServer } from "../utils/server";
+import { resolveToken, startServerOrExit } from "../utils/server";
 
 export type ReviewOptions = {
   port?: number;
   host?: string;
   readOnly?: boolean;
   token?: string;
+  /** Fail when the port is taken instead of moving to the next free one. */
+  strictPort?: boolean;
 };
 
 export const review = async (options: ReviewOptions = {}) => {
@@ -34,12 +36,13 @@ export const review = async (options: ReviewOptions = {}) => {
     );
   }
 
-  const { url } = await startServer({
+  const { url } = await startServerOrExit({
     config,
     host,
     port,
     readOnly,
     token,
+    strictPort: options.strictPort ?? false,
     ui: true,
   });
 

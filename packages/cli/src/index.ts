@@ -34,9 +34,12 @@ registerCaptureCommand(program);
 program
   .command("review")
   .description("Open the review and capture UI")
-  .option("-p, --port <port>", "port to listen on", (v) =>
-    Number.parseInt(v, 10),
+  .option(
+    "-p, --port <port>",
+    "port to listen on (the next free one if it is taken)",
+    (v) => Number.parseInt(v, 10),
   )
+  .option("--strict-port", "exit if the port is taken instead of moving on")
   .option(
     "--host <host>",
     "host to bind to (a non-loopback host requires an access token)",
@@ -54,9 +57,12 @@ program
 program
   .command("serve")
   .description("Host a capture engine for a remote `cappa capture --server`")
-  .option("-p, --port <port>", "port to listen on", (v) =>
-    Number.parseInt(v, 10),
+  .option(
+    "-p, --port <port>",
+    "port to listen on (the next free one if it is taken)",
+    (v) => Number.parseInt(v, 10),
   )
+  .option("--strict-port", "exit if the port is taken instead of moving on")
   .option(
     "--host <host>",
     "host to bind to (a non-loopback host requires an access token)",

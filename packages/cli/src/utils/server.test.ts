@@ -1,3 +1,4 @@
+import net from "node:net";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 const { loggerInstance } = vi.hoisted(() => ({
@@ -17,7 +18,156 @@ vi.mock("@cappa/logger", () => ({
   initLogger: () => loggerInstance,
 }));
 
-import { registerShutdownHandlers, toDisplayHost } from "./server";
+import {
+  listenWithFallback,
+  PortInUseError,
+  registerShutdownHandlers,
+  toDisplayHost,
+} from "./server";
+
+/** A real socket behind the `listen`/`addresses` shape Fastify exposes. */
+const netListenable = () => {
+  const server = net.createServer();
+  return {
+    server,
+    listen: ({ port, host }: { port: number; host: string }) =>
+      new Promise<void>((resolve, reject) => {
+        server.once("error", reject);
+        server.listen(port, host, () => {
+          server.off("error", reject);
+          resolve();
+        });
+      }),
+    addresses: () => [server.address() as net.AddressInfo],
+    close: () => new Promise<void>((resolve) => server.close(() => resolve())),
+  };
+};
+
+/** Occupy `count` consecutive ports and return the first. */
+const occupyPorts = async (count: number) => {
+  for (;;) {
+    const first = netListenable();
+    await first.listen({ port: 0, host: "127.0.0.1" });
+    const base = first.addresses()[0]?.port ?? 0;
+    const held = [first];
+    try {
+      for (let i = 1; i < count; i++) {
+        const next = netListenable();
+        await next.listen({ port: base + i, host: "127.0.0.1" });
+        held.push(next);
+      }
+      return { base, release: () => Promise.all(held.map((h) => h.close())) };
+    } catch {
+      // A neighbour was already taken by something else: try another range.
+      await Promise.all(held.map((h) => h.close()));
+    }
+  }
+};
+
+const addressInUse = () =>
+  Object.assign(new Error("listen EADDRINUSE"), { code: "EADDRINUSE" });
+
+describe("listenWithFallback", () => {
+  const cleanup: Array<() => Promise<unknown>> = [];
+  afterEach(async () => {
+    await Promise.all(cleanup.splice(0).map((fn) => fn()));
+  });
+
+  it("binds the requested port when it is free", async () => {
+    const { base, release } = await occupyPorts(1);
+    await release();
+
+    const server = netListenable();
+    cleanup.push(server.close);
+    await expect(
+      listenWithFallback(server, { host: "127.0.0.1", port: base }),
+    ).resolves.toBe(base);
+  });
+
+  it("moves to the next free port when the requested one is taken", async () => {
+    const { base, release } = await occupyPorts(2);
+    cleanup.push(release);
+
+    const server = netListenable();
+    cleanup.push(server.close);
+    const onPortInUse = vi.fn();
+    const port = await listenWithFallback(server, {
+      host: "127.0.0.1",
+      port: base,
+      onPortInUse,
+    });
+
+    expect(port).toBe(base + 2);
+    expect(server.addresses()[0]?.port).toBe(base + 2);
+    expect(onPortInUse.mock.calls).toEqual([[base], [base + 1]]);
+  });
+
+  it("fails on a taken port with strictPort instead of moving on", async () => {
+    const { base, release } = await occupyPorts(1);
+    cleanup.push(release);
+
+    const server = netListenable();
+    const error = await listenWithFallback(server, {
+      host: "127.0.0.1",
+      port: base,
+      strictPort: true,
+    }).catch((e) => e);
+
+    expect(error).toBeInstanceOf(PortInUseError);
+    expect(error.message).toContain(`Port ${base} on 127.0.0.1 is in use.`);
+    expect(error.message).toContain("--strict-port");
+  });
+
+  it("gives up after maxAttempts and names the range it tried", async () => {
+    const listen = vi.fn().mockRejectedValue(addressInUse());
+
+    const error = await listenWithFallback(
+      { listen },
+      { host: "127.0.0.1", port: 4000, maxAttempts: 3 },
+    ).catch((e) => e);
+
+    expect(listen.mock.calls.map(([o]) => o.port)).toEqual([4000, 4001, 4002]);
+    expect(error).toBeInstanceOf(PortInUseError);
+    expect(error.message).toContain(
+      "Ports 4000–4002 on 127.0.0.1 are all in use.",
+    );
+  });
+
+  it("never tries past port 65535", async () => {
+    const listen = vi.fn().mockRejectedValue(addressInUse());
+
+    await expect(
+      listenWithFallback({ listen }, { host: "127.0.0.1", port: 65534 }),
+    ).rejects.toBeInstanceOf(PortInUseError);
+    expect(listen.mock.calls.map(([o]) => o.port)).toEqual([65534, 65535]);
+  });
+
+  it("rethrows errors other than EADDRINUSE without trying another port", async () => {
+    // EACCES would fail the same way on every port; retrying only hides it.
+    const denied = Object.assign(new Error("listen EACCES"), {
+      code: "EACCES",
+    });
+    const listen = vi.fn().mockRejectedValue(denied);
+
+    await expect(
+      listenWithFallback({ listen }, { host: "127.0.0.1", port: 80 }),
+    ).rejects.toBe(denied);
+    expect(listen).toHaveBeenCalledTimes(1);
+  });
+
+  it("reports the OS-assigned port for port 0", async () => {
+    const server = netListenable();
+    cleanup.push(server.close);
+
+    const port = await listenWithFallback(server, {
+      host: "127.0.0.1",
+      port: 0,
+    });
+
+    expect(port).toBeGreaterThan(0);
+    expect(port).toBe(server.addresses()[0]?.port);
+  });
+});
 
 describe("toDisplayHost", () => {
   it("keeps a loopback bind readable", () => {
