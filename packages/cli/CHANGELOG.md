@@ -1,5 +1,25 @@
 # @cappa/cli
 
+## 0.20.0
+
+### Minor Changes
+
+- 2bf9c1d: Screenshots remember the pixel ratio they were captured at. A screenshot taken with `scale: 'device'` carries its ratio in the PNG (a `cappa:pixelRatio` text chunk plus a standard `pHYs` DPI chunk); 1× screenshots are unchanged. `Screenshot` gains `actualPixelRatio` / `expectedPixelRatio` (absent means 1), read back by `collectScreenshots` and carried by the protocol.
+  
+  A baseline captured at another ratio now fails at once instead of retrying, with an error that names both ratios; `cappa capture` and `cappa status` mark it `1× → 2×`. The review UI shows every image at its CSS size, so 2× screenshots are no longer displayed at twice their size and a baseline and capture of different ratios line up, with a notice explaining the mismatch.
+- 2a176b9: `cappa review` and `cappa serve` move to the next free port when the requested one is taken (up to 20 ports on), warn, and print the URL they actually bound. `serve`'s structured `port=` line reports the bound port. Pass `--strict-port` to exit with an error instead.
+  
+  A loopback bind now also listens on the other loopback address (`::1` for `127.0.0.1` and vice versa), and a port taken on either counts as in use, so the printed `localhost` URL can no longer reach a different server holding the other address. `--host localhost` binds `127.0.0.1` plus `::1`, bracketed IPv6 hosts (`--host [::1]`) bind correctly, and URLs for other `127.x` or IPv6 hosts print the literal address instead of `localhost`.
+
+### Patch Changes
+
+- Updated dependencies [2bf9c1d]
+- Updated dependencies [2bf9c1d]
+  - @cappa/core@0.20.0
+  - @cappa/server@0.11.0
+  - @cappa/config@0.5.0
+  - @cappa/client@0.11.0
+
 ## 0.19.0
 
 ### Minor Changes

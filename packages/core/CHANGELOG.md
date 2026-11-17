@@ -1,5 +1,14 @@
 # @cappa/core
 
+## 0.20.0
+
+### Minor Changes
+
+- 2bf9c1d: Screenshots remember the pixel ratio they were captured at. A screenshot taken with `scale: 'device'` carries its ratio in the PNG (a `cappa:pixelRatio` text chunk plus a standard `pHYs` DPI chunk); 1× screenshots are unchanged. `Screenshot` gains `actualPixelRatio` / `expectedPixelRatio` (absent means 1), read back by `collectScreenshots` and carried by the protocol.
+  
+  A baseline captured at another ratio now fails at once instead of retrying, with an error that names both ratios; `cappa capture` and `cappa status` mark it `1× → 2×`. The review UI shows every image at its CSS size, so 2× screenshots are no longer displayed at twice their size and a baseline and capture of different ratios line up, with a notice explaining the mismatch.
+- 2bf9c1d: Add `screenshot.scale` (`'css' | 'device'`, default `'css'`). Screenshots were always taken with Playwright's `scale: 'css'`, so a custom `deviceScaleFactor` changed how the page rendered but never the size of the PNG. With `scale: 'device'` the PNG is `deviceScaleFactor` times larger, for sharp captures of small components. Storybook story/variant parameters and plugin-pages per-page options can override it.
+
 ## 0.19.0
 
 ### Minor Changes
