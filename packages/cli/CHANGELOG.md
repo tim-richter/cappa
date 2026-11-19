@@ -1,5 +1,19 @@
 # @cappa/cli
 
+## 0.21.0
+
+### Minor Changes
+
+- 9424e8c: `cappa browser build [--cli <cli>]` rebuilds the `playwright({ container: { build } })` image (the layer cache still applies) for changes cappa cannot see, such as files the Dockerfile `COPY`s, then removes the containers still running the previous build. `cappa browser down --images` also removes every image cappa built; plain `browser down` still removes containers only.
+
+### Patch Changes
+
+- Updated dependencies [9424e8c]
+  - @cappa/core@0.21.0
+  - @cappa/server@0.11.1
+  - @cappa/client@0.11.0
+  - @cappa/config@0.5.1
+
 ## 0.20.0
 
 ### Minor Changes
