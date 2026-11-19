@@ -1,3 +1,5 @@
+import { existsSync, statSync } from "node:fs";
+import path from "node:path";
 import type {
   BrowserContextOptions,
   ConnectOptions,
@@ -51,10 +53,28 @@ export type ContainerOptions = {
   /**
    * Image to run; `{version}` is replaced with the `playwright-core` version.
    * A custom image (extra fonts, say) should be built `FROM` the official one
-   * for the same version.
+   * for the same version — or let cappa build it with `build`. Not allowed
+   * together with `build`.
    * @default "mcr.microsoft.com/playwright:v{version}-noble"
    */
   image?: string;
+  /**
+   * Build the image from a Dockerfile instead of pulling one. A string is the
+   * Dockerfile path. Paths resolve against the cwd; `context` defaults to the
+   * Dockerfile's directory.
+   *
+   * Cappa passes the installed `playwright-core` version as the
+   * `PLAYWRIGHT_VERSION` build arg (so it is reserved in `args`), tags the
+   * result `cappa-browser:v<version>-<hash>` and rebuilds only when the
+   * version, the Dockerfile's contents, `context`, `target` or `args` change.
+   * `cappa browser build` forces a rebuild, for edits cappa cannot see (files
+   * the Dockerfile `COPY`s).
+   *
+   * The image must provide `node` on `PATH`, a `pwuser` user, and browsers for
+   * `PLAYWRIGHT_VERSION` that `pwuser` can find (e.g. via
+   * `PLAYWRIGHT_BROWSERS_PATH`). Not allowed together with `image`.
+   */
+  build?: string | ContainerBuildOptions;
   /** Extra arguments for `<cli> run`, placed before the image. */
   runArgs?: string[];
   /**
@@ -64,24 +84,55 @@ export type ContainerOptions = {
    */
   keepAlive?: boolean;
   /**
-   * How long to wait for the server, in ms — the first start pulls the image.
+   * How long to wait for the server to come up, in ms. Counted from once the
+   * image exists, so a first pull or build does not use it up.
    * @default 300_000
    */
   readyTimeout?: number;
 };
 
+/** `ContainerOptions.build` as an object. */
+export type ContainerBuildOptions = {
+  /** Path to the Dockerfile. */
+  dockerfile: string;
+  /** Build context. @default the Dockerfile's directory */
+  context?: string;
+  /** Stage to build, for a multi-stage Dockerfile. */
+  target?: string;
+  /** Extra build args. `PLAYWRIGHT_VERSION` is reserved — cappa sets it. */
+  args?: Record<string, string>;
+};
+
+/** `ContainerBuildOptions` with absolute paths and defaults filled in. */
+export type ResolvedContainerBuild = {
+  dockerfile: string;
+  context: string;
+  target: string | null;
+  args: Record<string, string>;
+};
+
 /** `ContainerOptions` with every default filled in. */
-export type ResolvedContainerOptions = Required<ContainerOptions>;
+export type ResolvedContainerOptions = Required<
+  Omit<ContainerOptions, "build">
+> & {
+  /** `null` unless the image is built from a Dockerfile. */
+  build: ResolvedContainerBuild | null;
+};
+
+/** Build arg cappa sets to the installed `playwright-core` version. */
+export const PLAYWRIGHT_VERSION_BUILD_ARG = "PLAYWRIGHT_VERSION";
 
 export const DEFAULT_CONTAINER_IMAGE =
   "mcr.microsoft.com/playwright:v{version}-noble";
 
 /**
  * Validate `container` and fill in its defaults, or `null` when it is off.
+ * `build` paths resolve against `cwd`.
  */
 export function resolveContainerOptions(
   container: PlaywrightProviderOptions["container"],
   env: Record<string, string | undefined> = process.env,
+  cwd: string = process.cwd(),
 ): ResolvedContainerOptions | null {
   if (container === undefined || container === false) return null;
   const invalid = (detail: string) =>
@@ -96,6 +147,15 @@ export function resolveContainerOptions(
   if (typeof cli !== "string" || cli.trim() === "") {
     throw invalid("cli must be a non-empty string");
   }
+  if (options.build !== undefined && options.image !== undefined) {
+    throw invalid(
+      "cannot set both image and build — build the image from a Dockerfile, or run a ready-made one",
+    );
+  }
+  const build =
+    options.build === undefined
+      ? null
+      : resolveContainerBuild(options.build, cwd, invalid);
   const image = options.image ?? DEFAULT_CONTAINER_IMAGE;
   if (typeof image !== "string" || image.trim() === "") {
     throw invalid("image must be a non-empty string");
@@ -117,7 +177,67 @@ export function resolveContainerOptions(
     throw invalid("readyTimeout must be a positive number");
   }
 
-  return { cli: cli.trim(), image, runArgs, keepAlive, readyTimeout };
+  return { cli: cli.trim(), image, build, runArgs, keepAlive, readyTimeout };
+}
+
+function resolveContainerBuild(
+  build: unknown,
+  cwd: string,
+  invalid: (detail: string) => Error,
+): ResolvedContainerBuild {
+  const options = (
+    typeof build === "string" ? { dockerfile: build } : build
+  ) as Partial<ContainerBuildOptions> | null;
+  if (typeof options !== "object" || !options) {
+    throw invalid("build must be a Dockerfile path or an object");
+  }
+
+  const { dockerfile, context, args = {} } = options;
+  // `null` is the resolved form of "unset", so resolving stays idempotent.
+  const target = options.target ?? undefined;
+  if (typeof dockerfile !== "string" || dockerfile.trim() === "") {
+    throw invalid("build.dockerfile must be a non-empty string");
+  }
+  if (
+    context !== undefined &&
+    (typeof context !== "string" || context.trim() === "")
+  ) {
+    throw invalid("build.context must be a non-empty string");
+  }
+  if (
+    target !== undefined &&
+    (typeof target !== "string" || target.trim() === "")
+  ) {
+    throw invalid("build.target must be a non-empty string");
+  }
+  if (
+    typeof args !== "object" ||
+    !args ||
+    Array.isArray(args) ||
+    Object.values(args).some((value) => typeof value !== "string")
+  ) {
+    throw invalid("build.args must be an object of strings");
+  }
+  if (Object.hasOwn(args, PLAYWRIGHT_VERSION_BUILD_ARG)) {
+    throw invalid(
+      `build.args.${PLAYWRIGHT_VERSION_BUILD_ARG} is reserved — cappa sets it to the installed playwright-core version`,
+    );
+  }
+
+  const dockerfilePath = path.resolve(cwd, dockerfile);
+  if (!existsSync(dockerfilePath) || !statSync(dockerfilePath).isFile()) {
+    throw invalid(`build.dockerfile ${dockerfilePath} does not exist`);
+  }
+
+  return {
+    dockerfile: dockerfilePath,
+    context:
+      context === undefined
+        ? path.dirname(dockerfilePath)
+        : path.resolve(cwd, context),
+    target: target ?? null,
+    args: { ...args },
+  };
 }
 
 export type BrowserProvider = {

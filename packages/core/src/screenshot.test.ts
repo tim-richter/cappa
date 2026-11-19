@@ -22,7 +22,8 @@ vi.mock("./compare/pixel", () => ({
   createDiffSizePngImage: vi.fn(),
 }));
 
-vi.mock("./container", () => ({
+vi.mock("./container", async (importOriginal) => ({
+  ...(await importOriginal<typeof import("./container")>()),
   ensurePlaywrightContainer: vi.fn(),
 }));
 

@@ -1,18 +1,36 @@
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
 import { initLogger } from "@cappa/logger";
-import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
+import {
+  afterAll,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from "vitest";
 
-const { getConfigMock, removeMock } = vi.hoisted(() => ({
-  getConfigMock: vi.fn(),
-  removeMock: vi.fn(),
-}));
+const { getConfigMock, removeMock, removeImagesMock, buildMock, versionMock } =
+  vi.hoisted(() => ({
+    getConfigMock: vi.fn(),
+    removeMock: vi.fn(),
+    removeImagesMock: vi.fn(),
+    buildMock: vi.fn(),
+    versionMock: vi.fn(),
+  }));
 
 vi.mock("@cappa/config", () => ({ getConfig: getConfigMock }));
 vi.mock("@cappa/core", async (importOriginal) => ({
   ...(await importOriginal<typeof import("@cappa/core")>()),
   removePlaywrightContainers: removeMock,
+  removePlaywrightImages: removeImagesMock,
+  buildPlaywrightImage: buildMock,
+  installedPlaywrightVersion: versionMock,
 }));
 
-import { browserDown } from "./browser";
+import { browserBuild, browserDown } from "./browser";
 
 const withContainer = (container: unknown) => ({
   browser: { provider: { name: "playwright", options: { container } } },
@@ -25,6 +43,11 @@ beforeAll(() => {
 beforeEach(() => {
   getConfigMock.mockReset();
   removeMock.mockReset().mockResolvedValue([]);
+  removeImagesMock.mockReset().mockResolvedValue([]);
+  buildMock
+    .mockReset()
+    .mockResolvedValue({ tag: "cappa-browser:v1.63.0-abcd1234", built: true });
+  versionMock.mockReset().mockReturnValue("1.63.0");
   vi.unstubAllEnvs();
 });
 
@@ -64,5 +87,92 @@ describe("browserDown", () => {
     await browserDown();
 
     expect(removeMock).toHaveBeenCalledWith({ cli: "docker" });
+  });
+
+  it("keeps images unless --images is given", async () => {
+    getConfigMock.mockResolvedValue(withContainer(true));
+
+    await browserDown({ cli: "docker" });
+
+    expect(removeImagesMock).not.toHaveBeenCalled();
+  });
+
+  it("also removes built images with --images, after the containers", async () => {
+    await browserDown({ cli: "podman", images: true });
+
+    expect(removeImagesMock).toHaveBeenCalledWith({ cli: "podman" });
+    expect(removeMock.mock.invocationCallOrder[0]).toBeLessThan(
+      removeImagesMock.mock.invocationCallOrder[0] ?? 0,
+    );
+  });
+});
+
+describe("browserBuild", () => {
+  const dir = mkdtempSync(path.join(tmpdir(), "cappa-browser-build-"));
+  writeFileSync(path.join(dir, "browser.Dockerfile"), "FROM x\n");
+  const dockerfile = path.join(dir, "browser.Dockerfile");
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("force-builds the configured image, then removes its containers", async () => {
+    getConfigMock.mockResolvedValue(
+      withContainer({ cli: "podman", build: dockerfile }),
+    );
+    removeMock.mockResolvedValue(["cappa-playwright-v1.63.0-x"]);
+
+    await browserBuild();
+
+    expect(buildMock).toHaveBeenCalledWith(
+      expect.objectContaining({
+        cli: "podman",
+        version: "1.63.0",
+        force: true,
+        build: {
+          dockerfile,
+          context: dir,
+          target: null,
+          args: {},
+        },
+      }),
+    );
+    expect(removeMock).toHaveBeenCalledWith({
+      cli: "podman",
+      image: "cappa-browser:v1.63.0-abcd1234",
+    });
+  });
+
+  it("uses --cli over the config", async () => {
+    getConfigMock.mockResolvedValue(
+      withContainer({ cli: "podman", build: dockerfile }),
+    );
+
+    await browserBuild({ cli: "nerdctl" });
+
+    expect(buildMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cli: "nerdctl" }),
+    );
+    expect(removeMock).toHaveBeenCalledWith(
+      expect.objectContaining({ cli: "nerdctl" }),
+    );
+  });
+
+  it.each([
+    ["no container", undefined],
+    ["a container without build", { image: "corp/pw" }],
+    ["container: true", true],
+  ])("explains %s", async (_label, container) => {
+    getConfigMock.mockResolvedValue(withContainer(container));
+
+    await expect(browserBuild()).rejects.toThrow(
+      /needs playwright\(\{ container: \{ build \} \}\)/,
+    );
+    expect(buildMock).not.toHaveBeenCalled();
+  });
+
+  it("does not remove containers when the build fails", async () => {
+    getConfigMock.mockResolvedValue(withContainer({ build: dockerfile }));
+    buildMock.mockRejectedValue(new Error("Could not build"));
+
+    await expect(browserBuild()).rejects.toThrow(/Could not build/);
+    expect(removeMock).not.toHaveBeenCalled();
   });
 });

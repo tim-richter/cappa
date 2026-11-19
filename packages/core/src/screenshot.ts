@@ -1,6 +1,4 @@
-import { realpathSync } from "node:fs";
 import fsp from "node:fs/promises";
-import { createRequire } from "node:module";
 import path from "node:path";
 import { getLogger, type Logger } from "@cappa/logger";
 import {
@@ -25,6 +23,8 @@ import {
 import type { LogConsoleEvents } from "./consoleEvents";
 import {
   ensurePlaywrightContainer,
+  installedPlaywrightPackageDir,
+  installedPlaywrightVersion,
   type PlaywrightContainer,
 } from "./container";
 import { type CropSetting, measureContentClip, resolveCrop } from "./crop";
@@ -184,29 +184,6 @@ const browserMap: Record<BrowserName, BrowserType> = {
 const REMOTE_BROWSER_DOCS =
   "https://tim-richter.github.io/cappa/configuration/#connecting-to-a-remote-browser";
 
-/** The installed `playwright-core` version, or `null` if it cannot be read. */
-const clientPlaywrightVersion = (): string | null => {
-  try {
-    const require = createRequire(import.meta.url);
-    return (require("playwright-core/package.json") as { version: string })
-      .version;
-  } catch {
-    return null;
-  }
-};
-
-/** The installed `playwright-core` directory, symlinks resolved, or `null`. */
-const clientPlaywrightPackageDir = (): string | null => {
-  try {
-    const require = createRequire(import.meta.url);
-    return realpathSync(
-      path.dirname(require.resolve("playwright-core/package.json")),
-    );
-  } catch {
-    return null;
-  }
-};
-
 /**
  * Turn a raw `browserType.connect()` failure into something actionable.
  *
@@ -215,7 +192,7 @@ const clientPlaywrightPackageDir = (): string | null => {
 export const describeConnectError = (
   error: unknown,
   wsEndpoint: string,
-  clientVersion: string | null = clientPlaywrightVersion(),
+  clientVersion: string | null = installedPlaywrightVersion(),
   container?: { image: string },
 ): Error => {
   const message = error instanceof Error ? error.message : String(error);
@@ -429,8 +406,8 @@ class ScreenshotTool {
         `connectOptions.wsEndpoint is set (${connect.wsEndpoint}); not starting a container.`,
       );
     } else if (container) {
-      const version = clientPlaywrightVersion();
-      const packageDir = clientPlaywrightPackageDir();
+      const version = installedPlaywrightVersion();
+      const packageDir = installedPlaywrightPackageDir();
       if (!version || !packageDir) {
         throw new Error(
           "playwright({ container }) needs the installed playwright-core, but its package.json could not be read.",

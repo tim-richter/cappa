@@ -1,5 +1,10 @@
 import { describe, expect, it, vi } from "vitest";
 import {
+  BUILT_IMAGE_REPOSITORY,
+  buildCommandArgs,
+  buildImageTag,
+  buildPlaywrightImage,
+  CONTAINER_IMAGE_LABEL,
   CONTAINER_LABEL,
   containerImage,
   containerName,
@@ -7,7 +12,9 @@ import {
   ensurePlaywrightContainer,
   parsePort,
   removePlaywrightContainers,
+  removePlaywrightImages,
 } from "./container";
+import type { ResolvedContainerBuild } from "./playwright";
 
 type Handler = (args: string[]) => string | Error;
 
@@ -130,6 +137,8 @@ describe("ensurePlaywrightContainer", () => {
       "type=bind,source=/repo/node_modules/playwright-core,target=/opt/playwright-core,readonly",
       "--label",
       `${CONTAINER_LABEL}=1.63.0`,
+      "--label",
+      `${CONTAINER_IMAGE_LABEL}=mcr.microsoft.com/playwright:v1.63.0-noble`,
       "--name",
       name,
       "mcr.microsoft.com/playwright:v1.63.0-noble",
@@ -331,6 +340,20 @@ describe("removePlaywrightContainers", () => {
     expect(calls[1]).toEqual(["podman", "rm", "-f", ...removed]);
   });
 
+  it("narrows to the containers running one image", async () => {
+    const { exec, calls } = fakeCli({ ps: () => "cappa-playwright-x\n" });
+
+    await removePlaywrightContainers({
+      cli: "docker",
+      image: "cappa-browser:v1.63.0-abcd1234",
+      exec,
+    });
+
+    expect(calls[0]).toContain(
+      `label=${CONTAINER_IMAGE_LABEL}=cappa-browser:v1.63.0-abcd1234`,
+    );
+  });
+
   it("does nothing when there are none", async () => {
     const { exec, calls } = fakeCli();
 
@@ -338,5 +361,308 @@ describe("removePlaywrightContainers", () => {
       [],
     );
     expect(calls).toHaveLength(1);
+  });
+});
+
+describe("built images", () => {
+  const build: ResolvedContainerBuild = {
+    dockerfile: "/repo/browser.Dockerfile",
+    context: "/repo",
+    target: null,
+    args: {},
+  };
+  const dockerfile = "FROM node:24-bookworm-slim\n";
+  const readFile = vi.fn(async (_file: string) => dockerfile);
+  const tag = buildImageTag("1.63.0", build, dockerfile);
+
+  it("tags per version, Dockerfile contents, context, target and args", () => {
+    expect(tag).toMatch(
+      new RegExp(`^${BUILT_IMAGE_REPOSITORY}:v1\\.63\\.0-[0-9a-f]{8}$`),
+    );
+    expect(buildImageTag("1.63.0", build, dockerfile)).toBe(tag);
+    const variants = [
+      buildImageTag("1.64.0", build, dockerfile),
+      buildImageTag("1.63.0", build, `${dockerfile}RUN true\n`),
+      buildImageTag("1.63.0", { ...build, context: "/other" }, dockerfile),
+      buildImageTag("1.63.0", { ...build, target: "browser" }, dockerfile),
+      buildImageTag("1.63.0", { ...build, args: { A: "1" } }, dockerfile),
+    ];
+    expect(new Set([tag, ...variants]).size).toBe(variants.length + 1);
+    // Arg order does not matter.
+    expect(
+      buildImageTag("1.63.0", { ...build, args: { A: "1", B: "2" } }, ""),
+    ).toBe(buildImageTag("1.63.0", { ...build, args: { B: "2", A: "1" } }, ""));
+  });
+
+  it("builds with every option in the argv", () => {
+    expect(
+      buildCommandArgs(
+        "1.63.0",
+        {
+          ...build,
+          target: "browser",
+          args: { NODE_VERSION: "24.22.1", APT_MIRROR: "x" },
+        },
+        "cappa-browser:v1.63.0-abcd1234",
+      ),
+    ).toEqual([
+      "build",
+      "-f",
+      "/repo/browser.Dockerfile",
+      "-t",
+      "cappa-browser:v1.63.0-abcd1234",
+      "--build-arg",
+      "PLAYWRIGHT_VERSION=1.63.0",
+      "--build-arg",
+      "NODE_VERSION=24.22.1",
+      "--build-arg",
+      "APT_MIRROR=x",
+      "--target",
+      "browser",
+      "--label",
+      `${CONTAINER_LABEL}=1.63.0`,
+      "/repo",
+    ]);
+  });
+
+  it("builds a missing image, then runs it", async () => {
+    const { exec, calls } = fakeCli({
+      inspect: () => cliError("no such container"),
+      "image inspect": () => cliError("no such image"),
+      port: () => "127.0.0.1:41000",
+    });
+    const log = vi.fn();
+
+    const container = await ensurePlaywrightContainer({
+      ...base,
+      build,
+      exec,
+      readFile,
+      log,
+      probe: async () => true,
+    });
+
+    expect(container.image).toBe(tag);
+    expect(container.name).toBe(
+      containerName("1.63.0", tag, [], base.packageDir),
+    );
+    expect(calls.some((c) => c[1] === "pull")).toBe(false);
+    expect(calls.find((c) => c[1] === "build")).toEqual([
+      "docker",
+      ...buildCommandArgs("1.63.0", build, tag),
+    ]);
+    const verbs = calls.map((c) => c[1]);
+    expect(verbs.indexOf("build")).toBeLessThan(verbs.indexOf("run"));
+    expect(calls.find((c) => c[1] === "run")).toContain(tag);
+    expect(log).toHaveBeenCalledWith(
+      expect.stringMatching(
+        /^Building cappa-browser:v1\.63\.0-\w{8} from \/repo\/browser\.Dockerfile \(first run only/,
+      ),
+    );
+  });
+
+  it("reuses a built image without building again", async () => {
+    const { exec, calls } = fakeCli({
+      inspect: () => cliError("no such container"),
+      port: () => "127.0.0.1:41000",
+    });
+
+    await ensurePlaywrightContainer({
+      ...base,
+      build,
+      exec,
+      readFile,
+      probe: async () => true,
+    });
+
+    expect(calls).toContainEqual(["docker", "image", "inspect", tag]);
+    expect(calls.some((c) => c[1] === "build")).toBe(false);
+  });
+
+  it("does not build while the container for the tag is running", async () => {
+    const { exec, calls } = fakeCli({
+      inspect: () => "true",
+      port: () => "127.0.0.1:41000",
+    });
+
+    const container = await ensurePlaywrightContainer({
+      ...base,
+      build,
+      exec,
+      readFile,
+      probe: async () => true,
+    });
+
+    expect(container.reused).toBe(true);
+    expect(calls.map((c) => c[1])).toEqual(["version", "inspect", "port"]);
+  });
+
+  it("explains a failed build with the Dockerfile and the end of its output", async () => {
+    const output = Array.from({ length: 50 }, (_, i) => `step ${i}`).join("\n");
+    const { exec } = fakeCli({
+      inspect: () => cliError("no such container"),
+      "image inspect": () => cliError("no such image"),
+      build: () => cliError(`${output}\nE: Unable to locate package nope`),
+    });
+
+    const error: Error = await ensurePlaywrightContainer({
+      ...base,
+      build,
+      exec,
+      readFile,
+    }).then(
+      () => {
+        throw new Error("expected the build to fail");
+      },
+      (e: Error) => e,
+    );
+
+    expect(error.message).toMatch(
+      /^Could not build cappa-browser:v1\.63\.0-\w{8} from \/repo\/browser\.Dockerfile\./,
+    );
+    expect(error.message).toContain("Unable to locate package nope");
+    expect(error.message).toContain("step 49");
+    expect(error.message).not.toContain("step 0\n");
+  });
+
+  it("explains an unreadable Dockerfile", async () => {
+    const { exec } = fakeCli();
+
+    await expect(
+      ensurePlaywrightContainer({
+        ...base,
+        build,
+        exec,
+        readFile: async () => {
+          throw new Error("ENOENT");
+        },
+      }),
+    ).rejects.toThrow(
+      /Could not read the Dockerfile \/repo\/browser\.Dockerfile/,
+    );
+  });
+
+  it.each([
+    ["build", { build }],
+    ["pull", {}],
+  ])("does not count the %s against readyTimeout", async (verb, extra) => {
+    let time = 0;
+    const { exec } = fakeCli({
+      inspect: () => cliError("no such container"),
+      "image inspect": () => cliError("no such image"),
+      [verb]: () => {
+        time += 60_000; // a slow pull/build
+        return "";
+      },
+      port: () => "127.0.0.1:41000",
+    });
+    const probe = vi
+      .fn()
+      .mockResolvedValueOnce(false)
+      .mockResolvedValueOnce(true);
+
+    const container = await ensurePlaywrightContainer({
+      ...base,
+      ...extra,
+      readyTimeout: 1_000,
+      exec,
+      readFile,
+      probe,
+      now: () => time,
+      sleep: async (ms) => {
+        time += ms;
+      },
+    });
+
+    expect(container.wsEndpoint).toBe("ws://127.0.0.1:41000/");
+  });
+
+  describe("buildPlaywrightImage", () => {
+    it("rebuilds an existing tag when forced", async () => {
+      const { exec, calls } = fakeCli();
+      const log = vi.fn();
+
+      const result = await buildPlaywrightImage({
+        cli: "podman",
+        version: "1.63.0",
+        build,
+        force: true,
+        exec,
+        readFile,
+        log,
+      });
+
+      expect(result).toEqual({ tag, built: true });
+      expect(calls.map((c) => c[1])).toEqual(["build"]);
+      expect(log).toHaveBeenCalledWith(
+        expect.not.stringContaining("first run only"),
+      );
+    });
+
+    it("reports an existing tag without building", async () => {
+      const { exec, calls } = fakeCli();
+
+      expect(
+        await buildPlaywrightImage({
+          cli: "docker",
+          version: "1.63.0",
+          build,
+          exec,
+          readFile,
+        }),
+      ).toEqual({ tag, built: false });
+      expect(calls.map((c) => c[1])).toEqual(["image"]);
+    });
+
+    it("explains a missing CLI", async () => {
+      const { exec, calls } = fakeCli({
+        "image inspect": () => cliError("", "ENOENT"),
+      });
+
+      await expect(
+        buildPlaywrightImage({
+          cli: "nerdctl",
+          version: "1.63.0",
+          build,
+          exec,
+          readFile,
+        }),
+      ).rejects.toThrow(/Container CLI "nerdctl" not found/);
+      // No build attempt after the CLI turned out to be missing.
+      expect(calls.some((c) => c[1] === "build")).toBe(false);
+    });
+  });
+});
+
+describe("removePlaywrightImages", () => {
+  it("removes every labelled image once", async () => {
+    const { exec, calls } = fakeCli({ images: () => "aaa\nbbb\naaa\n" });
+
+    expect(await removePlaywrightImages({ cli: "podman", exec })).toEqual([
+      "aaa",
+      "bbb",
+    ]);
+    expect(calls).toEqual([
+      ["podman", "images", "--filter", `label=${CONTAINER_LABEL}`, "-q"],
+      ["podman", "rmi", "aaa", "bbb"],
+    ]);
+  });
+
+  it("does nothing when there are none", async () => {
+    const { exec, calls } = fakeCli();
+
+    expect(await removePlaywrightImages({ cli: "docker", exec })).toEqual([]);
+    expect(calls).toHaveLength(1);
+  });
+
+  it("explains a failed rmi", async () => {
+    const { exec } = fakeCli({
+      images: () => "aaa",
+      rmi: () => cliError("image is being used by running container"),
+    });
+
+    await expect(
+      removePlaywrightImages({ cli: "docker", exec }),
+    ).rejects.toThrow(/"docker rmi" failed[\s\S]*being used/);
   });
 });

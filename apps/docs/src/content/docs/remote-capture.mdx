@@ -48,7 +48,10 @@ Local capture settings do not apply.
 ```
 
 In practice this means the host needs a checkout of the project — the same one you would run
-`cappa capture` in — and the screenshots live there.
+`cappa capture` in — and the screenshots live there. The browser is the host's too: a
+[`playwright({ container })`](/configuration#running-the-browser-in-a-container) starts on the
+host, and a [`container.build`](/configuration#custom-images) image is built there, with its
+Dockerfile path resolved against the host's working directory.
 
 ## Access tokens
 

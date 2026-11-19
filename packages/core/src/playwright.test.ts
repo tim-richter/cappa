@@ -1,4 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { afterAll, describe, expect, it } from "vitest";
 import {
   DEFAULT_CONTAINER_IMAGE,
   playwright,
@@ -90,6 +93,7 @@ describe("resolveContainerOptions", () => {
     expect(resolveContainerOptions(true, {})).toEqual({
       cli: "docker",
       image: DEFAULT_CONTAINER_IMAGE,
+      build: null,
       runArgs: [],
       keepAlive: true,
       readyTimeout: 300_000,
@@ -122,6 +126,7 @@ describe("resolveContainerOptions", () => {
     ).toEqual({
       cli: "docker",
       image: "corp/pw:{version}",
+      build: null,
       runArgs: ["--userns=keep-id"],
       keepAlive: false,
       readyTimeout: 1_000,
@@ -145,5 +150,100 @@ describe("resolveContainerOptions", () => {
         provider: playwright({ container: { runArgs: "--x" as never } }),
       }),
     ).toThrow(/runArgs must be/);
+  });
+});
+
+describe("resolveContainerOptions build", () => {
+  const cwd = mkdtempSync(path.join(tmpdir(), "cappa-build-"));
+  mkdirSync(path.join(cwd, "docker"));
+  writeFileSync(path.join(cwd, "docker", "browser.Dockerfile"), "FROM x\n");
+  afterAll(() => rmSync(cwd, { recursive: true, force: true }));
+
+  const resolve = (build: unknown, extra: object = {}) =>
+    resolveContainerOptions({ build, ...extra } as never, {}, cwd);
+
+  it("expands the shorthand, resolving against cwd", () => {
+    expect(resolve("./docker/browser.Dockerfile")?.build).toEqual({
+      dockerfile: path.join(cwd, "docker", "browser.Dockerfile"),
+      context: path.join(cwd, "docker"),
+      target: null,
+      args: {},
+    });
+  });
+
+  it("keeps context, target and args", () => {
+    expect(
+      resolve({
+        dockerfile: "docker/browser.Dockerfile",
+        context: ".",
+        target: "browser",
+        args: { NODE_VERSION: "24" },
+      })?.build,
+    ).toEqual({
+      dockerfile: path.join(cwd, "docker", "browser.Dockerfile"),
+      context: cwd,
+      target: "browser",
+      args: { NODE_VERSION: "24" },
+    });
+  });
+
+  it("is idempotent once paths are absolute", () => {
+    const once = resolve("docker/browser.Dockerfile")?.build;
+    expect(resolve(once)?.build).toEqual(once);
+  });
+
+  it("keeps the other options alongside build", () => {
+    expect(
+      resolve("docker/browser.Dockerfile", { runArgs: ["--x"] }),
+    ).toMatchObject({ runArgs: ["--x"], keepAlive: true });
+  });
+
+  it("rejects build together with image", () => {
+    expect(() =>
+      resolve("docker/browser.Dockerfile", { image: "corp/pw" }),
+    ).toThrow(/cannot set both image and build/);
+  });
+
+  it.each([
+    ["a number", 1, /build must be a Dockerfile path or an object/],
+    ["null", null, /build must be a Dockerfile path or an object/],
+    ["an empty shorthand", " ", /build.dockerfile must be/],
+    ["an empty dockerfile", { dockerfile: "" }, /build.dockerfile must be/],
+    [
+      "an empty context",
+      { dockerfile: "docker/browser.Dockerfile", context: "" },
+      /build.context must be/,
+    ],
+    [
+      "a non-string target",
+      { dockerfile: "docker/browser.Dockerfile", target: 1 },
+      /build.target must be/,
+    ],
+    [
+      "non-string args",
+      { dockerfile: "docker/browser.Dockerfile", args: { A: 1 } },
+      /build.args must be/,
+    ],
+    [
+      "array args",
+      { dockerfile: "docker/browser.Dockerfile", args: ["A=1"] },
+      /build.args must be/,
+    ],
+    [
+      "PLAYWRIGHT_VERSION in args",
+      {
+        dockerfile: "docker/browser.Dockerfile",
+        args: { PLAYWRIGHT_VERSION: "1.0.0" },
+      },
+      /PLAYWRIGHT_VERSION is reserved/,
+    ],
+    [
+      "a missing Dockerfile",
+      "nope.Dockerfile",
+      /nope\.Dockerfile does not exist/,
+    ],
+    ["a directory", "docker", /does not exist/],
+  ])("rejects %s", (_label, value, message) => {
+    expect(() => resolve(value)).toThrow(message);
   });
 });

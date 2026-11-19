@@ -1,18 +1,37 @@
 import { execFile } from "node:child_process";
 import { createHash } from "node:crypto";
-import type { ResolvedContainerOptions } from "./playwright";
+import { realpathSync } from "node:fs";
+import { readFile as fsReadFile } from "node:fs/promises";
+import { createRequire } from "node:module";
+import path from "node:path";
+import {
+  PLAYWRIGHT_VERSION_BUILD_ARG,
+  type ResolvedContainerBuild,
+  type ResolvedContainerOptions,
+} from "./playwright";
 
 /**
- * Runs the official Playwright image for an exact `playwright-core` version
+ * Runs a Playwright image for an exact `playwright-core` version — the
+ * official one, a custom one, or one built from the project's Dockerfile —
  * through a container CLI (docker, podman, nerdctl, …) and hands back the
  * `run-server` endpoint.
  *
  * Only subcommands all of those CLIs share are used: `version`, `image
- * inspect`, `pull`, `inspect`, `run`, `port`, `logs`, `ps` and `rm`.
+ * inspect`, `pull`, `build`, `images`, `rmi`, `inspect`, `run`, `port`,
+ * `logs`, `ps` and `rm`.
  */
 
-/** Label on every container cappa starts; `removePlaywrightContainers` finds them by it. */
+/**
+ * Label on every container cappa starts and every image it builds;
+ * `removePlaywrightContainers` / `removePlaywrightImages` find them by it.
+ */
 export const CONTAINER_LABEL = "dev.cappa.playwright";
+
+/** Label carrying the image a container runs, so a rebuild can find its containers. */
+export const CONTAINER_IMAGE_LABEL = `${CONTAINER_LABEL}.image`;
+
+/** Repository of images cappa builds from `container.build`. */
+export const BUILT_IMAGE_REPOSITORY = "cappa-browser";
 
 /** Port `run-server` listens on inside the container. */
 const SERVER_PORT = 3000;
@@ -38,8 +57,10 @@ export type PlaywrightContainer = {
 
 export type EnsureContainerOptions = Omit<
   ResolvedContainerOptions,
-  "keepAlive"
+  "keepAlive" | "build"
 > & {
+  /** Build the image from a Dockerfile instead of using `image`. */
+  build?: ResolvedContainerBuild | null;
   /** Exact `playwright-core` version, e.g. `1.63.0`. */
   version: string;
   /**
@@ -52,6 +73,7 @@ export type EnsureContainerOptions = Omit<
   log?: (message: string) => void;
   /** Injection points for tests. */
   exec?: Exec;
+  readFile?: (file: string) => Promise<string>;
   probe?: (url: string) => Promise<boolean>;
   sleep?: (ms: number) => Promise<void>;
   now?: () => number;
@@ -62,7 +84,8 @@ const defaultExec: Exec = (file, args) =>
     execFile(
       file,
       args,
-      { maxBuffer: 16 * 1024 * 1024, windowsHide: true },
+      // Build output can be long; it is only captured, for error messages.
+      { maxBuffer: 64 * 1024 * 1024, windowsHide: true },
       (error, stdout, stderr) => {
         if (error) {
           reject(Object.assign(error, { stdout, stderr }));
@@ -95,6 +118,172 @@ const errorText = (error: unknown): string => {
 const isNotFound = (error: unknown) =>
   (error as NodeJS.ErrnoException)?.code === "ENOENT";
 
+const defaultReadFile = (file: string) => fsReadFile(file, "utf8");
+
+/** The last `lines` lines of `text`. */
+const tail = (text: string, lines = 30) =>
+  text.split("\n").slice(-lines).join("\n");
+
+/** `exec` bound to `cli`, with a missing CLI turned into advice. */
+const cliRunner =
+  (cli: string, exec: Exec) =>
+  async (args: string[]): Promise<ExecResult> => {
+    try {
+      return await exec(cli, args);
+    } catch (error) {
+      if (isNotFound(error)) {
+        throw new Error(
+          `Container CLI "${cli}" not found. Install it, or set playwright({ container: { cli } }) / CAPPA_CONTAINER_CLI to the one you use (docker, podman, nerdctl).`,
+          { cause: error },
+        );
+      }
+      throw error;
+    }
+  };
+
+/** The installed `playwright-core` version, or `null` if it cannot be read. */
+export const installedPlaywrightVersion = (): string | null => {
+  try {
+    const require = createRequire(import.meta.url);
+    return (require("playwright-core/package.json") as { version: string })
+      .version;
+  } catch {
+    return null;
+  }
+};
+
+/** The installed `playwright-core` directory, symlinks resolved, or `null`. */
+export const installedPlaywrightPackageDir = (): string | null => {
+  try {
+    const require = createRequire(import.meta.url);
+    return realpathSync(
+      path.dirname(require.resolve("playwright-core/package.json")),
+    );
+  } catch {
+    return null;
+  }
+};
+
+const safeVersion = (version: string) => version.replace(/[^\w.-]/g, "_");
+
+/**
+ * `cappa-browser:v<version>-<hash>` for an image built from `build`. The hash
+ * covers everything cappa can see change — the Dockerfile's contents, the
+ * context path, target, args and version — so editing any of them builds a
+ * new image instead of silently reusing a stale one. Files the Dockerfile
+ * `COPY`s are not covered; `cappa browser build` rebuilds for those.
+ */
+export const buildImageTag = (
+  version: string,
+  build: ResolvedContainerBuild,
+  dockerfileContents: string,
+) => {
+  const args = Object.entries(build.args).sort(([a], [b]) =>
+    a < b ? -1 : a > b ? 1 : 0,
+  );
+  const hash = createHash("sha256")
+    .update(
+      JSON.stringify([
+        version,
+        dockerfileContents,
+        build.context,
+        build.target,
+        args,
+      ]),
+    )
+    .digest("hex")
+    .slice(0, 8);
+  return `${BUILT_IMAGE_REPOSITORY}:v${safeVersion(version)}-${hash}`;
+};
+
+/** `<cli> build` arguments for `build`, tagged `tag`. */
+export const buildCommandArgs = (
+  version: string,
+  build: ResolvedContainerBuild,
+  tag: string,
+) => [
+  "build",
+  "-f",
+  build.dockerfile,
+  "-t",
+  tag,
+  "--build-arg",
+  `${PLAYWRIGHT_VERSION_BUILD_ARG}=${version}`,
+  ...Object.entries(build.args).flatMap(([key, value]) => [
+    "--build-arg",
+    `${key}=${value}`,
+  ]),
+  ...(build.target ? ["--target", build.target] : []),
+  "--label",
+  `${CONTAINER_LABEL}=${version}`,
+  build.context,
+];
+
+export type BuildImageOptions = {
+  cli: string;
+  version: string;
+  build: ResolvedContainerBuild;
+  /** Build even when the tag already exists (layer cache still applies). */
+  force?: boolean;
+  log?: (message: string) => void;
+  exec?: Exec;
+  readFile?: (file: string) => Promise<string>;
+};
+
+/**
+ * Make sure the image for `build` exists — reusing it when the tag is
+ * present, building it otherwise — and return its tag.
+ */
+export async function buildPlaywrightImage(
+  options: BuildImageOptions,
+): Promise<{ tag: string; built: boolean }> {
+  const {
+    cli,
+    version,
+    build,
+    force = false,
+    log = () => {},
+    exec = defaultExec,
+    readFile = defaultReadFile,
+  } = options;
+  const run = cliRunner(cli, exec);
+
+  const tag = buildImageTag(
+    version,
+    build,
+    await readDockerfile(build, readFile),
+  );
+
+  if (!force) {
+    const present = await run(["image", "inspect", tag]).then(
+      () => true,
+      (error) => {
+        if (error instanceof Error && error.message.startsWith("Container CLI"))
+          throw error;
+        return false;
+      },
+    );
+    if (present) return { tag, built: false };
+  }
+
+  log(
+    force
+      ? `Building ${tag} from ${build.dockerfile}`
+      : `Building ${tag} from ${build.dockerfile} (first run only; this can take a few minutes)`,
+  );
+  try {
+    await run(buildCommandArgs(version, build, tag));
+  } catch (error) {
+    if (error instanceof Error && error.message.startsWith("Container CLI"))
+      throw error;
+    throw new Error(
+      `Could not build ${tag} from ${build.dockerfile}.\n\n${tail(errorText(error))}`,
+      { cause: error },
+    );
+  }
+  return { tag, built: true };
+}
+
 /** `{version}` filled in. */
 export const containerImage = (image: string, version: string) =>
   image.replaceAll("{version}", version);
@@ -113,7 +302,7 @@ export const containerName = (
     .update(JSON.stringify([image, runArgs, packageDir]))
     .digest("hex")
     .slice(0, 8);
-  return `cappa-playwright-v${version.replace(/[^\w.-]/g, "_")}-${hash}`;
+  return `cappa-playwright-v${safeVersion(version)}-${hash}`;
 };
 
 /** Host port from `<cli> port` output (`127.0.0.1:49153`, maybe several lines). */
@@ -138,29 +327,15 @@ export async function ensurePlaywrightContainer(
     cli,
     runArgs,
     readyTimeout,
+    build = null,
     log = () => {},
     exec = defaultExec,
+    readFile = defaultReadFile,
     probe = defaultProbe,
     sleep = defaultSleep,
     now = Date.now,
   } = options;
-  const image = containerImage(options.image, version);
-  const name = containerName(version, image, runArgs, packageDir);
-  const deadline = now() + readyTimeout;
-
-  const run = async (args: string[]) => {
-    try {
-      return await exec(cli, args);
-    } catch (error) {
-      if (isNotFound(error)) {
-        throw new Error(
-          `Container CLI "${cli}" not found. Install it, or set playwright({ container: { cli } }) / CAPPA_CONTAINER_CLI to the one you use (docker, podman, nerdctl).`,
-          { cause: error },
-        );
-      }
-      throw error;
-    }
-  };
+  const run = cliRunner(cli, exec);
 
   try {
     await run(["version"]);
@@ -175,6 +350,13 @@ export async function ensurePlaywrightContainer(
       cause: error,
     });
   }
+
+  // A built image's tag hashes the Dockerfile, so it is known before any
+  // build — and a Dockerfile edit means a new tag, so a new container.
+  let image = build
+    ? buildImageTag(version, build, await readDockerfile(build, readFile))
+    : containerImage(options.image, version);
+  const name = containerName(version, image, runArgs, packageDir);
 
   const state = async (): Promise<"running" | "stopped" | "absent"> => {
     try {
@@ -206,11 +388,21 @@ export async function ensurePlaywrightContainer(
   } else {
     if (current === "stopped") await remove();
 
-    const present = await run(["image", "inspect", image]).then(
-      () => true,
-      () => false,
-    );
-    if (!present) {
+    if (build) {
+      ({ tag: image } = await buildPlaywrightImage({
+        cli,
+        version,
+        build,
+        log,
+        exec,
+        readFile,
+      }));
+    } else if (
+      !(await run(["image", "inspect", image]).then(
+        () => true,
+        () => false,
+      ))
+    ) {
       log(`Pulling ${image} (first run only; this can take a few minutes)`);
       try {
         await run(["pull", image]);
@@ -239,6 +431,8 @@ export async function ensurePlaywrightContainer(
         `type=bind,source=${packageDir},target=${PACKAGE_MOUNT},readonly`,
         "--label",
         `${CONTAINER_LABEL}=${version}`,
+        "--label",
+        `${CONTAINER_IMAGE_LABEL}=${image}`,
         "--name",
         name,
         ...runArgs,
@@ -268,6 +462,8 @@ export async function ensurePlaywrightContainer(
     return result ? `${result.stdout}${result.stderr}`.trim() : "";
   };
 
+  // Counted from here: pulling or building the image must not use it up.
+  const deadline = now() + readyTimeout;
   let port: number | null = null;
   let attempt = 0;
   while (true) {
@@ -310,22 +506,39 @@ export async function ensurePlaywrightContainer(
   }
 }
 
+const readDockerfile = async (
+  build: ResolvedContainerBuild,
+  readFile: (file: string) => Promise<string>,
+) => {
+  try {
+    return await readFile(build.dockerfile);
+  } catch (error) {
+    throw new Error(
+      `Could not read the Dockerfile ${build.dockerfile} (playwright({ container: { build } })).`,
+      { cause: error },
+    );
+  }
+};
+
 /**
- * Remove every container cappa started, whatever its version. Returns their
- * names.
+ * Remove every container cappa started, whatever its version — or, with
+ * `image`, only those running that image. Returns their names.
  */
 export async function removePlaywrightContainers(options: {
   cli: string;
+  image?: string;
   exec?: Exec;
 }): Promise<string[]> {
-  const { cli, exec = defaultExec } = options;
+  const { cli, image, exec = defaultExec } = options;
   let stdout: string;
   try {
     ({ stdout } = await exec(cli, [
       "ps",
       "-a",
       "--filter",
-      `label=${CONTAINER_LABEL}`,
+      image
+        ? `label=${CONTAINER_IMAGE_LABEL}=${image}`
+        : `label=${CONTAINER_LABEL}`,
       "--format",
       "{{.Names}}",
     ]));
@@ -346,4 +559,50 @@ export async function removePlaywrightContainers(options: {
     await exec(cli, ["rm", "-f", ...names]);
   }
   return names;
+}
+
+/**
+ * Remove every image cappa built (labelled `dev.cappa.playwright`), including
+ * ones a rebuild left untagged. Returns their IDs.
+ */
+export async function removePlaywrightImages(options: {
+  cli: string;
+  exec?: Exec;
+}): Promise<string[]> {
+  const { cli, exec = defaultExec } = options;
+  let stdout: string;
+  try {
+    ({ stdout } = await exec(cli, [
+      "images",
+      "--filter",
+      `label=${CONTAINER_LABEL}`,
+      "-q",
+    ]));
+  } catch (error) {
+    if (isNotFound(error)) {
+      throw new Error(`Container CLI "${cli}" not found.`, { cause: error });
+    }
+    throw new Error(`"${cli} images" failed.\n\n${errorText(error)}`, {
+      cause: error,
+    });
+  }
+
+  const ids = [
+    ...new Set(
+      stdout
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean),
+    ),
+  ];
+  if (ids.length > 0) {
+    try {
+      await exec(cli, ["rmi", ...ids]);
+    } catch (error) {
+      throw new Error(`"${cli} rmi" failed.\n\n${errorText(error)}`, {
+        cause: error,
+      });
+    }
+  }
+  return ids;
 }

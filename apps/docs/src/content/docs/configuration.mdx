@@ -633,7 +633,7 @@ Only used when `wsEndpoint` is set; otherwise cappa launches a local browser. `l
 
 #### container
 
-- **type**: `boolean | { cli?, image?, runArgs?, keepAlive?, readyTimeout? }`
+- **type**: `boolean | { cli?, image?, build?, runArgs?, keepAlive?, readyTimeout? }`
 - **default**: off
 
 Run the browser in the official Playwright container image for the exact `playwright-core`
@@ -642,11 +642,12 @@ version cappa uses — cappa starts it (or reuses a running one) and connects. S
 
 | Option | Default | |
 | --- | --- | --- |
-| `cli` | `CAPPA_CONTAINER_CLI` or `'docker'` | Container CLI: `docker`, `podman`, `nerdctl` — anything with docker's `run`/`inspect`/`port`/`pull`/`logs`/`ps`/`rm`. |
-| `image` | `'mcr.microsoft.com/playwright:v{version}-noble'` | `{version}` is replaced with the `playwright-core` version. |
+| `cli` | `CAPPA_CONTAINER_CLI` or `'docker'` | Container CLI: `docker`, `podman`, `nerdctl` — anything with docker's `run`/`inspect`/`port`/`pull`/`build`/`logs`/`ps`/`rm`. |
+| `image` | `'mcr.microsoft.com/playwright:v{version}-noble'` | `{version}` is replaced with the `playwright-core` version. Not with `build`. |
+| `build` | — | Build the image from a Dockerfile instead: a path, or `{ dockerfile, context?, target?, args? }`. Paths resolve against the cwd; `context` defaults to the Dockerfile's directory. Not with `image`. See [Custom images](#custom-images). |
 | `runArgs` | `[]` | Extra arguments for `<cli> run`, placed before the image. |
 | `keepAlive` | `true` | Leave the container running so the next capture connects instantly. |
-| `readyTimeout` | `300000` | Milliseconds to wait for the server; the first start pulls the image. |
+| `readyTimeout` | `300000` | Milliseconds to wait for the server, counted once the image exists — a first pull or build does not use it up. |
 
 #### contextOptions
 
@@ -747,10 +748,10 @@ cappa capture   # first run pulls the image (~1.5 GB); later runs reuse the runn
 - **Podman and friends.** Set `cli: 'podman'` in the config, or `CAPPA_CONTAINER_CLI=podman` to
   switch for just your machine. `runArgs` passes anything else the CLI needs, e.g.
   `['--userns=keep-id']`.
-- **Custom fonts.** Build an image `FROM mcr.microsoft.com/playwright:v<version>-noble` with your
-  fonts, tag it per version and set `image: 'registry.example.com/playwright-fonts:{version}'`.
+- **Custom images.** Extra fonts, or the same OS your CI runs: see [Custom images](#custom-images).
 - **Lifecycle.** The container keeps running after cappa exits (`keepAlive: true`), named
-  `cappa-playwright-v<version>-<hash>`; changing the version, image or `runArgs` starts a new one.
+  `cappa-playwright-v<version>-<hash>`; changing the version, image (or built image) or `runArgs`
+  starts a new one.
   Remove them with [`cappa browser down`](/cli#cappa-browser-down), or set `keepAlive: false` to
   remove the container when cappa closes the browser.
 - **Remote container hosts.** Mounting `playwright-core` needs the container host to see your
@@ -759,3 +760,126 @@ cappa capture   # first run pulls the image (~1.5 GB); later runs reuse the runn
 
 Upgrading Playwright means a newer Chromium, so expect baseline churn on a bump — re-capture and
 approve.
+
+#### Custom images
+
+The official image renders on Ubuntu. If your CI renders somewhere else — say a
+`node:24-bookworm-slim` image with `playwright install chromium --with-deps` — Debian's FreeType,
+fontconfig, HarfBuzz and fonts anti-alias text slightly differently, and a baseline approved on one
+side fails on the other. The fix is one image for both. **CI and local must use this exact image**,
+not merely a similar one: cappa guarantees the Playwright version, rendering parity is up to the
+Dockerfile.
+
+Point `build` at a Dockerfile and cappa builds the image itself, pinned to your lockfile:
+
+```ts
+browser: {
+  provider: playwright({
+    container: {
+      build: './cappa-browser.Dockerfile',
+      // or: { dockerfile, context: '.', target: 'browser', args: { NODE_VERSION: '24.22.1' } }
+    },
+  }),
+},
+```
+
+```dockerfile
+# cappa-browser.Dockerfile
+# Any base with `node` on PATH. This one matches a Debian-based CI.
+FROM node:24.22.1-bookworm-slim AS browser
+
+# Set by cappa to the installed playwright-core version.
+ARG PLAYWRIGHT_VERSION
+
+# Browsers go in a shared path, not root's home, so pwuser can find them at runtime.
+# ENV (not ARG): it has to be set when the container runs, too.
+ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
+
+# Install the browser build that version expects, plus its system libraries and fonts.
+# --only-shell skips the full browser; cappa runs headless.
+RUN npx -y playwright-core@${PLAYWRIGHT_VERSION} install chromium --with-deps --only-shell \
+ && chmod -R a+rX /ms-playwright \
+ && useradd --create-home pwuser
+
+# Your fonts, if any:
+# COPY fonts/ /usr/local/share/fonts/
+# RUN fc-cache -f
+```
+
+##### What the image needs
+
+The image does **not** run the Playwright server, and you don't install Playwright in it as a
+package. Cappa starts the server itself, from your project's own `playwright-core`:
+
+```bash
+<cli> run -d --init --ipc=host --user pwuser --workdir /home/pwuser \
+  -p 127.0.0.1::3000 \
+  --mount type=bind,source=<your node_modules/playwright-core>,target=/opt/playwright-core,readonly \
+  [runArgs…] <image> \
+  node /opt/playwright-core/cli.js run-server --port 3000 --host 0.0.0.0
+```
+
+The command at the end replaces the image's `CMD`, so you don't need a `CMD` or an `EXPOSE`, and
+the server version always matches the client. The image provides the rest:
+
+| Needs | Why |
+| --- | --- |
+| `node` on `PATH` | Cappa runs `node /opt/playwright-core/cli.js`. Any recent Node your `playwright-core` supports works. |
+| A `pwuser` user | The container runs as `--user pwuser`. Give it a home directory (`useradd --create-home`). |
+| Browsers for exactly `PLAYWRIGHT_VERSION` | Each `playwright-core` release expects one browser build. Installing with `playwright-core@${PLAYWRIGHT_VERSION} install` gets the right one. |
+| Browsers readable by `pwuser` | Installed as root they land in `/root/.cache/ms-playwright`, which `pwuser` can't see. Set `ENV PLAYWRIGHT_BROWSERS_PATH` to a shared directory and make it readable. |
+| System libraries and fonts | `--with-deps` installs what the browser needs to start. Anything extra (brand fonts, CJK, emoji) goes in your own layers. |
+| The browser you configured | `install chromium` covers `instances: [{ browser: 'chromium' }]`. For `firefox` or `webkit`, install that one instead. |
+
+Common mistakes:
+
+- **No `ARG PLAYWRIGHT_VERSION` in the stage that uses it.** An `ARG` declared before `FROM`, or in
+  another stage, is empty inside this one. `npx playwright-core@` then installs the latest version,
+  and capture fails with `Executable doesn't exist` as soon as the versions drift apart.
+- **An `ENTRYPOINT` that doesn't run its arguments.** Cappa passes its command as arguments. An
+  entrypoint has to finish with `exec "$@"`, as the official `node` images' entrypoint does, or the
+  server never starts and cappa reports that the container exited.
+- **`--with-deps` on a base without `apt`.** It only knows Debian and Ubuntu. On Alpine or other
+  distributions, install the browser's libraries yourself, or stay on a Debian or Ubuntu base.
+
+When the container exits before its server comes up, cappa's error includes the last lines of its
+log. That is usually enough to tell a missing browser from a broken entrypoint.
+
+- **`PLAYWRIGHT_VERSION` is cappa's.** It is passed as a build arg set to the installed
+  `playwright-core` version, so the browsers in the image always match the lockfile. Setting it in
+  `args` is a config error.
+- **When it rebuilds.** The image is tagged `cappa-browser:v<version>-<hash>`, where the hash
+  covers the Dockerfile's contents, `context`, `target` and `args`. A Playwright bump or a
+  Dockerfile edit builds a new image on the next capture (logged like a pull: "first run only");
+  otherwise the existing one is reused with no build step.
+- **What does not.** Cappa does not hash the build context, so a change to a file the Dockerfile
+  `COPY`s, or a newer package in the apt mirror, goes unnoticed. Run
+  [`cappa browser build`](/cli#cappa-browser-build) to rebuild (the layer cache still applies);
+  it also replaces containers still running the old build.
+- **Cleanup.** Every bump or edit leaves the previous image (~1 GB) behind.
+  [`cappa browser down --images`](/cli#cappa-browser-down) removes the containers and every image
+  cappa built.
+- **Under `cappa serve`.** The engine runs on the server host, so the image is built there, with
+  the Dockerfile path resolved against the server's working directory.
+
+To rebuild the image without cappa (another runtime, a fixed tag), use `image` instead and build it
+`FROM mcr.microsoft.com/playwright:v<version>-noble`, tagged per version, e.g.
+`image: 'registry.example.com/playwright-fonts:{version}'`.
+
+##### The same image in CI
+
+CI that runs `cappa capture` with this config builds the image the same way — nothing to add. CI
+that has its own job image can build `FROM` the same stage, passing the version from the lockfile:
+
+```bash
+docker build \
+  -f cappa-browser.Dockerfile \
+  --target browser \
+  --build-arg PLAYWRIGHT_VERSION="$(node -p "require('playwright-core/package.json').version")" \
+  -t my-ci-image .
+```
+
+`node -p "require('playwright-core/package.json').version"` reads
+`node_modules/playwright-core/package.json`, the version cappa itself passes. If the CI image
+needs more than the browser, add a stage `FROM browser` to the same file and build that target
+instead — the layers that render stay identical.
